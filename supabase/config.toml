@@ -1,0 +1,3 @@
+# Used by `supabase functions deploy`. The app sends the signed-in user's token; the function checks it itself.
+[functions.notify]
+verify_jwt = false

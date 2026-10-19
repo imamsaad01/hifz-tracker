@@ -1,0 +1,83 @@
+# Hifz Tracker
+
+Daily hifz records for Qurʾān programs: **New**, **Recent** and **Old** revision, errors by ayah, scores, attendance, assignments, goals, milestones, reports and parent emails — for admins, teachers, students and parents, with each program's data kept separate by the database.
+
+Everything runs on free plans: **Supabase** (database, Google sign-in, email function), **Vercel** (website), **Brevo** (300 emails a day).
+
+## Try it without setting anything up
+
+Run it with no Supabase keys and it starts in **preview mode**: the same database schema, security rules and functions run inside your browser (PGlite), filled with fictional sample people. Pick a role on the sign-in page. Nothing leaves the browser and no email is sent.
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+
+## Put it online (about 30 minutes, all free)
+
+### 1. Supabase (database + sign-in)
+1. Create a project at [supabase.com](https://supabase.com) (free plan).
+2. **SQL Editor** → run, in order: `supabase/migrations/0001_schema.sql`, `0002_security.sql`, `0003_functions.sql`, `0004_parent_codes.sql`, `0005_leaderboard.sql`, then `supabase/seed_quran.sql` (Qurʾān reference data, 6,236 ayahs) and `supabase/finish_setup.sql`.
+3. **Project Settings → API**: copy the *Project URL* and the *anon public* key.
+
+### 2. Google sign-in
+1. In [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → *Create OAuth client ID* (Web application).
+2. Authorised redirect URI: `https://YOUR-PROJECT.supabase.co/auth/v1/callback`.
+3. In Supabase → **Authentication → Providers → Google**: paste the client ID and secret, enable.
+4. Supabase → **Authentication → URL Configuration**: set *Site URL* to your Vercel address (step 3) and add it to *Redirect URLs*.
+
+### 3. Vercel (the website)
+1. Push this folder to a GitHub repository.
+2. In [vercel.com](https://vercel.com) → *Add New Project* → import the repository (framework: Vite).
+3. Environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (from step 1). These are public by design; the database rules protect the data.
+4. Deploy. Sign in with Google, choose **Start a program** — you become its admin.
+
+### 4. Parent emails (optional)
+1. Create a free [Brevo](https://www.brevo.com) account, verify a sender email, create an API key (SMTP & API → API keys).
+2. Install the [Supabase CLI](https://supabase.com/docs/guides/cli), then:
+   ```bash
+   supabase link --project-ref YOUR-PROJECT
+   supabase secrets set BREVO_API_KEY=... SENDER_EMAIL=you@example.com SENDER_NAME="Hifz Tracker" CRON_SECRET=$(openssl rand -hex 24)
+   supabase functions deploy notify
+   ```
+3. For the daily "revision falling behind" and weekly summary emails: enable the `pg_cron` and `pg_net` extensions, edit and run `supabase/cron.sql`.
+
+Every attempt (sent, failed or skipped) is listed under **More → Email log**.
+
+## How people join
+
+| Who | How |
+|---|---|
+| Admin | Signs in, chooses *Start a program* |
+| Teacher | Enters the 8-character **teacher code** (only admins can see it: More → Join codes) |
+| Student | Enters the 6-character **student code**, then answers four setup questions |
+| Parent | Enters the 10-character **parent code** shown on the child's page; read-only, one child per code |
+| Child without an account | The teacher adds them (Students → Add student) and records for them |
+
+## Security
+
+- Row-level security on every table; tested in `tests/db.test.ts` against a real Postgres engine (tenant isolation, roles, students cannot write records, parents read-only, audit log admin-only, teacher code admin-only).
+- Hifz records (sessions, errors, memorised ranges, revision schedule, milestones) can only be written through checked database functions (`record_session`, etc.), never directly.
+- No secrets in the browser app. Brevo and cron secrets live only in Supabase function secrets.
+- Audit log of every change to students, sessions, attendance, classes, assignments and memberships.
+- CSV exports guard against spreadsheet formula injection.
+
+## Qurʾān data
+
+Surah, ayah, page (604-page Madinah mushaf), juz and hizb boundaries come from **quran-meta 6.0.17** (MIT licence), Hafs ʿan ʿĀṣim. `npm run gen:quran` regenerates `src/quran/data.generated.ts` and `supabase/seed_quran.sql` and checks known boundaries (e.g. Al-Mulk 1 is page 562, juz 29). The app stores positions only; it never displays Qurʾān text.
+
+Accuracy, weak pages and revision dates are calculated from what the teacher records. Nothing in the app judges recitation automatically.
+
+## Development
+
+```bash
+npm test          # 44 tests: logic, database + security, preview backend
+npm run typecheck
+npm run build
+```
+
+Structure: `src/api` (one Backend interface; Supabase and in-browser implementations), `src/lib` (revision planner, scoring, progress, insights), `src/pages` (teacher, student, parent), `supabase/` (migrations, seed, notify function, cron).
+
+## Not built yet
+
+Audio recordings of recitation, SMS/WhatsApp messages, paid plans/billing (a `subscriptions` table exists but nothing uses it), a super-admin console across programs, and installing as an offline app (the app keeps unsent sessions on the device and retries, but needs a connection to open).

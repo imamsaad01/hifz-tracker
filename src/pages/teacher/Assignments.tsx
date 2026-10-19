@@ -1,0 +1,36 @@
+import { useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { useOrg } from '../../app/context';
+import { useOrgData } from '../../app/useOrgData';
+import { useRoute, go } from '../../app/router';
+import { insight } from '../../lib/insights';
+import { Button, Card, Spinner, ErrorBox, Field, Select } from '../../components/ui';
+import { AssignmentForm } from '../../components/AssignmentForm';
+import { AssignmentList } from '../../components/AssignmentList';
+import { PageTitle } from '../../components/Shell';
+
+export function Assignments() {
+  const { org, today } = useOrg();
+  const { data, error, reload } = useOrgData();
+  const route = useRoute();
+  const [show, setShow] = useState('open'); const [sid, setSid] = useState('all');
+  const ins = useMemo(() => data ? data.students.map(s => insight(s, data.sessions, data.revision.get(s.id) ?? [], data.assignments, data.attendance, org.settings, today)) : [], [data, org.settings, today]);
+  if (error) return <ErrorBox message={error} onRetry={reload} />;
+  if (!data) return <Spinner />;
+  const nameOf = (id: string) => data.students.find(s => s.id === id)?.name ?? 'Archived student';
+  const list = data.assignments.filter(a => (sid === 'all' || a.studentId === sid) && (
+    show === 'open' ? a.status === 'assigned' || a.status === 'started' : show === 'overdue' ? (a.status === 'assigned' || a.status === 'started') && a.dueOn < today : show === 'review' ? a.status === 'completed' : show === 'done' ? a.status === 'reviewed' : true))
+    .sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.priority - b.priority);
+  const toReview = data.assignments.filter(a => a.status === 'completed').length;
+  return <>
+    <PageTitle title="Assignments" sub={toReview ? `${toReview} waiting for your review` : 'Set work, then review it when students mark it done'} action={<Button onClick={() => go('assignments', 'new')} disabled={!data.students.length}><Plus size={18} />New assignment</Button>} />
+    <Card>
+      <div className="grid gap-3 border-b border-line px-5 py-4 sm:grid-cols-2">
+        <Field label="Show">{id => <Select id={id} value={show} onChange={setShow} options={[['open', 'Open'], ['overdue', 'Overdue'], ['review', 'Done — waiting for review'], ['done', 'Reviewed'], ['all', 'Everything']]} />}</Field>
+        <Field label="Student">{id => <Select id={id} value={sid} onChange={setSid} options={[['all', 'All students'], ...data.students.map(s => [s.id, s.name] as [string, string])]} />}</Field>
+      </div>
+      <AssignmentList items={list} nameOf={nameOf} onChanged={reload} />
+    </Card>
+    {route[1] === 'new' && data.students.length > 0 && <AssignmentForm open onClose={() => go('assignments')} insights={ins} onSaved={reload} />}
+  </>;
+}

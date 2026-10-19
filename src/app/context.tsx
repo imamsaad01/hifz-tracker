@@ -1,0 +1,45 @@
+// Who is signed in, which organization they are in, and their role. Loads once; screens read it.
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { AuthUser, Backend } from '../api/backend';
+import { api, type Api, type Membership } from '../api/data';
+import type { Org } from '../lib/types';
+import { todayIn } from '../lib/dates';
+
+interface Ctx {
+  backend: Backend; api: Api; user: AuthUser | null; loading: boolean;
+  memberships: Membership[]; org: Org | null; today: string;
+  switchOrg: (id: string) => void; refreshSession: () => Promise<void>;
+}
+const AppCtx = createContext<Ctx | null>(null);
+const ORG_KEY = 'hifz-active-org';
+const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* blocked */ } };
+
+export function AppProvider({ backend, children }: { backend: Backend; children: React.ReactNode }) {
+  const a = useMemo(() => api(backend), [backend]);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [org, setOrg] = useState<Org | null>(null);
+
+  const load = useCallback(async (u: AuthUser | null) => {
+    setLoading(true);
+    try {
+      setUser(u);
+      if (!u) { setMemberships([]); setOrg(null); return; }
+      const ms = await a.memberships(u.id);
+      setMemberships(ms);
+      const want = lsGet(ORG_KEY);
+      const m = ms.find(x => x.orgId === want) ?? ms[0];
+      setOrg(m ? await a.org(m.orgId, m.role) : null);
+    } finally { setLoading(false); }
+  }, [a]);
+
+  useEffect(() => { backend.getUser().then(load); return backend.onAuthChange(u => { load(u); }); }, [backend, load]);
+  const switchOrg = useCallback((id: string) => { lsSet(ORG_KEY, id); load(user); }, [load, user]);
+  const refreshSession = useCallback(() => load(user), [load, user]);
+  const today = todayIn(org?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone);
+  return <AppCtx.Provider value={{ backend, api: a, user, loading, memberships, org, today, switchOrg, refreshSession }}>{children}</AppCtx.Provider>;
+}
+export function useApp(): Ctx { const c = useContext(AppCtx); if (!c) throw new Error('useApp outside provider'); return c; }
+export function useOrg(): Ctx & { org: Org } { const c = useApp(); if (!c.org) throw new Error('No organization'); return c as Ctx & { org: Org }; }

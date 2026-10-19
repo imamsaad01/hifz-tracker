@@ -1,0 +1,57 @@
+// Domain types shared by the app. Database rows are mapped to these in src/api.
+import type { Range } from '../quran';
+
+export type Role = 'admin' | 'teacher' | 'student' | 'parent';
+export type SessionType = 'new' | 'recent' | 'old' | 'juz_revision' | 'assessment' | 'catch_up' | 'review' | 'other';
+export type AttendanceStatus = 'present' | 'absent' | 'excused' | 'late';
+export type AttendanceMode = 'in_person' | 'online';
+export type ErrorSeverity = 'major' | 'minor';
+export type ErrorCategory =
+  | 'forgot_ayah' | 'added_missed_word' | 'word_substitution' | 'similar_ayah' | 'tajweed' | 'makharij'
+  | 'harakah' | 'madd' | 'ghunnah' | 'waqf_ibtida' | 'fluency' | 'other';
+export type AssignmentType = 'new' | 'revision' | 'listening' | 'tajweed' | 'other';
+export type AssignmentStatus = 'assigned' | 'started' | 'completed' | 'reviewed';
+export type Direction = 'back' | 'forward';
+
+export interface OrgSettings {
+  scoreScale: number;                       // 5 = 1–5 stars, 10 = 0–10
+  revision: { recentDays: number; maxIntervalDays: number; weakThreshold: number; failThreshold: number; dailyOldPages: number | null; maxOverdueBeforeNew: number | null };
+  accuracy: { major: number; minor: number };
+  email: { enabled: boolean; onSession: boolean; lowRevision: boolean; weekly: boolean };
+  leaderboard: { enabled: boolean; fullNames: boolean };
+}
+export interface Org { id: string; name: string; timezone: string; joinCode: string; settings: OrgSettings; role: Role }
+export interface Student {
+  id: string; orgId: string; userId: string | null; name: string; ageGroup: string | null; direction: Direction;
+  dailyNewAyahs: number; goal: string | null; guardianName: string | null; guardianEmail: string | null; notify: boolean;
+  startDate: string; archivedAt: string | null; memorized: Range[]; parentCode: string | null;
+}
+export interface SessionError { id?: string; ayahId: number | null; category: ErrorCategory; severity: ErrorSeverity; note?: string | null }
+export interface Session {
+  id: string; orgId: string; studentId: string; date: string; type: SessionType; range: Range;
+  errorsMajor: number; errorsMinor: number;
+  scores: { tajweed: number | null; fluency: number | null; accuracy: number | null; tarteel: number | null; overall: number | null };
+  attendance: AttendanceStatus; mode: AttendanceMode; teacherNote: string | null; studentNote: string | null; followUp: boolean;
+  recordedBy: 'teacher' | 'student'; errors: SessionError[]; createdAt: string;
+}
+export interface RevisionItem { page: number; lastReviewedOn: string | null; intervalDays: number; lapses: number; dueOn: string }
+export interface Assignment {
+  id: string; studentId: string; type: AssignmentType; range: Range | null; dueOn: string; priority: 1 | 2 | 3;
+  instructions: string | null; status: AssignmentStatus; feedback: string | null; createdAt: string;
+}
+export interface Milestone { code: string; achievedOn: string }
+
+export const DEFAULT_SETTINGS: OrgSettings = {
+  scoreScale: 5,
+  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null },
+  accuracy: { major: 10, minor: 3 },
+  email: { enabled: true, onSession: true, lowRevision: true, weekly: false },
+  leaderboard: { enabled: false, fullNames: false },
+};
+export const SESSION_LABEL: Record<SessionType, string> = {
+  new: 'New', recent: 'Recent revision', old: 'Old revision', juz_revision: 'Full juz revision', assessment: 'Assessment', catch_up: 'Catch-up', review: 'Review', other: 'Other',
+};
+export const ERROR_LABEL: Record<ErrorCategory, string> = {
+  forgot_ayah: 'Forgot ayah', added_missed_word: 'Added / missed word', word_substitution: 'Word substitution', similar_ayah: 'Similar ayah confusion',
+  tajweed: 'Tajweed', makharij: 'Makharij', harakah: 'Harakah', madd: 'Madd', ghunnah: 'Ghunnah', waqf_ibtida: 'Waqf / ibtidaʾ', fluency: 'Fluency', other: 'Other',
+};
