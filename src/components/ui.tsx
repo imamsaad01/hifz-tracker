@@ -33,8 +33,8 @@ export function Field({ label, hint, error, children, className }: { label: stri
   </div>;
 }
 export const inputCls = 'w-full min-h-[44px] rounded-xl border border-line bg-white px-3 text-[15px] text-ink placeholder:text-ink-faint focus:border-pine-600 focus:outline-none focus:ring-2 focus:ring-pine-600/20';
-export function Select<T extends string | number>({ value, onChange, options, id, ...rest }: { value: T; onChange: (v: T) => void; options: Array<[T, string]>; id?: string } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'value' | 'onChange'>) {
-  return <select id={id} className={inputCls} value={String(value)} onChange={e => { const raw = e.target.value; const opt = options.find(o => String(o[0]) === raw); if (opt) onChange(opt[0]); }} {...rest}>
+export function Select<T extends string | number>({ value, onChange, options, id, className, ...rest }: { value: T; onChange: (v: T) => void; options: Array<[T, string]>; id?: string } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'value' | 'onChange'>) {
+  return <select id={id} className={cx(inputCls, className)} value={String(value)} onChange={e => { const raw = e.target.value; const opt = options.find(o => String(o[0]) === raw); if (opt) onChange(opt[0]); }} {...rest}>
     {options.map(([v, l]) => <option key={String(v)} value={String(v)}>{l}</option>)}
   </select>;
 }

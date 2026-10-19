@@ -1,6 +1,9 @@
 // Program settings, codes, people, reports, the email log and the audit log.
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, RefreshCw, Download, Settings, KeyRound, Users, BarChart3, Mail, History as HistoryIcon, BookOpen } from 'lucide-react';
+import { Copy, RefreshCw, Download, Settings, KeyRound, Users, BarChart3, Mail, History as HistoryIcon, BookOpen, Inbox, Wallet, X } from 'lucide-react';
+import { Applications } from './Applications';
+import { Fees } from './Fees';
+import { DAY_NAMES } from '../../lib/revision';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useRoute, href } from '../../app/router';
@@ -18,7 +21,7 @@ import { PageTitle } from '../../components/Shell';
 import { friendly } from '../../api/backend';
 
 const SECTIONS = [
-  ['reports', 'Reports', BarChart3, false], ['settings', 'Settings', Settings, true], ['codes', 'Join codes', KeyRound, true], ['people', 'People', Users, true],
+  ['reports', 'Reports', BarChart3, false], ['applications', 'Applications', Inbox, false], ['fees', 'Fees', Wallet, true], ['settings', 'Settings', Settings, true], ['codes', 'Join codes', KeyRound, true], ['people', 'People', Users, true],
   ['email', 'Email log', Mail, false], ['audit', 'Audit log', HistoryIcon, true], ['about', 'About the data', BookOpen, false],
 ] as const;
 export function More() {
@@ -31,6 +34,8 @@ export function More() {
     <PageTitle title="More" sub={org.name} />
     <nav aria-label="More sections" className="no-print mb-5 flex gap-1 overflow-x-auto pb-1">{visible.map(([k, l, I]) => <a key={k} href={href('more', k)} aria-current={sec === k ? 'page' : undefined} className={cx('inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold', sec === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}><I size={15} />{l}</a>)}</nav>
     {sec === 'reports' && <Reports />}
+    {sec === 'applications' && <Applications />}
+    {sec === 'fees' && <Fees />}
     {sec === 'settings' && <SettingsForm />}
     {sec === 'codes' && <Codes />}
     {sec === 'people' && <People />}
@@ -102,15 +107,31 @@ function SettingsForm() {
       <Field label="Scores">{id => <Select id={id} value={s.scoreScale} onChange={v => setS({ ...s, scoreScale: Number(v) })} options={[[5, '1 to 5 stars'], [10, '0 to 10 points']]} />}</Field>
     </Card>
     <Card className="flex flex-col gap-4 p-5">
-      <h2 className="font-bold">Revision</h2>
-      <p className="-mt-2 text-sm text-ink-faint">After each Old revision, a clean page comes back later (the gap doubles up to the maximum); a weak page keeps its gap; a failed page comes back tomorrow.</p>
+      <h2 className="font-bold">Revision plan</h2>
+      <Field label="How Old revision works">{id => <Select id={id} value={r.oldPlan} onChange={v => setR({ oldPlan: v as 'cycle' | 'spaced' })} options={[['cycle', 'In turn: a few pages each revision day, weak pages first'], ['spaced', 'Spaced: each page comes back on its own schedule']]} />}</Field>
+      <fieldset><legend className="mb-2 text-sm font-bold">Revision and lesson days</legend>
+        <div className="flex flex-wrap gap-1.5">{[1, 2, 3, 4, 5, 6, 0].map(d => { const on = r.days.includes(d); return <button key={d} type="button" aria-pressed={on} onClick={() => setR({ days: on ? r.days.filter(x => x !== d) : [...r.days, d] })} className={cx('min-h-[40px] min-w-[52px] rounded-xl px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{DAY_NAMES[d]}</button>; })}</div>
+        <p className="mt-1 text-sm text-ink-faint">Old revision is given on these days only. New lessons are estimated on these days too.</p></fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Old pages per revision day">{id => <Select id={id} value={r.dailyOldPages ?? 0} onChange={v => setR({ dailyOldPages: Number(v) || null })} options={[[0, r.oldPlan === 'cycle' ? 'Automatic: 3 pages up to 5 juz, 4 above' : 'Automatic (by pages memorised)'], ...[2, 3, 4, 5, 6, 8, 10, 15, 20, 30].map(d => [d, `${d} pages for everyone`] as [number, string])]} />}</Field>
         <Field label="Recent revision covers">{id => <Select id={id} value={r.recentDays} onChange={v => setR({ recentDays: Number(v) })} options={[3, 5, 7, 10, 14, 21, 30].map(d => [d, `the last ${d} days of New`])} />}</Field>
-        <Field label="Longest gap between reviews">{id => <Select id={id} value={r.maxIntervalDays} onChange={v => setR({ maxIntervalDays: Number(v) })} options={[7, 14, 21, 30, 45, 60, 90].map(d => [d, `${d} days`])} />}</Field>
         <Field label="Weak page at">{id => <Select id={id} value={r.weakThreshold} onChange={v => setR({ weakThreshold: Number(v), failThreshold: Math.max(Number(v) + 1, r.failThreshold) })} options={[1, 2, 3, 4, 5].map(d => [d, `${d} error${d > 1 ? 's' : ''} or more`])} />}</Field>
         <Field label="Failed page at">{id => <Select id={id} value={r.failThreshold} onChange={v => setR({ failThreshold: Number(v) })} options={[2, 3, 4, 5, 6, 8].filter(d => d > r.weakThreshold).map(d => [d, `${d} errors or more`])} />}</Field>
-        <Field label="Old revision a day">{id => <Select id={id} value={r.dailyOldPages ?? 0} onChange={v => setR({ dailyOldPages: Number(v) || null })} options={[[0, 'Automatic (by pages memorised)'], ...[2, 3, 5, 10, 15, 20, 30, 40].map(d => [d, `${d} pages`] as [number, string])]} />}</Field>
-        <Field label="Pause New when overdue reaches">{id => <Select id={id} value={r.maxOverdueBeforeNew ?? 0} onChange={v => setR({ maxOverdueBeforeNew: Number(v) || null })} options={[[0, 'Never pause'], ...[5, 10, 20, 40].map(d => [d, `${d} overdue pages`] as [number, string])]} />}</Field>
+        {r.oldPlan === 'spaced' && <Field label="Longest gap between reviews">{id => <Select id={id} value={r.maxIntervalDays} onChange={v => setR({ maxIntervalDays: Number(v) })} options={[7, 14, 21, 30, 45, 60, 90].map(d => [d, `${d} days`])} />}</Field>}
+      </div>
+      <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
+    </Card>
+    <Card className="flex flex-col gap-4 p-5">
+      <h2 className="font-bold">Motivation</h2>
+      <Field label="Streak freezes">{id => <Select id={id} value={s.motivation.freezePerWeek} onChange={v => setS({ ...s, motivation: { freezePerWeek: Number(v) } })} options={[[0, 'None: any missed day ends the streak'], [1, '1 missed day a week is forgiven'], [2, '2 missed days a week are forgiven']]} />}</Field>
+      <TagEditor label="Adab points: positive" items={s.adab.positive} onChange={positive => setS({ ...s, adab: { ...s.adab, positive } })} />
+      <TagEditor label="Adab points: to work on" items={s.adab.negative} onChange={negative => setS({ ...s, adab: { ...s.adab, negative } })} />
+    </Card>
+    <Card className="flex flex-col gap-4 p-5">
+      <h2 className="font-bold">Fees</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Usual monthly fee">{id => <input id={id} type="number" min={0} className={inputCls} value={s.fees.monthly ?? ''} onChange={e => setS({ ...s, fees: { ...s.fees, monthly: e.target.value === '' ? null : Number(e.target.value) } })} placeholder="e.g. 40" />}</Field>
+        <Field label="Currency">{id => <Select id={id} value={s.fees.currency} onChange={v => setS({ ...s, fees: { ...s.fees, currency: v } })} options={[['USD', 'US dollar'], ['CAD', 'Canadian dollar'], ['GBP', 'Pound'], ['EUR', 'Euro'], ['AUD', 'Australian dollar'], ['PKR', 'Rupee (PKR)'], ['INR', 'Rupee (INR)'], ['SAR', 'Riyal'], ['AED', 'Dirham'], ['MYR', 'Ringgit'], ['ZAR', 'Rand'], ['NGN', 'Naira']]} />}</Field>
       </div>
     </Card>
     <Card className="flex flex-col gap-4 p-5">
@@ -172,7 +193,7 @@ function People() {
     <CardHead title={`${data.members.length} people`} sub="Everyone who has joined with a code. Children without accounts are under Students." />
     <ul className="mt-2 divide-y divide-line">{data.members.map(m => { const me = m.userId === user?.id; const student = data.students.find(s => s.userId === m.userId); return <li key={m.userId} className="flex flex-wrap items-center gap-3 px-5 py-3">
       <span className="min-w-0 flex-1 basis-48"><b>{m.displayName ?? student?.name ?? 'No name'}</b>{me && <Pill className="ml-2">you</Pill>}<span className="block text-sm text-ink-faint">Joined {niceDate(m.createdAt.slice(0, 10))}</span></span>
-      <Select aria-label={`Role for ${m.displayName ?? 'member'}`} className="w-40" value={m.role} disabled={me && admins <= 1} onChange={async v => { try { await api.setMemberRole(org.id, m.userId, v as Role); toast('Role changed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} options={(Object.keys(ROLE_LABEL) as Role[]).map(r => [r, ROLE_LABEL[r]])} />
+      <Select aria-label={`Role for ${m.displayName ?? 'member'}`} className="!w-40" value={m.role} disabled={me && admins <= 1} onChange={async v => { try { await api.setMemberRole(org.id, m.userId, v as Role); toast('Role changed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} options={(Object.keys(ROLE_LABEL) as Role[]).map(r => [r, ROLE_LABEL[r]])} />
       {!me && <Button kind="quiet" onClick={() => setRm(m.userId)}>Remove</Button>}
     </li>; })}</ul>
     <Confirm open={!!rm} onClose={() => setRm(null)} danger title="Remove from the program?" confirmLabel="Remove" body="They lose access straight away. Their student record and history stay." onConfirm={async () => { try { await api.removeMember(org.id, rm!); toast('Removed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} />
@@ -214,4 +235,13 @@ function About() {
     <h2 className="mt-2 font-bold">What the numbers mean</h2>
     <p>Accuracy, weak pages and revision dates are calculated from the errors the teacher records. They do not judge recitation automatically; the teacher’s ear is the judge.</p>
   </Card>;
+}
+
+function TagEditor({ label, items, onChange }: { label: string; items: string[]; onChange: (v: string[]) => void }) {
+  const [t, setT] = useState('');
+  const add = () => { const v = t.trim(); if (v && !items.includes(v) && items.length < 10) onChange([...items, v]); setT(''); };
+  return <fieldset><legend className="mb-2 text-sm font-bold">{label}</legend>
+    <div className="flex flex-wrap gap-1.5">{items.map(i => <span key={i} className="inline-flex items-center gap-1 rounded-full bg-paper px-3 py-1 text-sm ring-1 ring-line">{i}<button type="button" aria-label={`Remove ${i}`} onClick={() => onChange(items.filter(x => x !== i))} className="text-ink-faint hover:text-bad"><X size={13} /></button></span>)}
+      <form className="inline-flex" onSubmit={e => { e.preventDefault(); add(); }}><input aria-label={`Add to ${label}`} className="min-h-[34px] w-32 rounded-full border border-line px-3 text-sm" maxLength={40} value={t} onChange={e => setT(e.target.value)} placeholder="+ Add" /></form></div>
+  </fieldset>;
 }

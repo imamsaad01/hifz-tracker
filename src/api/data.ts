@@ -13,6 +13,13 @@ export interface Attendance { studentId: string; date: string; status: string; m
 export interface Goal { id: string; studentId: string; period: string; metric: string; target: number; startsOn: string; endsOn: string | null }
 export interface Notice { id: string; studentId: string | null; to: string | null; template: string | null; status: string; error: string | null; createdAt: string }
 export interface BoardRow { studentId: string; name: string; days: number; pages: number; clean: number; points: number; isMe: boolean }
+export interface Announcement { id: string; classId: string | null; title: string; body: string | null; pinned: boolean; createdBy: string | null; createdAt: string }
+export interface Message { id: string; studentId: string; sender: string; senderName: string | null; body: string; createdAt: string }
+export interface BehaviourPoint { id: string; studentId: string; date: string; category: string; value: number; note: string | null; createdAt: string }
+export interface CalEvent { id: string; classId: string | null; startsOn: string; endsOn: string | null; title: string; kind: 'class' | 'holiday' | 'exam' | 'event'; notes: string | null }
+export interface Exam { id: string; studentId: string; title: string; juz: number | null; range: Range | null; scheduledOn: string; examiner: string | null; status: 'scheduled' | 'passed' | 'retake' | 'missed'; score: number | null; notes: string | null }
+export interface Application { id: string; name: string; ageGroup: string | null; contact: string; memorised: string | null; message: string | null; status: 'new' | 'contacted' | 'accepted' | 'declined'; createdAt: string }
+export interface FeeRecord { id: string; studentId: string; month: string; amount: number; paidOn: string | null; method: string | null; note: string | null }
 export interface AuditRow { id: number; actor: string | null; action: string; entity: string; entityId: string | null; at: string }
 
 export function mergeSettings(s: Row | null | undefined): OrgSettings {
@@ -23,18 +30,22 @@ export function mergeSettings(s: Row | null | undefined): OrgSettings {
     accuracy: { ...DEFAULT_SETTINGS.accuracy, ...(x.accuracy ?? {}) },
     email: { ...DEFAULT_SETTINGS.email, ...(x.email ?? {}) },
     leaderboard: { ...DEFAULT_SETTINGS.leaderboard, ...(x.leaderboard ?? {}) },
+    motivation: { ...DEFAULT_SETTINGS.motivation, ...(x.motivation ?? {}) },
+    adab: { ...DEFAULT_SETTINGS.adab, ...(x.adab ?? {}) },
+    fees: { ...DEFAULT_SETTINGS.fees, ...(x.fees ?? {}) },
   };
 }
 const toStudent = (r: Row, ranges: Range[] = []): Student => ({
   id: r.id, orgId: r.org_id, userId: r.user_id, name: r.name, ageGroup: r.age_group, direction: r.direction, dailyNewAyahs: r.daily_new_ayahs,
-  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null,
+  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null, oldPages: r.old_pages ?? null,
 });
+const ts = (d: unknown) => (d instanceof Date ? d.toISOString() : String(d));
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
 const toSession = (r: Row, errs: SessionError[] = []): Session => ({
   id: r.id, orgId: r.org_id, studentId: r.student_id, date: iso(r.date), type: r.type, range: { start: r.start_ayah_id, end: r.end_ayah_id },
   errorsMajor: r.errors_major, errorsMinor: r.errors_minor,
   scores: { tajweed: num(r.score_tajweed), fluency: num(r.score_fluency), accuracy: num(r.score_accuracy), tarteel: num(r.score_tarteel), overall: num(r.score_overall) },
-  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: String(r.created_at),
+  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: ts(r.created_at),
 });
 
 export function api(be: Backend) {
@@ -52,6 +63,56 @@ export function api(be: Backend) {
     async leaderboard(orgId: string, days: number): Promise<BoardRow[]> {
       const rows = await be.rpc<Row[]>('class_leaderboard', { org: orgId, p_days: days });
       return (rows ?? []).map(r => ({ studentId: r.student_id, name: r.display_name, days: Number(r.days_active), pages: Number(r.pages_revised), clean: Number(r.clean_pages), points: Number(r.points), isMe: !!r.is_me }));
+    },
+    async announcements(orgId: string): Promise<Announcement[]> {
+      return (await sel<Row>({ table: 'announcements', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['pinned', 'desc'], ['created_at', 'desc']], limit: 100 }))
+        .map(r => ({ id: r.id, classId: r.class_id, title: r.title, body: r.body, pinned: r.pinned, createdBy: r.created_by, createdAt: ts(r.created_at) }));
+    },
+    addAnnouncement: (orgId: string, p: { classId: string | null; title: string; body: string; pinned: boolean }) => be.insert('announcements', { org_id: orgId, class_id: p.classId, title: p.title, body: p.body || null, pinned: p.pinned }),
+    removeAnnouncement: (id: string) => be.remove('announcements', [{ op: 'eq', col: 'id', value: id }]),
+    async messages(orgId: string, opts: { studentId?: string; since?: string } = {}): Promise<Message[]> {
+      const where: Filter[] = [{ op: 'eq', col: 'org_id', value: orgId }];
+      if (opts.studentId) where.push({ op: 'eq', col: 'student_id', value: opts.studentId });
+      if (opts.since) where.push({ op: 'gte', col: 'created_at', value: opts.since });
+      return (await sel<Row>({ table: 'messages', where, order: [['created_at', 'asc']], limit: 1000 }))
+        .map(r => ({ id: r.id, studentId: r.student_id, sender: r.sender, senderName: r.sender_name, body: r.body, createdAt: ts(r.created_at) }));
+    },
+    sendMessage: (orgId: string, studentId: string, body: string, senderName: string) => be.insert('messages', { org_id: orgId, student_id: studentId, body, sender_name: senderName }),
+    async behaviour(orgId: string, since: string, studentId?: string): Promise<BehaviourPoint[]> {
+      const where: Filter[] = [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'gte', col: 'date', value: since }];
+      if (studentId) where.push({ op: 'eq', col: 'student_id', value: studentId });
+      return (await sel<Row>({ table: 'behaviour_points', where, order: [['created_at', 'desc']], limit: 3000 }))
+        .map(r => ({ id: r.id, studentId: r.student_id, date: iso(r.date), category: r.category, value: Number(r.value), note: r.note, createdAt: ts(r.created_at) }));
+    },
+    addBehaviour: (orgId: string, studentId: string, date: string, category: string, value: 1 | -1) => be.insert('behaviour_points', { org_id: orgId, student_id: studentId, date, category, value }),
+    removeBehaviour: (id: string) => be.remove('behaviour_points', [{ op: 'eq', col: 'id', value: id }]),
+    async events(orgId: string): Promise<CalEvent[]> {
+      return (await sel<Row>({ table: 'events', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['starts_on', 'asc']], limit: 1000 }))
+        .map(r => ({ id: r.id, classId: r.class_id, startsOn: iso(r.starts_on), endsOn: r.ends_on ? iso(r.ends_on) : null, title: r.title, kind: r.kind, notes: r.notes }));
+    },
+    addEvent: (orgId: string, p: { classId: string | null; startsOn: string; endsOn: string | null; title: string; kind: string; notes: string }) => be.insert('events', { org_id: orgId, class_id: p.classId, starts_on: p.startsOn, ends_on: p.endsOn, title: p.title, kind: p.kind, notes: p.notes || null }),
+    removeEvent: (id: string) => be.remove('events', [{ op: 'eq', col: 'id', value: id }]),
+    async exams(orgId: string): Promise<Exam[]> {
+      return (await sel<Row>({ table: 'exams', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['scheduled_on', 'asc']], limit: 2000 }))
+        .map(r => ({ id: r.id, studentId: r.student_id, title: r.title, juz: r.juz, range: r.start_ayah_id ? { start: r.start_ayah_id, end: r.end_ayah_id } : null, scheduledOn: iso(r.scheduled_on), examiner: r.examiner, status: r.status, score: num(r.score), notes: r.notes }));
+    },
+    addExam: (orgId: string, p: { studentId: string; title: string; juz: number | null; range: Range | null; scheduledOn: string; examiner: string }) => be.insert('exams', { org_id: orgId, student_id: p.studentId, title: p.title, juz: p.juz, start_ayah_id: p.range?.start ?? null, end_ayah_id: p.range?.end ?? null, scheduled_on: p.scheduledOn, examiner: p.examiner || null }),
+    updateExam: (id: string, patch: { status?: string; score?: number | null; notes?: string | null; scheduled_on?: string }) => be.update('exams', patch, [{ op: 'eq', col: 'id', value: id }]),
+    removeExam: (id: string) => be.remove('exams', [{ op: 'eq', col: 'id', value: id }]),
+    async applications(orgId: string): Promise<Application[]> {
+      return (await sel<Row>({ table: 'applications', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'desc']], limit: 500 }))
+        .map(r => ({ id: r.id, name: r.name, ageGroup: r.age_group, contact: r.contact, memorised: r.memorised, message: r.message, status: r.status, createdAt: ts(r.created_at) }));
+    },
+    setApplicationStatus: (id: string, status: string) => be.update('applications', { status }, [{ op: 'eq', col: 'id', value: id }]),
+    programPublicName: (orgId: string) => be.rpc<string | null>('program_public_name', { p_org: orgId }),
+    submitApplication: (orgId: string, p: { name: string; age_group: string; contact: string; memorised: string; message: string }) => be.rpc<boolean>('submit_application', { p_org: orgId, p }),
+    async fees(orgId: string, month: string): Promise<FeeRecord[]> {
+      return (await sel<Row>({ table: 'fee_records', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'month', value: month }] }))
+        .map(r => ({ id: r.id, studentId: r.student_id, month: r.month, amount: Number(r.amount), paidOn: r.paid_on ? iso(r.paid_on) : null, method: r.method, note: r.note }));
+    },
+    saveFee: async (orgId: string, p: { studentId: string; month: string; amount: number; paidOn: string | null; method: string | null }) => {
+      const n = await be.update('fee_records', { amount: p.amount, paid_on: p.paidOn, method: p.method }, [{ op: 'eq', col: 'student_id', value: p.studentId }, { op: 'eq', col: 'month', value: p.month }]);
+      if (!n) await be.insert('fee_records', { org_id: orgId, student_id: p.studentId, month: p.month, amount: p.amount, paid_on: p.paidOn, method: p.method });
     },
     canCreatePrograms: () => be.rpc<boolean>('can_create_programs', {}),
     teacherCode: (orgId: string) => be.rpc<string>('teacher_code', { org: orgId }),
@@ -89,7 +150,7 @@ export function api(be: Backend) {
       const where: Filter[] = [{ op: 'eq', col: 'org_id', value: orgId }];
       if (studentId) where.push({ op: 'eq', col: 'student_id', value: studentId });
       const rows = await sel<Row>({ table: 'assignments', where, order: [['due_on', 'asc']], limit: 1000 });
-      return rows.map(r => ({ id: r.id, studentId: r.student_id, type: r.type, range: r.start_ayah_id ? { start: r.start_ayah_id, end: r.end_ayah_id } : null, dueOn: iso(r.due_on), priority: r.priority, instructions: r.instructions, status: r.status, feedback: r.feedback, createdAt: String(r.created_at) }));
+      return rows.map(r => ({ id: r.id, studentId: r.student_id, type: r.type, range: r.start_ayah_id ? { start: r.start_ayah_id, end: r.end_ayah_id } : null, dueOn: iso(r.due_on), priority: r.priority, instructions: r.instructions, status: r.status, feedback: r.feedback, createdAt: ts(r.created_at) }));
     },
     async attendance(orgId: string, since: string): Promise<Attendance[]> {
       const rows = await sel<Row>({ table: 'attendance', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'gte', col: 'date', value: since }] });
@@ -111,13 +172,13 @@ export function api(be: Backend) {
       return (await sel<Row>({ table: 'milestones', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'student_id', value: studentId }] })).map(r => ({ code: r.code, achievedOn: iso(r.achieved_on) }));
     },
     async members(orgId: string): Promise<Member[]> {
-      return (await sel<Row>({ table: 'organization_members', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'asc']] })).map(r => ({ userId: r.user_id, role: r.role, displayName: r.display_name, createdAt: String(r.created_at) }));
+      return (await sel<Row>({ table: 'organization_members', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'asc']] })).map(r => ({ userId: r.user_id, role: r.role, displayName: r.display_name, createdAt: ts(r.created_at) }));
     },
     async notifications(orgId: string): Promise<Notice[]> {
-      return (await sel<Row>({ table: 'notifications', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'desc']], limit: 100 })).map(r => ({ id: r.id, studentId: r.student_id, to: r.to_address, template: r.template, status: r.status, error: r.error, createdAt: String(r.created_at) }));
+      return (await sel<Row>({ table: 'notifications', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'desc']], limit: 100 })).map(r => ({ id: r.id, studentId: r.student_id, to: r.to_address, template: r.template, status: r.status, error: r.error, createdAt: ts(r.created_at) }));
     },
     async audit(orgId: string): Promise<AuditRow[]> {
-      return (await sel<Row>({ table: 'audit_logs', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['at', 'desc']], limit: 200 })).map(r => ({ id: Number(r.id), actor: r.actor, action: r.action, entity: r.entity, entityId: r.entity_id, at: String(r.at) }));
+      return (await sel<Row>({ table: 'audit_logs', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['at', 'desc']], limit: 200 })).map(r => ({ id: Number(r.id), actor: r.actor, action: r.action, entity: r.entity, entityId: r.entity_id, at: ts(r.at) }));
     },
 
     // ---------------------------------------------------------------- writes
@@ -126,7 +187,7 @@ export function api(be: Backend) {
     regenerateCodes: (orgId: string) => be.rpc<null>('regenerate_codes', { org: orgId }),
     createStudent: (p: { orgId: string; forSelf: boolean; name: string; ageGroup: string; direction: string; dailyNewAyahs: number; goal: string; guardianName: string; guardianEmail: string; notify: boolean; memorized: Range[] }) =>
       be.rpc<string>('create_student', { p: { org_id: p.orgId, for_self: p.forSelf, name: p.name, age_group: p.ageGroup, direction: p.direction, daily_new_ayahs: p.dailyNewAyahs, goal: p.goal, guardian_name: p.guardianName, guardian_email: p.guardianEmail, notify: p.notify, memorized: p.memorized.map(r => [r.start, r.end]) } }),
-    updateStudent: (id: string, patch: Partial<{ parent_code: string; name: string; age_group: string; daily_new_ayahs: number; goal: string; guardian_name: string; guardian_email: string | null; notify: boolean; direction: string; archived_at: string | null }>) =>
+    updateStudent: (id: string, patch: Partial<{ parent_code: string; old_pages: number | null; name: string; age_group: string; daily_new_ayahs: number; goal: string; guardian_name: string; guardian_email: string | null; notify: boolean; direction: string; archived_at: string | null }>) =>
       be.update('students', patch, [{ op: 'eq', col: 'id', value: id }]),
     recordSession: (p: { studentId: string; date: string; type: string; range: Range; errorsMajor: number; errorsMinor: number; errors: SessionError[]; scores: Record<string, number | null>; attendance: string; mode: string; teacherNote?: string; studentNote?: string; followUp?: boolean }) =>
       be.rpc<string>('record_session', { p: {

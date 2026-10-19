@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -221,5 +221,47 @@ describe('program owners', () => {
     const msg = await rejects(U.student, `select public.create_organization('Sneaky School', 'America/New_York')`);
     expect(msg).toMatch(/Only the site owner/);
     await rejects(U.student, 'select * from public.platform_owners');
+  });
+});
+
+describe('school features', () => {
+  it('keeps messages inside the student\'s circle', async () => {
+    await one(U.teacher, `insert into public.messages (org_id, student_id, body) values ($1, $2, 'Please revise page 590') returning id`, [orgA, studentS]);
+    await one(U.student, `insert into public.messages (org_id, student_id, body) values ($1, $2, 'Done, jazakAllah') returning id`, [orgA, studentS]);
+    expect(await as(U.student, 'select body from public.messages where student_id = $1', [studentS])).toHaveLength(2);
+    expect(await as(U.otherAdmin, 'select body from public.messages')).toHaveLength(0);
+    await rejects(U.student, `insert into public.messages (org_id, student_id, body) values ($1, $2, 'hi')`, [orgA, child]);           // not their thread
+    await rejects(U.student, `insert into public.messages (org_id, student_id, sender, body) values ($1, $2, $3, 'fake')`, [orgA, studentS, U.teacher]);
+  });
+  it('lets staff manage announcements, events, exams, points and fees; others only read their share', async () => {
+    await one(U.teacher, `insert into public.announcements (org_id, title) values ($1, 'No class Friday') returning id`, [orgA]);
+    expect(await as(U.student, 'select title from public.announcements')).toHaveLength(1);
+    await rejects(U.student, `insert into public.announcements (org_id, title) values ($1, 'Holiday!')`, [orgA]);
+    await one(U.teacher, `insert into public.behaviour_points (org_id, student_id, date, category, value) values ($1, $2, current_date, 'Punctual', 1) returning id`, [orgA, studentS]);
+    await rejects(U.student, `insert into public.behaviour_points (org_id, student_id, date, category, value) values ($1, $2, current_date, 'Punctual', 1)`, [orgA, studentS]);
+    await one(U.teacher, `insert into public.exams (org_id, student_id, title, juz, scheduled_on) values ($1, $2, 'Juz 30 test', 30, current_date + 7) returning id`, [orgA, studentS]);
+    expect(await as(U.student, 'select title from public.exams')).toHaveLength(1);
+    await one(U.teacher, `insert into public.fee_records (org_id, student_id, month, amount, paid_on) values ($1, $2, '2026-10', 40, current_date) returning id`, [orgA, studentS]);
+    expect(await as(U.student, 'select * from public.fee_records')).toHaveLength(0);
+    expect(await as(U.otherAdmin, 'select * from public.exams')).toHaveLength(0);
+  });
+  it('accepts public applications without exposing any data', async () => {
+    await db.exec('reset role');
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec('set role anon');
+    try {
+      const name = (await db.query<{ n: string }>('select public.program_public_name($1) as n', [orgA])).rows[0].n;
+      expect(name).toBe('Masjid Hifz Class');
+      await db.query(`select public.submit_application($1, $2::jsonb)`, [orgA, JSON.stringify({ name: 'New Child', contact: 'parent@example.com', memorised: 'Juz 30' })]);
+      let err = null; try { await db.query('select * from public.applications'); } catch (e) { err = e; }
+      expect(err).not.toBeNull();
+    } finally { await db.exec('reset role'); }
+    expect(await as(U.teacher, 'select name from public.applications')).toHaveLength(1);
+    expect(await as(U.student, 'select name from public.applications')).toHaveLength(0);
+  });
+  it('lets only a teacher set a student\'s Old revision amount', async () => {
+    await rejects(U.student, 'update public.students set old_pages = 10 where id = $1', [studentS]);
+    await as(U.teacher, 'update public.students set old_pages = 4 where id = $1', [studentS]);
+    expect((await one<{ old_pages: number }>(U.student, 'select old_pages from public.students where id = $1', [studentS]))!.old_pages).toBe(4);
   });
 });

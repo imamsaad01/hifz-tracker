@@ -133,3 +133,33 @@ describe('scores and dates', () => {
     expect(isIsoDate('2026-02-30')).toBe(false);
   });
 });
+
+import { streakDetail } from '../src/lib/progress';
+import { plan as planOld, defaultCyclePages } from '../src/lib/revision';
+import { DEFAULT_SETTINGS as DS } from '../src/lib/types';
+describe('streak freeze', () => {
+  it('bridges one missed day per week when allowed', () => {
+    const dates = ['2026-10-12', '2026-10-13', '2026-10-15', '2026-10-16'];          // missed Wed 14th
+    expect(streakDetail(dates, '2026-10-16', 0).days).toBe(2);
+    const d = streakDetail(dates, '2026-10-16', 1);
+    expect(d.days).toBe(4); expect(d.frozen).toEqual(['2026-10-14']);
+  });
+});
+describe('cycle plan', () => {
+  const items = Array.from({ length: 23 }, (_, i) => ({ page: 582 + i, lastReviewedOn: i < 5 ? '2026-10-01' : null, intervalDays: 7, lapses: i === 10 ? 2 : 0, dueOn: '2026-10-01' }));
+  const s = { ...DS.revision, oldPlan: 'cycle' as const, days: [1, 3, 5] };
+  it('gives 3 pages on Mon/Wed/Fri: weak first, then never revised', () => {
+    const p = planOld(items, s, '2026-10-19', 23);                              // Monday
+    expect(p.isRevisionDay).toBe(true); expect(p.perDay).toBe(3);
+    expect(p.today.map(x => x.page)).toEqual([592, 587, 588]);
+    expect(p.cycleDays).toBe(8);
+  });
+  it('gives nothing on other days and names the next revision day', () => {
+    const p = planOld(items, s, '2026-10-20', 23);                              // Tuesday
+    expect(p.today).toHaveLength(0); expect(p.nextRevisionDay).toBe('2026-10-21');
+  });
+  it('uses 4 pages above 5 juz, and a teacher override wins', () => {
+    expect(defaultCyclePages(100)).toBe(3); expect(defaultCyclePages(101)).toBe(4);
+    expect(planOld(items, s, '2026-10-19', 23, 6).today).toHaveLength(6);
+  });
+});

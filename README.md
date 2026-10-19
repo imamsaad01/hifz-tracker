@@ -17,7 +17,7 @@ npm run dev        # http://localhost:5173
 
 ### 1. Supabase (database + sign-in)
 1. Create a project at [supabase.com](https://supabase.com) (free plan).
-2. **SQL Editor** → run, in order: `supabase/migrations/0001_schema.sql`, `0002_security.sql`, `0003_functions.sql`, `0004_parent_codes.sql`, `0005_leaderboard.sql`, `0006_program_owners.sql`, then `supabase/seed_quran.sql` (Qurʾān reference data, 6,236 ayahs) and `supabase/finish_setup.sql`.
+2. **SQL Editor** → run, in order: `supabase/migrations/0001_schema.sql`, `0002_security.sql`, `0003_functions.sql`, `0004_parent_codes.sql`, `0005_leaderboard.sql`, `0006_program_owners.sql`, `0007_school_features.sql`, then `supabase/seed_quran.sql` (Qurʾān reference data, 6,236 ayahs) and `supabase/finish_setup.sql`.
 3. **Project Settings → API**: copy the *Project URL* and the *anon public* key.
 
 ### 2. Sign-in
@@ -43,6 +43,12 @@ Google sign-in is optional: create a free OAuth client in Google Cloud Console, 
 3. For the daily "revision falling behind" and weekly summary emails: enable the `pg_cron` and `pg_net` extensions, edit and run `supabase/cron.sql`.
 
 Every attempt (sent, failed or skipped) is listed under **More → Email log**.
+
+## Features
+
+- **Teachers:** Today dashboard with halaqah filter, live class queue, one-tap recording, adab points, assignments, juz tests, calendar, announcements, messages, monthly and term report cards, certificates, applications form, fees record, reports and CSV.
+- **Students:** personal plan made from what they know (New / Recent / Old; Old on revision days, a few pages in turn), daily ring, levels and points, badges, streak freezes, reciter player, leaderboard, messages, upcoming tests and events.
+- **Parents:** read-only progress, plan, report, certificates and messages for their child.
 
 ## How people join
 

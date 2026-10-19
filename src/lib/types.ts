@@ -15,16 +15,21 @@ export type Direction = 'back' | 'forward';
 
 export interface OrgSettings {
   scoreScale: number;                       // 5 = 1–5 stars, 10 = 0–10
-  revision: { recentDays: number; maxIntervalDays: number; weakThreshold: number; failThreshold: number; dailyOldPages: number | null; maxOverdueBeforeNew: number | null };
+  revision: { recentDays: number; maxIntervalDays: number; weakThreshold: number; failThreshold: number; dailyOldPages: number | null; maxOverdueBeforeNew: number | null;
+    /** 'cycle': go through all memorised pages in turn on revision days; 'spaced': each page returns on its own schedule */
+    oldPlan: 'cycle' | 'spaced'; days: number[] };
   accuracy: { major: number; minor: number };
   email: { enabled: boolean; onSession: boolean; lowRevision: boolean; weekly: boolean };
   leaderboard: { enabled: boolean; fullNames: boolean };
+  motivation: { freezePerWeek: number };
+  adab: { positive: string[]; negative: string[] };
+  fees: { monthly: number | null; currency: string };
 }
 export interface Org { id: string; name: string; timezone: string; joinCode: string; settings: OrgSettings; role: Role }
 export interface Student {
   id: string; orgId: string; userId: string | null; name: string; ageGroup: string | null; direction: Direction;
   dailyNewAyahs: number; goal: string | null; guardianName: string | null; guardianEmail: string | null; notify: boolean;
-  startDate: string; archivedAt: string | null; memorized: Range[]; parentCode: string | null;
+  startDate: string; archivedAt: string | null; memorized: Range[]; parentCode: string | null; oldPages: number | null;
 }
 export interface SessionError { id?: string; ayahId: number | null; category: ErrorCategory; severity: ErrorSeverity; note?: string | null }
 export interface Session {
@@ -43,10 +48,13 @@ export interface Milestone { code: string; achievedOn: string }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
   scoreScale: 5,
-  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null },
+  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null, oldPlan: 'spaced', days: [0, 1, 2, 3, 4, 5, 6] },
   accuracy: { major: 10, minor: 3 },
   email: { enabled: true, onSession: true, lowRevision: true, weekly: false },
   leaderboard: { enabled: false, fullNames: false },
+  motivation: { freezePerWeek: 1 },
+  adab: { positive: ['On time', 'Focused', 'Good manners', 'Prepared', 'Helped others'], negative: ['Late', 'Not prepared', 'Distracted'] },
+  fees: { monthly: null, currency: 'USD' },
 };
 export const SESSION_LABEL: Record<SessionType, string> = {
   new: 'New', recent: 'Recent revision', old: 'Old revision', juz_revision: 'Full juz revision', assessment: 'Assessment', catch_up: 'Catch-up', review: 'Review', other: 'Other',

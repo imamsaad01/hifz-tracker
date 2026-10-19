@@ -20,7 +20,7 @@ export function insight(st: Student, sessions: Session[], items: RevisionItem[],
   const progress = summary(st.memorized);
   const last = mine[0] ?? null;
   const dates = mine.map(x => x.date);
-  const rev = plan(items, s.revision, today, progress.pages);
+  const rev = plan(items, s.revision, today, progress.pages, st.oldPages);
   const open = assignments.filter(a => a.studentId === st.id && (a.status === 'assigned' || a.status === 'started'));
   const overdueA = open.filter(a => a.dueOn < today);
   const since30 = addDays(today, -30), since7 = addDays(today, -6);
@@ -46,7 +46,7 @@ export function insight(st: Student, sessions: Session[], items: RevisionItem[],
   if (last?.followUp) reasons.push({ kind: 'follow_up', text: 'Marked for follow-up', severity: 2 });
 
   return {
-    student: st, progress, streak: streak(dates, today), longest: longestStreak(dates), lastSession: last, daysSinceSession: daysSince,
+    student: st, progress, streak: streak(dates, today, s.motivation?.freezePerWeek ?? 0), longest: Math.max(longestStreak(dates), streak(dates, today, s.motivation?.freezePerWeek ?? 0)), lastSession: last, daysSinceSession: daysSince,
     recordedToday: mine.some(x => x.date === today && x.recordedBy === 'teacher'), attendanceToday: todayAtt, revision: rev,
     nextNew: suggestNew(st.memorized, st.direction, st.dailyNewAyahs), openAssignments: open, overdueAssignments: overdueA,
     avgAccuracy30: acc.length ? Math.round(acc.reduce((a, b) => a + b, 0) / acc.length) : null,

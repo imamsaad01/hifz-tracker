@@ -12,7 +12,7 @@ import { accuracy } from '../lib/scoring';
 import { addDays, niceDate } from '../lib/dates';
 import { downloadCsv } from '../lib/csv';
 import { formatRange, fromAyahId, pagesInRange, surahNameEn } from '../quran';
-import { Card, CardHead, Stat, Progress, Pill, Select, Button, Field, Empty } from './ui';
+import { Card, CardHead, Stat, Progress, Pill, Select, Button, Field, Empty, inputCls } from './ui';
 import { JuzMap, PageMap, Timeline, DailyBars } from './quran';
 import type { OrgSettings } from '../lib/types';
 
@@ -22,8 +22,8 @@ export const MILESTONE_LABEL: Record<string, string> = {
 };
 const pagesText = (items: RevisionItem[]) => (items.length === 1 ? 'page ' : 'pages ') + groupPages(items.map(i => i.page).sort((a, b) => a - b)).map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`)).join(', ');
 
-export function Overview({ ins, sessions, milestones, goals, today, settings, onDeleteGoal }: {
-  ins: StudentInsight; sessions: Session[]; milestones: Milestone[]; goals: Goal[]; today: string; settings: OrgSettings; onDeleteGoal?: (g: Goal) => void;
+export function Overview({ ins, sessions, milestones, goals, today, onDeleteGoal }: {
+  ins: StudentInsight; sessions: Session[]; milestones: Milestone[]; goals: Goal[]; today: string; settings?: OrgSettings; onDeleteGoal?: (g: Goal) => void;
 }) {
   const st = ins.student;
   const juzDone = juzProgress(st.memorized).filter(x => x >= 1).length;
@@ -38,13 +38,13 @@ export function Overview({ ins, sessions, milestones, goals, today, settings, on
       <Stat label="Attendance (30 days)" value={ins.attendanceRate30 === null ? '—' : `${Math.round(ins.attendanceRate30 * 100)}%`} sub={`${ins.newAyahs7} new ayahs this week`} />
     </div>
     <div className="grid gap-5 xl:grid-cols-2">
-      <Card><CardHead title="Revision today" sub={`${settings.revision.dailyOldPages ? `Up to ${settings.revision.dailyOldPages} pages a day` : 'Amount set by pages memorised'} · most overdue first`} />
+      <Card><CardHead title="Revision today" sub={`${ins.revision.perDay} page${ins.revision.perDay === 1 ? '' : 's'} per revision day · ${ins.revision.cycleDays ? 'weak pages first, then in turn' : 'most overdue first'}`} />
         <div className="flex flex-col gap-3 px-5 py-4 text-[15px]">
           <p><b>Next new lesson:</b> {ins.nextNew ? formatRange(ins.nextNew) : 'Everything is memorised. Mā shāʾ Allāh.'}</p>
-          <p><b>Revise today:</b> {ins.revision.today.length ? pagesText(ins.revision.today) : 'nothing due'}{ins.revision.capped ? <span className="text-ink-faint"> (+{ins.revision.capped} more waiting)</span> : null}</p>
+          <p><b>Old revision today:</b> {!ins.revision.isRevisionDay ? `rest day${ins.revision.nextRevisionDay ? ` · next on ${niceDate(ins.revision.nextRevisionDay)}` : ''}` : ins.revision.today.length ? pagesText(ins.revision.today) : 'nothing due'}{ins.revision.capped ? <span className="text-ink-faint"> (+{ins.revision.capped} more waiting)</span> : null}</p>
           {ins.revision.overdue.length > 0 && <p className="text-warn"><b>Overdue:</b> {pagesText(ins.revision.overdue)}{ins.revision.overdue.every(o => ins.revision.today.some(t => t.page === o.page)) ? ' (included above)' : ''}</p>}
           {ins.revision.weak.length > 0 && <p className="text-bad"><b>Weak:</b> {pagesText(ins.revision.weak)}</p>}
-          {ins.revision.soon.length > 0 && <p className="text-ink-soft"><b>Coming up (3 days):</b> {pagesText(ins.revision.soon)}</p>}
+          {ins.revision.soon.length > 0 && <p className="text-ink-soft"><b>{ins.revision.cycleDays ? 'Next in turn:' : 'Coming up (3 days):'}</b> {pagesText(ins.revision.soon)}</p>}
         </div></Card>
       <Card className="pb-4"><CardHead title="Pages read, last 30 days" /><div className="px-5 pt-3"><DailyBars days={days} label="pages a day" /></div></Card>
     </div>
@@ -111,6 +111,43 @@ export function MonthReport({ student, ins, sessions, today, settings, orgName }
       <p className="mt-4 text-[15px]"><b>Total memorised:</b> {(ins.progress.percent * 100).toFixed(1)}% ({ins.progress.pages} pages, {ins.progress.juz} juz). <b>Next:</b> {ins.nextNew ? formatRange(ins.nextNew) : '—'}</p>
       <div className="mt-5">{list.length ? <Timeline sessions={list} /> : <p className="text-sm text-ink-faint">No sessions this month.</p>}</div>
       <p className="mt-6 text-xs text-ink-faint">Accuracy is calculated from the number of errors per page ({settings.accuracy.major} points per major, {settings.accuracy.minor} per minor). It reflects what the teacher recorded, not an automatic judgement of recitation.</p>
+    </Card>
+  </div>;
+}
+
+/** Term report card: progress, attendance, adab, tests and a teacher comment, printable. */
+export function TermReport({ student, ins, sessions, attendance, behaviour, exams, today, settings, orgName, teacher }: {
+  student: Student; ins: StudentInsight; sessions: Session[]; attendance: Array<{ studentId: string; date: string; status: string }>; behaviour: Array<{ studentId: string; date: string; category: string; value: number }>;
+  exams: Array<{ studentId: string; title: string; scheduledOn: string; status: string; score: number | null }>; today: string; settings: OrgSettings; orgName: string; teacher: string | null;
+}) {
+  const [from, setFrom] = useState(addDays(today, -89)); const [to, setTo] = useState(today); const [comment, setComment] = useState('');
+  const list = sessions.filter(s => s.date >= from && s.date <= to);
+  const att = attendance.filter(a => a.studentId === student.id && a.date >= from && a.date <= to);
+  const present = att.filter(a => a.status === 'present' || a.status === 'late').length;
+  const beh = behaviour.filter(b => b.studentId === student.id && b.date >= from && b.date <= to);
+  const ex = exams.filter(e => e.studentId === student.id && e.scheduledOn >= from && e.scheduledOn <= to && e.status !== 'scheduled');
+  const acc = list.map(s => accuracy(s.errorsMajor, s.errorsMinor, pagesInRange(s.range).length, settings.accuracy));
+  const newAyahs = list.filter(s => s.type === 'new').reduce((n, s) => n + s.range.end - s.range.start + 1, 0);
+  const revPages = list.filter(s => s.type !== 'new').reduce((n, s) => n + pagesInRange(s.range).length, 0);
+  const by = new Map<string, number>(); beh.forEach(b => by.set(b.category, (by.get(b.category) ?? 0) + b.value));
+  const grade = (a: number | null) => a === null ? '—' : a >= 95 ? 'Excellent' : a >= 85 ? 'Very good' : a >= 75 ? 'Good' : a >= 60 ? 'Fair' : 'Needs work';
+  const avg = acc.length ? Math.round(acc.reduce((a, b) => a + b, 0) / acc.length) : null;
+  return <div className="flex flex-col gap-4">
+    <div className="no-print grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <Field label="From">{id => <input id={id} type="date" className={inputCls} value={from} max={to} onChange={e => setFrom(e.target.value)} />}</Field>
+      <Field label="To">{id => <input id={id} type="date" className={inputCls} value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />}</Field>
+      {window.self === window.top && <Button kind="secondary" onClick={() => window.print()}><Printer size={16} />Print or save as PDF</Button>}
+    </div>
+    <Field label="Teacher’s comment (printed on the report, not saved)" className="no-print">{id => <textarea id={id} className={`${inputCls} min-h-[80px] py-2`} maxLength={800} value={comment} onChange={e => setComment(e.target.value)} placeholder="e.g. Strong memorisation and steady revision. Focus next term on madd and waqf." />}</Field>
+    <Card className="p-6 print:border-0 print:shadow-none">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b-2 border-pine-700 pb-3"><div><p className="text-xs font-bold uppercase tracking-wider text-ink-faint">{orgName} · Report card</p><h2 className="mt-1 text-2xl font-bold">{student.name}</h2></div><p className="text-right text-sm text-ink-soft">{niceDate(from)} – {niceDate(to)}{teacher ? <><br />Teacher: {teacher}</> : null}</p></div>
+      <table className="mt-4 w-full text-[15px]"><tbody>
+        {[['Memorised in total', `${(ins.progress.percent * 100).toFixed(1)}% · ${ins.progress.pages} pages · ${ins.progress.juz} juz`], ['New this period', `${newAyahs} ayahs`], ['Revision this period', `${revPages} pages`], ['Accuracy', `${avg ?? '—'}${avg !== null ? '%' : ''} · ${grade(avg)}`], ['Attendance', att.length ? `${present} of ${att.length} days (${Math.round((present / att.length) * 100)}%)` : '—'],
+          ['Adab & effort', by.size ? [...by.entries()].map(([c, n]) => `${c} ${n > 0 ? '+' : ''}${n}`).join(' · ') : '—'], ['Tests', ex.length ? ex.map(e => `${e.title}: ${e.status}${e.score !== null ? ` (${e.score}%)` : ''}`).join(' · ') : '—']]
+          .map(([k, v]) => <tr key={k} className="border-b border-line"><th className="w-48 py-2 pr-3 text-left align-top font-bold text-ink-soft">{k}</th><td className="py-2">{v}</td></tr>)}
+      </tbody></table>
+      {comment && <div className="mt-4 rounded-xl bg-paper p-4"><p className="text-xs font-bold uppercase text-ink-faint">Teacher’s comment</p><p className="mt-1 whitespace-pre-line">{comment}</p></div>}
+      <div className="mt-10 grid grid-cols-2 gap-8 text-sm"><p className="border-t border-ink/40 pt-1">Teacher’s signature</p><p className="border-t border-ink/40 pt-1">Parent’s signature</p></div>
     </Card>
   </div>;
 }

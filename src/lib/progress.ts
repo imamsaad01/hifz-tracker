@@ -34,12 +34,23 @@ export function summary(ranges: Range[]): ProgressSummary {
   const ayahs = ayahsIn(ranges);
   return { ayahs, pages: memorisedPages(ranges).length, juz: juzProgress(ranges).filter(x => x >= 1).length, percent: ayahs / TOTAL_AYAHS };
 }
-/** Consecutive days with at least one session, ending today (or yesterday if today has none yet). */
-export function streak(dates: string[], today: string): number {
+/** Consecutive days with at least one session, ending today (or yesterday if today has none yet).
+ *  freezePerWeek: missed days per week (Mon–Sun) that do not break the streak; frozen days are not counted. */
+export function streak(dates: string[], today: string, freezePerWeek = 0): number {
+  return streakDetail(dates, today, freezePerWeek).days;
+}
+export function streakDetail(dates: string[], today: string, freezePerWeek = 0): { days: number; frozen: string[] } {
   const set = new Set(dates);
+  const weekOf = (iso: string) => { const wd = (new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7; return addDays(iso, -wd); };
+  const used = new Map<string, number>(); const frozen: string[] = [];
   let d = set.has(today) ? today : addDays(today, -1), n = 0;
-  while (set.has(d)) { n++; d = addDays(d, -1); }
-  return n;
+  for (let guard = 0; guard < 3660; guard++) {
+    if (set.has(d)) { n++; d = addDays(d, -1); continue; }
+    const w = weekOf(d); const u = used.get(w) ?? 0;
+    if (n > 0 && u < freezePerWeek && [...set].some(x => x < d)) { used.set(w, u + 1); frozen.push(d); d = addDays(d, -1); continue; }
+    break;
+  }
+  return { days: n, frozen };
 }
 export function longestStreak(dates: string[]): number {
   const days = [...new Set(dates)].sort();

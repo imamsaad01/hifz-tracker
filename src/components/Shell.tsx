@@ -5,6 +5,7 @@ import { useApp } from '../app/context';
 import { outbox, useOutboxCount } from '../app/outbox';
 import { Brand } from './Brand';
 import { InstallApp } from './InstallApp';
+import { InboxBell } from './Inbox';
 import { cx, Select, useToast } from './ui';
 
 export interface NavItem { key: string; label: string; icon: LucideIcon; href: string }
@@ -31,6 +32,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
         <p className="hidden min-w-0 truncate text-sm font-bold text-ink-soft lg:block">{org?.name}</p>
         <div className="ml-auto flex items-center gap-2">
           <InstallApp compact />
+          <InboxBell />
           {(!online || pending > 0) && <button type="button" onClick={flush} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-amber-50 px-3 text-xs font-bold text-warn ring-1 ring-warn/30">{online ? <RefreshCw size={14} /> : <CloudOff size={14} />}{online ? `${pending} waiting · send now` : `Offline${pending ? ` · ${pending} waiting` : ''}`}</button>}
           <button type="button" onClick={() => backend.signOut()} className="grid h-10 w-10 place-items-center rounded-xl text-ink-soft hover:bg-black/5 lg:hidden" aria-label="Sign out"><LogOut size={18} /></button>
         </div>

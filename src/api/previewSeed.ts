@@ -25,7 +25,7 @@ export async function seedPreview(db: PGlite) {
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2) on conflict do nothing', [T1, X1]);
   await as(T1);
   const org = await val<string>(`select public.create_organization('Al-Noor Hifz Program', 'America/New_York', 'Ustadh Bilal') as v`);
-  await db.query(`update public.organizations set settings = settings || '{"leaderboard":{"enabled":true,"fullNames":false}}'::jsonb where id = $1`, [org]);
+  await db.query(`update public.organizations set settings = settings || '{"leaderboard":{"enabled":true,"fullNames":false},"revision":{"oldPlan":"cycle","days":[1,3,5]},"fees":{"monthly":40,"currency":"USD"}}'::jsonb where id = $1`, [org]);
   const codes = (await db.query<{ join_code: string; teacher_code: string }>('select join_code, teacher_code from public.organizations where id = $1', [org])).rows[0];
   await as(T2); await db.query('select public.join_organization($1, $2)', [codes.teacher_code, 'Ustadha Khadija']);
   await as(S1); await db.query('select public.join_organization($1, $2)', [codes.join_code, 'Amina Siddiqui']);
@@ -108,6 +108,17 @@ export async function seedPreview(db: PGlite) {
   await assign(hana.id, 'tajweed', ayahId(2, 41), ayahId(2, 46), addDays(today, 3), 2, 'Watch the madd before hamzah in these ayahs.');
   await db.query(`insert into public.goals (org_id, student_id, period, metric, target, starts_on) values ($1, $2, 'weekly', 'new_ayahs', 25, $3), ($1, $4, 'weekly', 'sessions', 5, $3)`, [org, amina.id, addDays(today, -6), ibrahim.id]);
   await db.query('select public.link_guardian($1, $2)', [ibrahim.id, P1]);
+  // school features: board, calendar, a juz test, adab points and a message thread
+  await db.query(`insert into public.announcements (org_id, title, body, pinned) values ($1, 'Revision competition this month', 'Most clean pages by the end of the month wins a prize. Keep your Old revision steady!', true)`, [org]);
+  await db.query(`insert into public.announcements (org_id, class_id, title, body) values ($1, $2, 'Bring your mushaf on Wednesday', 'We will practise reading from the page.')`, [org, cls1]);
+  await db.query(`insert into public.events (org_id, starts_on, ends_on, title, kind) values ($1, $2, $3, 'Mid-term break', 'holiday'), ($1, $4, null, 'Parents evening', 'event')`, [org, addDays(today, 9), addDays(today, 11), addDays(today, 5)]);
+  await db.query(`insert into public.exams (org_id, student_id, title, juz, start_ayah_id, end_ayah_id, scheduled_on, examiner) values ($1, $2, 'Juz 30 test', 30, $3, $4, $5, 'Ustadh Bilal')`, [org, amina.id, ayahId(78, 1), ayahId(114, 6), addDays(today, 4)]);
+  for (const [sid, cat, v, d] of [[amina.id, 'On time', 1, 0], [amina.id, 'Focused', 1, -1], [ibrahim.id, 'Good manners', 1, 0], [zayd.id, 'Late', -1, -2], [yusra.id, 'Prepared', 1, -1], [hana.id, 'Helped others', 1, -3]] as const)
+    await db.query(`insert into public.behaviour_points (org_id, student_id, date, category, value) values ($1, $2, $3, $4, $5)`, [org, sid, addDays(today, d), cat, v]);
+  await db.query(`insert into public.messages (org_id, student_id, sender, sender_name, body, created_at) values ($1, $2, $3, 'Ustadh Bilal', 'Assalamu alaikum. Ibrahim did very well today. Please listen to Al-Humazah with him tonight.', now() - interval '3 hours')`, [org, ibrahim.id, T1]);
+  await as(P1);
+  await db.query(`insert into public.messages (org_id, student_id, body, sender_name) values ($1, $2, 'Wa alaikum assalam, JazakAllahu khayran. We will.', 'Umm Ibrahim')`, [org, ibrahim.id]);
+  await as(T1);
 
   await as(X1);
   const orgB = await val<string>(`select public.create_organization('Other School', 'Europe/London', 'Other Admin') as v`);

@@ -6,6 +6,9 @@ import { useOrgData } from '../../app/useOrgData';
 import { addDays, niceDate } from '../../lib/dates';
 import { Button, Card, CardHead, Spinner, ErrorBox, Empty, Modal, Field, Select, inputCls, Segmented, useToast, cx } from '../../components/ui';
 import { PageTitle } from '../../components/Shell';
+import { useRoute, href } from '../../app/router';
+import { LiveClass } from './LiveClass';
+import { CalendarView } from './Calendar';
 import { friendly } from '../../api/backend';
 import type { ClassRow } from '../../api/data';
 import type { OrgData } from '../../app/useOrgData';
@@ -13,19 +16,30 @@ import type { OrgData } from '../../app/useOrgData';
 const STATUS: Array<[string, string]> = [['present', 'Present'], ['late', 'Late'], ['absent', 'Absent'], ['excused', 'Excused']];
 export function Classes() {
   const { data, error, reload } = useOrgData();
-  const [edit, setEdit] = useState<ClassRow | 'new' | null>(null);
-  const [register, setRegister] = useState<ClassRow | 'all' | null>(null);
+  const route = useRoute();
+  const tab = route[1] === 'live' ? 'live' : route[1] === 'calendar' ? 'calendar' : 'halaqahs';
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   if (!data) return <Spinner />;
+  return <>
+    <PageTitle title={tab === 'live' ? 'Live class' : tab === 'calendar' ? 'Calendar' : 'Halaqahs'} sub={tab === 'live' ? 'One student at a time. Record, and the next one is up.' : tab === 'calendar' ? 'Class days, holidays, tests and events' : 'Groups, teachers and attendance'} />
+    <nav aria-label="Class sections" className="no-print mb-5 flex gap-1 overflow-x-auto">{([['halaqahs', 'Halaqahs'], ['live', 'Live class'], ['calendar', 'Calendar']] as const).map(([k, l]) => <a key={k} href={href('classes', k)} aria-current={tab === k ? 'page' : undefined} className={cx('inline-flex min-h-[40px] shrink-0 items-center rounded-xl px-4 text-sm font-bold', tab === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}>{l}</a>)}</nav>
+    {tab === 'live' && <LiveClass data={data} reload={reload} />}
+    {tab === 'calendar' && <CalendarView events={data.events} exams={data.exams} students={data.students} classes={data.classes} onChanged={reload} />}
+    {tab === 'halaqahs' && <Halaqahs data={data} reload={reload} />}
+  </>;
+}
+function Halaqahs({ data, reload }: { data: OrgData; reload: () => void }) {
+  const [edit, setEdit] = useState<ClassRow | 'new' | null>(null);
+  const [register, setRegister] = useState<ClassRow | 'all' | null>(null);
   const teacherName = (uid: string | null) => data.members.find(m => m.userId === uid)?.displayName ?? '—';
   return <>
-    <PageTitle title="Classes" sub="Group students and take attendance" action={<div className="flex gap-2"><Button kind="secondary" onClick={() => setRegister('all')} disabled={!data.students.length}><CalendarCheck size={16} />Attendance</Button><Button onClick={() => setEdit('new')}><Plus size={18} />New class</Button></div>} />
+    <div className="mb-4 flex flex-wrap justify-end gap-2"><Button kind="secondary" onClick={() => setRegister('all')} disabled={!data.students.length}><CalendarCheck size={16} />Attendance</Button><Button onClick={() => setEdit('new')}><Plus size={18} />New halaqah</Button></div>
     {data.classes.length ? <div className="grid gap-4 md:grid-cols-2">{data.classes.map(c => <Card key={c.id}>
       <CardHead title={c.name} sub={[c.schedule, `Teacher: ${teacherName(c.teacherUserId)}`].filter(Boolean).join(' · ')} action={<Button kind="quiet" onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}><Pencil size={16} /></Button>} />
       <p className="px-5 pt-2 text-sm text-ink-soft">{c.studentIds.length ? c.studentIds.map(id => data.students.find(s => s.id === id)?.name).filter(Boolean).join(', ') : 'No students yet.'}</p>
       {c.notes && <p className="px-5 pt-1 text-sm text-ink-faint">{c.notes}</p>}
       <div className="px-5 py-4"><Button kind="secondary" onClick={() => setRegister(c)} disabled={!c.studentIds.length}><CalendarCheck size={16} />Take attendance</Button></div>
-    </Card>)}</div> : <Card><Empty icon={<Users size={30} />} title="No classes yet" action={<Button onClick={() => setEdit('new')}><Plus size={18} />New class</Button>}>Classes are optional. They help when you teach groups on different days.</Empty></Card>}
+    </Card>)}</div> : <Card><Empty icon={<Users size={30} />} title="No halaqahs yet" action={<Button onClick={() => setEdit("new")}><Plus size={18} />New halaqah</Button>}>A halaqah is a group with its own teacher. Students see “Halaqah · Teacher” on their screens.</Empty></Card>}
     {edit && <ClassForm data={data} cls={edit === 'new' ? null : edit} onClose={() => setEdit(null)} onSaved={reload} />}
     {register && <Register data={data} cls={register === 'all' ? null : register} onClose={() => setRegister(null)} onSaved={reload} />}
   </>;
