@@ -19,8 +19,16 @@ export function supabaseBackend(url: string, anonKey: string): Backend {
   return {
     kind: 'live',
     async getUser() { const { data } = await sb.auth.getSession(); return toUser(data.session?.user); },
-    onAuthChange(cb) { const { data } = sb.auth.onAuthStateChange((_e, s) => cb(toUser(s?.user))); return () => data.subscription.unsubscribe(); },
+    onAuthChange(cb) { const { data } = sb.auth.onAuthStateChange((e, s) => { if (e === 'PASSWORD_RECOVERY') { try { sessionStorage.setItem('hifz-recovery', '1'); } catch { /* blocked */ } } cb(toUser(s?.user)); }); return () => data.subscription.unsubscribe(); },
     async signInWithGoogle() { const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } }); if (r.error) throw new ApiError(r.error.message); },
+    async signInWithEmail(email, password) { const r = await sb.auth.signInWithPassword({ email, password }); if (r.error) throw new ApiError(r.error.message); },
+    async signUpWithEmail(email, password, name) {
+      const r = await sb.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: window.location.origin + window.location.pathname } });
+      if (r.error) throw new ApiError(r.error.message);
+      return !r.data.session;
+    },
+    async resetPassword(email) { const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname }); if (r.error) throw new ApiError(r.error.message); },
+    async updatePassword(password) { const r = await sb.auth.updateUser({ password }); if (r.error) throw new ApiError(r.error.message); },
     async signOut() { await sb.auth.signOut(); },
     async select<T>(q: Query): Promise<T[]> {
       let b: any = applyFilters(sb.from(q.table).select(q.columns ?? '*'), q.where);

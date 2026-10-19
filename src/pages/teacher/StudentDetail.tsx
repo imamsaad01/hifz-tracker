@@ -43,7 +43,7 @@ export function StudentDetail({ id }: { id: string }) {
     {tab === 'assignments' && <Card><AssignmentList items={assignments} onChanged={reload} /></Card>}
     {tab === 'report' && <MonthReport student={st} ins={ins} sessions={sd.sessions} today={today} settings={org.settings} orgName={org.name} />}
     {tab === 'overview' && <Card className="no-print mt-5 flex flex-wrap items-center gap-3 px-5 py-4">
-      <KeyRound size={18} className="text-ink-faint" /><span className="min-w-0 flex-1 text-sm"><b>Parent code:</b> <span className="font-mono tracking-widest">{st.parentCode}</span><br /><span className="text-ink-faint">A parent signs in with Google and enters this code to see {st.name.split(' ')[0]}’s progress (read-only).</span></span>
+      <KeyRound size={18} className="text-ink-faint" /><span className="min-w-0 flex-1 text-sm"><b>Parent code:</b> <span className="font-mono tracking-widest">{st.parentCode}</span><br /><span className="text-ink-faint">A parent creates an account and enters this code to see {st.name.split(' ')[0]}’s progress (read-only).</span></span>
       <Button kind="quiet" onClick={async () => { try { await api.updateStudent(st.id, { parent_code: Array.from(crypto.getRandomValues(new Uint8Array(5)), b => b.toString(16).padStart(2, '0')).join('').toUpperCase() }); toast('New parent code made. The old one no longer works.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }}><RefreshCw size={15} />New code</Button>
       <Button kind="quiet" onClick={() => setArchive(true)}><Archive size={15} />Archive student</Button>
     </Card>}

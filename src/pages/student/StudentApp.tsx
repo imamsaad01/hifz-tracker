@@ -63,7 +63,7 @@ export function StudentApp({ tab }: { tab: string }) {
         <p><b>Goal:</b> {me.goal || '—'}</p>
         <p><b>Parent:</b> {me.guardianName || '—'} {me.guardianEmail && <span className="text-ink-faint">({me.guardianEmail}{me.notify ? ', gets emails' : ''})</span>}</p>
       </Card>
-      <Card className="mt-4 flex items-start gap-3 p-5"><KeyRound size={18} className="mt-1 text-ink-faint" /><p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span><br /><span className="text-sm text-ink-faint">Give this to a parent. They sign in with Google and enter it to follow your progress. They cannot change anything.</span></p></Card>
+      <Card className="mt-4 flex items-start gap-3 p-5"><KeyRound size={18} className="mt-1 text-ink-faint" /><p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span><br /><span className="text-sm text-ink-faint">Give this to a parent. They create an account and enter it to follow your progress. They cannot change anything.</span></p></Card>
       <p className="mt-4 text-sm text-ink-faint">Program: {org.name}. Only your teachers, you and linked parents can see your records.</p>
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
     </>}

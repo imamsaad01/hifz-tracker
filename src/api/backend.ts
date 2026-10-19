@@ -15,6 +15,11 @@ export interface Backend {
   getUser(): Promise<AuthUser | null>;
   onAuthChange(cb: (u: AuthUser | null) => void): () => void;
   signInWithGoogle?(): Promise<void>;
+  signInWithEmail?(email: string, password: string): Promise<void>;
+  /** returns true when the account must be confirmed from an email before signing in */
+  signUpWithEmail?(email: string, password: string, name: string): Promise<boolean>;
+  resetPassword?(email: string): Promise<void>;
+  updatePassword?(password: string): Promise<void>;
   personas?: DemoPersona[];
   signInAs?(personaId: string): Promise<void>;
   resetPreview?(): Promise<void>;
@@ -35,6 +40,10 @@ export function friendly(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (/violates row-level security|permission denied|42501/i.test(msg)) return 'You do not have permission to do that.';
   if (/duplicate key|23505|already exists/i.test(msg)) return 'That is already saved.';
+  if (/Invalid login credentials/i.test(msg)) return 'Wrong email or password.';
+  if (/User already registered/i.test(msg)) return 'That email already has an account. Choose Sign in.';
+  if (/Email not confirmed/i.test(msg)) return 'Confirm your email first: open the link we sent you.';
+  if (/rate limit/i.test(msg)) return 'Too many tries. Wait a few minutes and try again.';
   if (/Failed to fetch|NetworkError|network/i.test(msg)) return 'No connection. Your entry is kept; try again when you are online.';
   return msg.replace(/^.*?ERROR:\s*/, '');
 }

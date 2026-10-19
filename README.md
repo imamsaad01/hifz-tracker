@@ -2,7 +2,7 @@
 
 Daily hifz records for Qurʾān programs: **New**, **Recent** and **Old** revision, errors by ayah, scores, attendance, assignments, goals, milestones, reports and parent emails — for admins, teachers, students and parents, with each program's data kept separate by the database.
 
-Everything runs on free plans: **Supabase** (database, Google sign-in, email function), **Vercel** (website), **Brevo** (300 emails a day).
+Everything runs on free plans: **Supabase** (database, email-and-password sign-in, email function), **GitHub Pages** or **Vercel** (website), **Brevo** (300 emails a day).
 
 ## Try it without setting anything up
 
@@ -20,17 +20,17 @@ npm run dev        # http://localhost:5173
 2. **SQL Editor** → run, in order: `supabase/migrations/0001_schema.sql`, `0002_security.sql`, `0003_functions.sql`, `0004_parent_codes.sql`, `0005_leaderboard.sql`, then `supabase/seed_quran.sql` (Qurʾān reference data, 6,236 ayahs) and `supabase/finish_setup.sql`.
 3. **Project Settings → API**: copy the *Project URL* and the *anon public* key.
 
-### 2. Google sign-in
-1. In [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → *Create OAuth client ID* (Web application).
-2. Authorised redirect URI: `https://YOUR-PROJECT.supabase.co/auth/v1/callback`.
-3. In Supabase → **Authentication → Providers → Google**: paste the client ID and secret, enable.
-4. Supabase → **Authentication → URL Configuration**: set *Site URL* to your Vercel address (step 3) and add it to *Redirect URLs*.
+### 2. Sign-in
+People sign in with email and password (built into Supabase, free). In Supabase → **Authentication → Sign In / Providers → Email**, turn **Confirm email** off for the smoothest start (Supabase's built-in email sends only a few messages an hour); turn it back on once you add your own email sender.
+Supabase → **Authentication → URL Configuration**: set *Site URL* to your website address and add it to *Redirect URLs* (used by password-reset links).
+
+Google sign-in is optional: create a free OAuth client in Google Cloud Console, enable the Google provider in Supabase, and set `VITE_GOOGLE_AUTH=on`.
 
 ### 3. Vercel (the website)
 1. Push this folder to a GitHub repository.
 2. In [vercel.com](https://vercel.com) → *Add New Project* → import the repository (framework: Vite).
 3. Environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (from step 1). These are public by design; the database rules protect the data.
-4. Deploy. Sign in with Google, choose **Start a program** — you become its admin.
+4. Deploy. Create an account, choose **Start a program** — you become its admin.
 
 ### 4. Parent emails (optional)
 1. Create a free [Brevo](https://www.brevo.com) account, verify a sender email, create an API key (SMTP & API → API keys).

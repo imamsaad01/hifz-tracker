@@ -13,6 +13,7 @@ import { Assignments } from './pages/teacher/Assignments';
 import { More } from './pages/teacher/More';
 import { StudentApp } from './pages/student/StudentApp';
 import { ParentApp } from './pages/parent/ParentApp';
+import { NewPassword } from './components/NewPassword';
 
 const STAFF_NAV: NavItem[] = [
   { key: 'today', label: 'Today', icon: LayoutDashboard, href: href('today') }, { key: 'students', label: 'Students', icon: Users, href: href('students') },
@@ -24,6 +25,9 @@ const STUDENT_NAV: NavItem[] = [
   { key: 'history', label: 'Sessions', icon: HistoryIcon, href: href('history') }, { key: 'me', label: 'My plan', icon: User, href: href('me') },
 ];
 export function App() {
+  return <><Main /><NewPassword /></>;
+}
+function Main() {
   const { user, org, loading } = useApp();
   const route = useRoute();
   if (loading) return <Spinner />;

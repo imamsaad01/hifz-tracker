@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { GraduationCap, BookOpen, Users, Building2, ShieldCheck, RotateCcw } from 'lucide-react';
 import { useApp } from '../app/context';
 import { Brand } from '../components/Brand';
-import { Button, Card, ErrorBox, useToast } from '../components/ui';
+import { Button, Card, ErrorBox, Field, inputCls, Segmented, useToast } from '../components/ui';
 import { friendly } from '../api/backend';
 
 const ICON = [GraduationCap, GraduationCap, BookOpen, Users, Building2];
@@ -22,7 +22,8 @@ export function SignIn() {
         <p className="mt-1 text-[15px] text-ink-soft">Daily hifz records for teachers, students and parents: new lessons, recent and old revision, errors, scores and progress through all 604 pages.</p>
         {err && <div className="mt-4"><ErrorBox message={err} /></div>}
         {backend.kind === 'live' ? <>
-          <Button kind="secondary" className="mt-6 w-full" busy={busy === 'g'} onClick={async () => { setBusy('g'); try { await backend.signInWithGoogle!(); } catch (e) { setErr(friendly(e)); setBusy(null); } }}><GoogleMark />Continue with Google</Button>
+          <EmailAuth />
+          {import.meta.env.VITE_GOOGLE_AUTH === 'on' && <Button kind="secondary" className="mt-3 w-full" busy={busy === 'g'} onClick={async () => { setBusy('g'); try { await backend.signInWithGoogle!(); } catch (e) { setErr(friendly(e)); setBusy(null); } }}><GoogleMark />Continue with Google</Button>}
           <p className="mt-4 flex items-start gap-2 text-sm text-ink-faint"><ShieldCheck size={16} className="mt-0.5 shrink-0" />Student records are private to their program. Nothing is public.</p>
         </> : <div className="mt-5 flex flex-col gap-3">
           <p className="rounded-xl bg-brass-100 px-3 py-2 text-sm text-brass-700"><b>Preview.</b> The real database runs inside this browser with sample people, so you can try every role. Choose who to be:</p>
@@ -36,4 +37,33 @@ export function SignIn() {
       </Card>
     </div>
   </div>;
+}
+
+function EmailAuth() {
+  const { backend } = useApp();
+  const [mode, setMode] = useState<'in' | 'up' | 'reset'>('in');
+  const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [note, setNote] = useState<string | null>(null);
+  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const ok = emailOk && (mode === 'reset' || pw.length >= 8) && (mode !== 'up' || name.trim().length >= 2);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!ok) return;
+    setBusy(true); setErr(null); setNote(null);
+    try {
+      if (mode === 'in') await backend.signInWithEmail!(email.trim(), pw);
+      else if (mode === 'up') { const confirm = await backend.signUpWithEmail!(email.trim(), pw, name.trim()); if (confirm) setNote(`We sent a link to ${email.trim()}. Open it to finish creating your account, then sign in.`); }
+      else { await backend.resetPassword!(email.trim()); setNote(`If ${email.trim()} has an account, a link to set a new password is on its way.`); }
+    } catch (x) { setErr(friendly(x)); } finally { setBusy(false); }
+  };
+  return <form className="mt-5 flex flex-col gap-4" onSubmit={submit}>
+    {mode !== 'reset' && <Segmented label="Account" value={mode} onChange={m => { setMode(m); setErr(null); setNote(null); }} options={[['in', 'Sign in'], ['up', 'Create account']]} />}
+    {err && <ErrorBox message={err} />}
+    {note && <p role="status" className="rounded-xl bg-pine-50 px-3 py-2 text-sm text-pine-800">{note}</p>}
+    {mode === 'up' && <Field label="Your name">{id => <input id={id} className={inputCls} autoComplete="name" value={name} maxLength={80} onChange={e => setName(e.target.value)} />}</Field>}
+    <Field label="Email">{id => <input id={id} type="email" className={inputCls} autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} />}</Field>
+    {mode !== 'reset' && <Field label="Password" hint={mode === 'up' ? 'At least 8 characters.' : undefined}>{id => <input id={id} type="password" className={inputCls} autoComplete={mode === 'up' ? 'new-password' : 'current-password'} value={pw} onChange={e => setPw(e.target.value)} />}</Field>}
+    <Button type="submit" busy={busy} disabled={!ok}>{mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Send reset link'}</Button>
+    {mode === 'in' && <button type="button" className="self-start text-sm font-bold text-ink-faint underline" onClick={() => { setMode('reset'); setErr(null); setNote(null); }}>Forgot password?</button>}
+    {mode === 'reset' && <button type="button" className="self-start text-sm font-bold text-ink-faint underline" onClick={() => { setMode('in'); setErr(null); setNote(null); }}>Back to sign in</button>}
+  </form>;
 }

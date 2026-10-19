@@ -151,7 +151,7 @@ function Codes() {
     {code && <Button kind="secondary" onClick={() => copy(code)}><Copy size={16} />Copy</Button>}
   </Card>;
   return <div className="flex max-w-2xl flex-col gap-4">
-    <Row label="Student code" code={org.joinCode} who="Students sign in with Google, enter this, then answer a few setup questions." />
+    <Row label="Student code" code={org.joinCode} who="Students create an account, enter this, then answer a few setup questions." />
     <Row label="Teacher code" code={tc} who="Gives teacher access to every student. Share it only with teachers. Only admins see it." />
     <p className="text-sm text-ink-faint">Parents get a separate code for each child, on the child’s page.</p>
     <div><Button kind="secondary" onClick={() => setConfirm(true)}><RefreshCw size={16} />Make new codes</Button></div>
