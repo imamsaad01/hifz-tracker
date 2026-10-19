@@ -1,6 +1,7 @@
 // "Who needs my attention today?" — the teacher's home, with one-tap recording.
 import { JoinRequestsCard } from '../../components/HalaqahJoin';
 import { QiraatTestsDue } from '../../components/Qiraat';
+import { RevisionCheckCard } from '../../components/RevisionSelf';
 import { useMemo, useState } from 'react';
 import { Plus, UserPlus, ClipboardList, AlertTriangle, CheckCircle2, Users, Radio, CalendarDays } from 'lucide-react';
 import { useOrg } from '../../app/context';
@@ -47,9 +48,10 @@ export function Today() {
   const markAbsent = async (sid: string) => { try { await api.saveAttendance(org.id, sid, today, 'absent', 'in_person'); toast('Marked absent.'); reload(); } catch (e) { toast(friendly(e), 'err'); } };
 
   return <>
-    <PageTitle title="Today" sub={<>{niceDate(today)} · {hijriDate(today)}</>} action={<div className="flex flex-wrap gap-2"><Button onClick={() => go('classes', 'live')}><Radio size={18} />Live class</Button><Button kind="secondary" onClick={() => setPick(true)}><Plus size={18} />Record</Button><Button kind="secondary" onClick={() => go('assignments', 'new')}><ClipboardList size={18} />Assign</Button><Button kind="secondary" onClick={() => go('students', 'new')}><UserPlus size={18} />Add student</Button></div>} />
-    <div className="mb-5 empty:hidden"><JoinRequestsCard data={data} onChanged={reload} /></div>
-    <div className="mb-5 empty:hidden"><QiraatTestsDue data={data} onOpenStudent={id => go('students', id)} /></div>
+    <PageTitle title="Today" sub={<>{niceDate(today)} · {hijriDate(today)}</>} action={<div className="flex flex-wrap gap-2" data-tour="today-actions"><Button onClick={() => go('classes', 'live')}><Radio size={18} />Live class</Button><Button kind="secondary" onClick={() => setPick(true)}><Plus size={18} />Record</Button><Button kind="secondary" onClick={() => go('assignments', 'new')}><ClipboardList size={18} />Assign</Button><Button kind="secondary" onClick={() => go('students', 'new')}><UserPlus size={18} />Add student</Button></div>} />
+    <div className="mb-5 empty:hidden" data-tour="requests"><JoinRequestsCard data={data} onChanged={reload} /></div>
+    <div className="mb-5 empty:hidden" data-tour="revision-check"><RevisionCheckCard data={data} onChanged={reload} /></div>
+    <div className="mb-5 empty:hidden" data-tour="qiraat-due"><QiraatTestsDue data={data} onOpenStudent={id => go('students', id)} /></div>
     {data.classes.length > 0 && <div className="mb-4 flex items-center gap-2"><span className="text-sm font-bold text-ink-soft">Halaqah</span><Select aria-label="Halaqah" className="!w-auto" value={activeCls} onChange={setCls} options={[['all', 'All students'], ...data.classes.map(c => [c.id, c.name] as [string, string])]} /></div>}
     {!data.students.length ? <Card><Empty icon={<Users size={32} />} title="No students yet" action={<Button onClick={() => go('students', 'new')}><UserPlus size={18} />Add your first student</Button>}>Add students yourself, or share the class code <b className="font-mono">{org.joinCode}</b> so they can join and set themselves up.</Empty></Card> : <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -59,7 +61,7 @@ export function Today() {
         {org.settings.revision.oldPlan === 'cycle' ? <Stat label="Weak pages" value={ins.filter(i => i.revision.weak.length).length} sub="students with weak pages" tone={ins.some(i => i.revision.weak.length) ? 'warn' : undefined} /> : <Stat label="Overdue revision" value={overdueStudents} sub="students with overdue pages" tone={overdueStudents ? 'warn' : undefined} />}
       </div>
       <div className="grid gap-5 xl:grid-cols-[1.6fr_1fr]">
-        <Card>
+        <Card data-tour="today-students">
           <CardHead title="Today’s students" sub="Not yet recorded first. Tap Record: everything is filled in." />
           <ul className="mt-3 divide-y divide-line">{order.map(i => <li key={i.student.id} className="flex items-center gap-3 px-5 py-3">
             <div className="min-w-0 flex-1">

@@ -120,3 +120,13 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **Khatmah**: a 114-surah grid per track. Tap a surah when it is read to you.
 - **Matn**: Shāṭibiyyah (1173 lines), Durrah (241) or Ṭayyibah (1014). Students log the lines they memorise; teachers log the lines recited to them.
 - **Reminders** (times in More → Settings → Qirāʾāt reminders): a test in 2 days (evening), a test today (morning), today's matn lines (daily), and weak areas (weekly). Runs via `public.qiraat_reminders()` in the `hifz-reminders` cron job.
+
+## Self-logged revision, lesson sizes, ḥāfiẓ sign-up, reciters and app tour
+
+- **Students log revision, teachers check**: students tap *I revised this*. Teachers see *Revision to check* on Today and on each student's page (*Checked*, *Redo* with a note, or *Check all*). The student sees *Waiting for check / Checked / Redo*.
+- **Revision start point**: students (or the teacher) choose the surah or page their Old revision starts from. Each revision day continues in page order from there, wrapping round. Weak pages still come first.
+- **Lesson size**: ½, 1, 2, 3, 4 or 5 pages (Madani muṣḥaf), or a number of ayahs.
+- **Ḥāfiẓ shortcut**: at sign-up, "I am a ḥāfiẓ" marks the whole Qurʾān memorised, skips the lesson questions and goes straight to qirāʾāt.
+- **Qirāʾāt goal each class**: ½ page up to 1 juzʾ, with an estimate of how long a khatmah takes at that pace.
+- **Riwāyah reciter**: whole-surah recordings for most riwāyāt (mp3quran.net), see `src/lib/reciters.ts`.
+- **App tour**: a guided tour on first login for students, parents and teachers. Skip any time; replay from *My plan* or *More*.

@@ -34,7 +34,7 @@ export function InboxBell() {
   const unread = items.filter(i => i.at > seen).length;
   const staff = org.role === 'admin' || org.role === 'teacher';
   return <>
-    <button type="button" onClick={() => setOpen(true)} className="relative grid h-10 w-10 place-items-center rounded-xl text-ink-soft hover:bg-black/5" aria-label={unread ? `${unread} new` : 'What’s new'}>
+    <button type="button" data-tour="inbox" onClick={() => setOpen(true)} className="relative grid h-10 w-10 place-items-center rounded-xl text-ink-soft hover:bg-black/5" aria-label={unread ? `${unread} new` : 'What’s new'}>
       <Bell size={19} />{unread > 0 && <span className="absolute right-1 top-1 grid min-w-[18px] place-items-center rounded-full bg-bad px-1 text-[10px] font-bold leading-[18px] text-white">{unread > 9 ? '9+' : unread}</span>}
     </button>
     <Modal open={open} onClose={() => { setOpen(false); markSeen(); }} title="What’s new">

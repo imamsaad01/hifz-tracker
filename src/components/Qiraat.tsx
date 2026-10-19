@@ -1,18 +1,19 @@
 // Qira'at: riwayat picker (jamʿ / ifrād), farsh & uṣūl tests, khatmah per track, matn memorisation.
 import { useMemo, useState } from 'react';
-import { Check, Plus, BookOpenText, Trash2, CalendarClock, AlertTriangle, ScrollText, Pencil, X } from 'lucide-react';
+import { Check, Plus, BookOpenText, Trash2, CalendarClock, AlertTriangle, ScrollText, Pencil, X, Headphones } from 'lucide-react';
+import { RECORDINGS, recordingUrl } from '../lib/reciters';
 import { useOrg } from '../app/context';
 import type { OrgData } from '../app/useOrgData';
 import type { QiraatProfile, QiraatTest, QiraatMistake, MatnEntry } from '../api/data';
 import type { Student } from '../lib/types';
-import { QURRA, USUL, MUTUN, RESULTS, riwayahLabel, riwayatSummary, rawiOf, matnOf, resultLabel, tracksOf, trackLabel, babLabel } from '../lib/qiraat';
+import { CLASS_GOALS, classGoalOf, khatmahPace, QURRA, USUL, MUTUN, RESULTS, riwayahLabel, riwayatSummary, rawiOf, matnOf, resultLabel, tracksOf, trackLabel, babLabel } from '../lib/qiraat';
 import { surahNameEn, surahNameAr } from '../quran';
 import { niceDate, addDays } from '../lib/dates';
 import { friendly } from '../api/backend';
 import { Button, Card, CardHead, Field, Modal, Select, Segmented, Toggle, Pill, inputCls, useToast, cx } from './ui';
 
-export interface QiraatDraft { active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number }
-export const emptyQiraat = (): QiraatDraft => ({ active: true, riwayat: [], mode: 'ifrad', matn: null, matnDailyLines: 3 });
+export interface QiraatDraft { active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number; classGoal: string | null }
+export const emptyQiraat = (): QiraatDraft => ({ active: true, riwayat: [], mode: 'ifrad', matn: null, matnDailyLines: 3, classGoal: 'quarter_hizb' });
 const SURAHS = Array.from({ length: 114 }, (_, i) => i + 1);
 
 /* ------------------------------------------------------------------ picking riwayat */
@@ -44,6 +45,8 @@ export function QiraatSetup({ value, onChange }: { value: QiraatDraft; onChange:
       <p className="mt-1 text-sm text-ink-faint">{value.mode === 'jam' ? 'One khatmah, reading all of them together.' : 'A separate khatmah for each riwāyah.'}</p></div>}
     {n > 0 && <p className="rounded-xl bg-pine-50 px-3 py-2 text-sm text-pine-800"><b>{value.mode === 'jam' && n > 1 ? 'Jamʿ' : 'Ifrād'}:</b> {riwayatSummary(value.riwayat)}</p>}
     <div className="grid gap-4 sm:grid-cols-2">
+      <Field label="Goal to read each class">{id => <Select id={id} value={value.classGoal ?? ''} onChange={v => onChange({ ...value, classGoal: v || null })} options={[['', 'No set amount'], ...CLASS_GOALS.map(g => [g.key, g.label] as [string, string])]} />}</Field>
+      <span className="hidden sm:block" />
       <Field label="Matn you are memorising">{id => <Select id={id} value={value.matn ?? ''} onChange={v => onChange({ ...value, matn: v || null })} options={[['', 'None for now'], ...MUTUN.map(m => [m.key, `${m.en} (${m.lines} lines)`] as [string, string])]} />}</Field>
       {value.matn && <Field label="New lines each day">{id => <Select id={id} value={value.matnDailyLines} onChange={v => onChange({ ...value, matnDailyLines: v })} options={[1, 2, 3, 4, 5, 6, 8, 10, 15, 20].map(x => [x, `${x} line${x > 1 ? 's' : ''}`] as [number, string])} />}</Field>}
     </div>
@@ -86,6 +89,7 @@ export function QiraatStudentCard({ student, data, onChanged, readOnly }: { stud
   const done = (t: string) => data.qiraat.khatmah.filter(k => k.studentId === student.id && k.track === t).length;
   const todayEntry = ms?.entries.find(e => e.kind === 'memorised' && e.date === today);
   const memorisedToday = !!todayEntry;
+  const perWeek = Math.max(1, data.classes.filter(c => c.studentIds.includes(student.id)).reduce((n, c) => n + c.slots.length, 0) || 2);
   const logLines = async () => { if (!ms?.next) return; setBusy(true); try { await api.addMatn(org.id, { studentId: student.id, matn: ms.matn.key, lineFrom: ms.next, lineTo: ms.to, kind: 'memorised', date: today }); toast('Lines saved. Bārak Allāhu fīk.'); onChanged(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); } };
   return <Card>
     <CardHead title={<span className="inline-flex items-center gap-2"><BookOpenText size={18} className="text-brass-500" />Qirāʾāt</span>} sub={<>{p.mode === 'jam' && p.riwayat.length > 1 ? 'Jamʿ' : 'Ifrād'} · {riwayatSummary(p.riwayat)}</>} />
@@ -103,6 +107,8 @@ export function QiraatStudentCard({ student, data, onChanged, readOnly }: { stud
       {weak.length > 0 && <div><p className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-warn"><AlertTriangle size={15} />To revise</p>
         <ul className="flex flex-col gap-1.5">{weak.slice(0, 5).map(w => <li key={w.title} className="rounded-xl bg-amber-50 px-3 py-2"><b>{w.title}</b>{w.result === 'repeat' && <Pill tone="amber" className="ml-2">Repeat</Pill>}
           {w.mistakes.length > 0 && <span className="mt-1 flex flex-wrap gap-1">{w.mistakes.slice(0, 8).map((m, i) => <span key={i} className="rounded-lg bg-white px-2 py-0.5 text-sm ring-1 ring-line"><span lang="ar" dir="auto">{m.text}</span>{m.riwayah && <span className="text-ink-faint"> · {rawiOf(m.riwayah)?.en}</span>}</span>)}</span>}</li>)}</ul></div>}
+      {classGoalOf(p.classGoal) && <p className="rounded-xl bg-pine-50 px-3 py-2 text-[15px] text-pine-800"><b>Each class:</b> read {classGoalOf(p.classGoal)!.label}{(() => { const pace = khatmahPace(p.classGoal, perWeek, Math.max(0, ...tracks.map(done))); return pace ? <span className="text-pine-700">. At this pace a khatmah takes {pace}.</span> : null; })()}</p>}
+      <RiwayahPlayer riwayat={p.riwayat} initialSurah={upcoming.find(t => t.kind === 'farsh')?.surah ?? 1} />
       <div><p className="mb-1.5 text-sm font-bold text-ink-soft">Khatmah</p>
         <ul className="flex flex-col gap-2">{tracks.map(t => <li key={t}><span className="flex justify-between text-sm"><span className="min-w-0 truncate">{trackLabel(t, p)}</span><span className="tabular-nums text-ink-faint">{done(t)}/114</span></span><Bar value={done(t)} max={114} /></li>)}</ul></div>
       {!upcoming.length && !weak.length && <p className="text-sm text-ink-faint">Your teacher schedules farsh and uṣūl tests here. You’ll get a reminder two days before.</p>}
@@ -125,7 +131,7 @@ export function QiraatTeacherPanel({ student, data, onChanged }: { student: Stud
   return <Card>
     <div className="px-5 pt-3"><Toggle on={on} onChange={flip} label="Qirāʾāt student" sub={on && p ? `${p.mode === 'jam' && p.riwayat.length > 1 ? 'Jamʿ' : 'Ifrād'} · ${riwayatSummary(p.riwayat)}` : 'Reads the qirāʾāt to you: riwāyāt, farsh and uṣūl tests, matn'} /></div>
     {on && p && <div className="flex flex-col gap-4 px-5 pb-5 pt-2">
-      <div className="flex flex-wrap items-center gap-2"><RiwayahChips codes={p.riwayat} /><Button kind="quiet" className="min-h-[36px] px-2 text-sm" onClick={() => setEdit(true)}><Pencil size={14} />Change</Button></div>
+      <div className="flex flex-wrap items-center gap-2"><RiwayahChips codes={p.riwayat} />{classGoalOf(p.classGoal) && <Pill tone="pine">Each class: {classGoalOf(p.classGoal)!.label}</Pill>}<Button kind="quiet" className="min-h-[36px] px-2 text-sm" onClick={() => setEdit(true)}><Pencil size={14} />Change</Button></div>
       <Segmented label="Qira'at section" value={view} onChange={setView} options={[['tests', 'Farsh & uṣūl'], ['khatmah', 'Khatmah'], ['matn', 'Matn']]} />
       {view === 'tests' && <TestsList student={student} data={data} onOpen={setTest} onChanged={onChanged} />}
       {view === 'khatmah' && <KhatmahGrid student={student} profile={p} data={data} onChanged={onChanged} />}
@@ -266,4 +272,27 @@ export function QiraatTestsDue({ data, onOpenStudent }: { data: OrgData; onOpenS
     <ul className="mt-2 divide-y divide-line">{due.map(t => <li key={t.id}><button type="button" onClick={() => onOpenStudent(t.studentId)} className="flex w-full flex-wrap items-center gap-x-2 px-5 py-2.5 text-left hover:bg-paper">
       <b>{name(t.studentId)}</b><span className="text-ink-soft">{t.title}</span><span className={cx('ml-auto text-sm', (t.scheduledOn ?? '') < today ? 'font-bold text-bad' : t.scheduledOn === today ? 'font-bold text-brass-700' : 'text-ink-faint')}>{(t.scheduledOn ?? '') < today ? 'Overdue' : t.scheduledOn === today ? 'Today' : niceDate(t.scheduledOn!)}</span></button></li>)}</ul>
   </Card>;
+}
+
+/** Listen to a whole surah in one of the student's riwāyāt (mp3quran.net) */
+export function RiwayahPlayer({ riwayat, initialSurah = 1 }: { riwayat: string[]; initialSurah?: number }) {
+  const withAudio = riwayat.filter(c => RECORDINGS[c]?.length);
+  const [riw, setRiw] = useState(withAudio[0] ?? riwayat[0] ?? '');
+  const recs = RECORDINGS[riw] ?? [];
+  const [ri, setRi] = useState(0); const rec = recs[Math.min(ri, recs.length - 1)];
+  const [surah, setSurah] = useState(initialSurah);
+  const surahs = rec?.surahs ?? SURAHS;
+  const cur = surahs.includes(surah) ? surah : surahs[0];
+  const missing = riwayat.filter(c => !RECORDINGS[c]?.length);
+  return <div className="flex flex-col gap-2 rounded-xl bg-paper p-3 ring-1 ring-line">
+    <p className="flex items-center gap-2 text-sm font-bold text-pine-800"><Headphones size={16} />Listen in your riwāyah</p>
+    {recs.length || riwayat.length > 1 ? <div className="grid gap-2 sm:grid-cols-3">
+      {riwayat.length > 1 && <Select aria-label="Riwayah" className="!min-h-[40px] text-sm" value={riw} onChange={v => { setRiw(v); setRi(0); }} options={riwayat.map(c => [c, riwayahLabel(c) + (RECORDINGS[c]?.length ? '' : ' (no recording yet)')] as [string, string])} />}
+      {recs.length > 1 && <Select aria-label="Reciter" className="!min-h-[40px] text-sm" value={ri} onChange={setRi} options={recs.map((x, i) => [i, x.name] as [number, string])} />}
+      {recs.length > 0 && <Select aria-label="Surah" className="!min-h-[40px] text-sm" value={cur} onChange={setSurah} options={surahs.map(n => [n, `${n}. ${surahNameEn(n)}`] as [number, string])} />}
+    </div> : null}
+    {rec ? <audio key={recordingUrl(rec, cur)} controls preload="none" className="w-full" src={recordingUrl(rec, cur)}><track kind="captions" /></audio>
+      : <p className="text-sm text-ink-faint">There is no recording of {riwayahLabel(riw)} online yet.</p>}
+    {rec && <p className="text-xs text-ink-faint">{rec.name} · {riwayahLabel(riw)}{missing.length && riw !== missing[0] ? ` · no recording yet for ${missing.map(m => rawiOf(m)?.en).join(', ')}` : ''}</p>}
+  </div>;
 }

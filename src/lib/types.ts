@@ -36,6 +36,8 @@ export interface Student {
   id: string; orgId: string; userId: string | null; name: string; ageGroup: string | null; direction: Direction;
   dailyNewAyahs: number; goal: string | null; guardianName: string | null; guardianEmail: string | null; notify: boolean;
   startDate: string; archivedAt: string | null; memorized: Range[]; parentCode: string | null; oldPages: number | null; rulesAckAt: string | null;
+  /** Old-revision cycle starts here (pages not revised since revisionStartOn go in page order from this page) */ revisionStartPage?: number | null; revisionStartOn?: string | null;
+  /** new lesson size in pages (½–5); null = use dailyNewAyahs */ newPages?: number | null;
 }
 export interface SessionError { id?: string; ayahId: number | null; category: ErrorCategory; severity: ErrorSeverity; note?: string | null }
 export interface Session {
@@ -44,6 +46,7 @@ export interface Session {
   scores: { tajweed: number | null; fluency: number | null; accuracy: number | null; tarteel: number | null; overall: number | null };
   attendance: AttendanceStatus; mode: AttendanceMode; teacherNote: string | null; studentNote: string | null; followUp: boolean;
   recordedBy: 'teacher' | 'student'; errors: SessionError[]; createdAt: string;
+  /** teacher's check of revision the student logged */ checkStatus?: 'ok' | 'redo' | null; checkedAt?: string | null; checkNote?: string | null;
 }
 export interface RevisionItem { page: number; lastReviewedOn: string | null; intervalDays: number; lapses: number; dueOn: string }
 export interface Assignment {

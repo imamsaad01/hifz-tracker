@@ -117,6 +117,9 @@ export async function seedPreview(db: PGlite) {
     await db.query(`insert into public.revision_checkins (org_id, student_id, week_start, slot, partner, recorded) values ($1, $2, $3, $4, $5, $6)`, [org, sid, addDays(wk, w), slot, partner, slot === 'fri']);
   await db.query(`insert into public.absence_requests (org_id, student_id, date, kind, reason, status) values ($1, $2, $3, 'excuse', 'Family wedding out of town', 'pending')`, [org, zayd.id, addDays(today, 5)]);
   await db.query(`insert into public.class_join_requests (org_id, class_id, student_id) values ($1, $2, $3)`, [org, cls1, yusra.id]);
+  // student-logged revision waiting for the teacher's check; Amina starts her Old revision from An-Naba'
+  await db.query(`update public.students set revision_start_page = 582, revision_start_on = $2, new_pages = 1 where id = $1`, [amina.id, addDays(today, -10)]);
+  await db.query(`insert into public.sessions (org_id, student_id, date, type, start_ayah_id, end_ayah_id, recorded_by, errors_minor) values ($1, $2, $3, 'old', $4, $5, 'student', 1)`, [org, amina.id, addDays(today, -1), ayahId(80, 1), ayahId(81, 29)]);
   // qira'at: Amina reads Nāfiʿ (Qālūn and Warsh) in jamʿ and memorises the Shāṭibiyyah
   await db.query(`insert into public.qiraat_profiles (student_id, org_id, riwayat, mode, matn, matn_daily_lines) values ($1, $2, '{nafi.qalun,nafi.warsh}', 'jam', 'shatibiyyah', 3)`, [amina.id, org]);
   await db.query(`insert into public.qiraat_tests (org_id, student_id, kind, surah, title, riwayat, scheduled_on) values ($1, $2, 'farsh', 2, 'Farsh: Al-Baqarah', '{nafi.qalun,nafi.warsh}', $3)`, [org, amina.id, addDays(today, 2)]);

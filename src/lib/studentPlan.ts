@@ -1,4 +1,5 @@
 // A student's personal plan, worked out from what they have memorised and the program's settings.
+import { lessonSize } from './suggest';
 import type { OrgSettings, Student } from './types';
 import type { ClassRow, Member } from '../api/data';
 import { juzRange, TOTAL_AYAHS, type Range } from '../quran';
@@ -22,7 +23,7 @@ export function goalTarget(goal: string | null, direction: 'back' | 'forward'): 
 }
 
 export interface StudentPlan {
-  newPerDay: number; classDays: string[]; recentDays: number; oldPerDay: number; oldPlan: 'cycle' | 'spaced';
+  newPerDay: number; newText: string; classDays: string[]; recentDays: number; oldPerDay: number; oldPlan: 'cycle' | 'spaced';
   cycleWeeks: number | null; goal: { label: string; remaining: number; weeks: number | null; eta: string | null; done: boolean } | null;
 }
 export function studentPlan(st: Student, s: OrgSettings, today: string): StudentPlan {
@@ -35,11 +36,11 @@ export function studentPlan(st: Student, s: OrgSettings, today: string): Student
   if (gt) {
     const total = gt.target.end - gt.target.start + 1;
     const remaining = Math.max(0, total - overlap(st.memorized, gt.target));
-    const perWeek = st.dailyNewAyahs * days.length;
+    const perWeek = (st.newPages ? st.newPages * (6236 / 604) : st.dailyNewAyahs) * days.length; // a page holds ~10 ayahs on average
     const weeks = remaining && perWeek ? Math.ceil(remaining / perWeek) : remaining ? null : 0;
     goal = { label: gt.label, remaining, weeks, eta: weeks ? addDays(today, weeks * 7) : null, done: remaining === 0 };
   }
-  return { newPerDay: st.dailyNewAyahs, classDays: [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => DAY_NAMES[d]), recentDays: s.revision.recentDays, oldPerDay, oldPlan: s.revision.oldPlan, cycleWeeks, goal };
+  return { newPerDay: st.dailyNewAyahs, newText: lessonSize(st), classDays: [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => DAY_NAMES[d]), recentDays: s.revision.recentDays, oldPerDay, oldPlan: s.revision.oldPlan, cycleWeeks, goal };
 }
 
 /** "Weekday Hifz · Sh Saad" — the student's halaqah(s) and teacher; falls back to the program and its admin */

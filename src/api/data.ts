@@ -13,7 +13,7 @@ export interface ClassRow { id: string; name: string; teacherUserId: string | nu
   slots: Slot[]; location: 'mosque' | 'online' | 'both'; checkinOpenMin: number; lateAfterMin: number; requireCode: boolean }
 export interface AbsenceRequest { id: string; studentId: string; date: string; kind: 'free' | 'excuse'; reason: string | null; status: 'pending' | 'approved' | 'declined'; createdAt: string }
 export interface JoinRequest { id: string; classId: string; studentId: string; status: 'pending' | 'approved' | 'declined' | 'cancelled'; note: string | null; createdAt: string; decidedAt: string | null }
-export interface QiraatProfile { studentId: string; active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number }
+export interface QiraatProfile { studentId: string; active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number; classGoal: string | null }
 export interface QiraatMistake { text: string; riwayah?: string | null }
 export interface QiraatTest { id: string; studentId: string; kind: 'farsh' | 'usul'; surah: number | null; bab: string | null; title: string; riwayat: string[]; scheduledOn: string | null; takenOn: string | null; status: 'scheduled' | 'done'; result: string | null; mistakes: QiraatMistake[]; note: string | null; createdAt: string }
 export interface KhatmahMark { studentId: string; track: string; surah: number; doneOn: string }
@@ -53,7 +53,7 @@ export function mergeSettings(s: Row | null | undefined): OrgSettings {
 }
 const toStudent = (r: Row, ranges: Range[] = []): Student => ({
   id: r.id, orgId: r.org_id, userId: r.user_id, name: r.name, ageGroup: r.age_group, direction: r.direction, dailyNewAyahs: r.daily_new_ayahs,
-  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null, oldPages: r.old_pages ?? null, rulesAckAt: r.rules_ack_at ? ts(r.rules_ack_at) : null,
+  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null, oldPages: r.old_pages ?? null, rulesAckAt: r.rules_ack_at ? ts(r.rules_ack_at) : null, revisionStartPage: r.revision_start_page ?? null, newPages: r.new_pages === null || r.new_pages === undefined ? null : Number(r.new_pages), revisionStartOn: r.revision_start_on ? iso(r.revision_start_on) : null,
 });
 /** Postgres arrays of enums can arrive as '{a,b}' text */
 const pgArr = (v: unknown): any[] => Array.isArray(v) ? v : typeof v === 'string' ? v.replace(/^\{|\}$/g, '').split(',').filter(Boolean) : [];
@@ -63,7 +63,7 @@ const toSession = (r: Row, errs: SessionError[] = []): Session => ({
   id: r.id, orgId: r.org_id, studentId: r.student_id, date: iso(r.date), type: r.type, range: { start: r.start_ayah_id, end: r.end_ayah_id },
   errorsMajor: r.errors_major, errorsMinor: r.errors_minor,
   scores: { tajweed: num(r.score_tajweed), fluency: num(r.score_fluency), accuracy: num(r.score_accuracy), tarteel: num(r.score_tarteel), overall: num(r.score_overall) },
-  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: ts(r.created_at),
+  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: ts(r.created_at), checkStatus: r.check_status ?? null, checkedAt: r.checked_at ? ts(r.checked_at) : null, checkNote: r.check_note ?? null,
 });
 
 export function api(be: Backend) {
@@ -150,14 +150,14 @@ export function api(be: Backend) {
       ]);
       const js = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : v ?? []) as QiraatMistake[];
       return {
-        profiles: p.map(r => ({ studentId: r.student_id, active: r.active, riwayat: pgArr(r.riwayat), mode: r.mode, matn: r.matn, matnDailyLines: r.matn_daily_lines })),
+        profiles: p.map(r => ({ studentId: r.student_id, active: r.active, riwayat: pgArr(r.riwayat), mode: r.mode, matn: r.matn, matnDailyLines: r.matn_daily_lines, classGoal: r.class_goal ?? null })),
         tests: t.map(r => ({ id: r.id, studentId: r.student_id, kind: r.kind, surah: r.surah, bab: r.bab, title: r.title, riwayat: pgArr(r.riwayat), scheduledOn: r.scheduled_on ? iso(r.scheduled_on) : null, takenOn: r.taken_on ? iso(r.taken_on) : null, status: r.status, result: r.result, mistakes: js(r.mistakes), note: r.note, createdAt: ts(r.created_at) })),
         khatmah: k.map(r => ({ studentId: r.student_id, track: r.track, surah: r.surah, doneOn: iso(r.done_on) })),
         matn: m.map(r => ({ id: r.id, studentId: r.student_id, matn: r.matn, lineFrom: r.line_from, lineTo: r.line_to, kind: r.kind, date: iso(r.date) })),
       };
     },
-    setQiraat: (studentId: string, p: { active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number }) =>
-      be.rpc<null>('set_qiraat_profile', { p_student: studentId, p: { active: p.active, riwayat: p.riwayat, mode: p.mode, matn: p.matn ?? '', matn_daily_lines: p.matnDailyLines } }),
+    setQiraat: (studentId: string, p: { active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number; classGoal?: string | null }) =>
+      be.rpc<null>('set_qiraat_profile', { p_student: studentId, p: { active: p.active, riwayat: p.riwayat, mode: p.mode, matn: p.matn ?? '', matn_daily_lines: p.matnDailyLines, class_goal: p.classGoal ?? '' } }),
     saveQiraatTest: (t: { id?: string; studentId: string; kind: 'farsh' | 'usul'; surah: number | null; bab: string | null; title: string; riwayat: string[]; scheduledOn: string | null; result: string | null; mistakes: QiraatMistake[]; note: string; takenOn?: string | null }) =>
       be.rpc<string>('save_qiraat_test', { p: { id: t.id ?? '', student_id: t.studentId, kind: t.kind, surah: t.surah, bab: t.bab, title: t.title, riwayat: t.riwayat, scheduled_on: t.scheduledOn ?? '', result: t.result ?? '', mistakes: t.mistakes, note: t.note, taken_on: t.takenOn ?? '' } }),
     removeQiraatTest: (id: string) => be.remove('qiraat_tests', [{ op: 'eq', col: 'id', value: id }]),
@@ -188,6 +188,8 @@ export function api(be: Backend) {
       if (!n) await be.insert('revision_checkins', { org_id: orgId, student_id: p.studentId, week_start: p.weekStart, slot: p.slot, ...patch });
     },
     classmates: () => be.rpc<Array<{ student_id: string; name: string; class_name: string }>>('classmates', {}),
+    setRevisionStart: (studentId: string, page: number | null) => be.rpc<null>('set_revision_start', { p_student: studentId, p_page: page }),
+    checkSessions: (ids: string[], status: 'ok' | 'redo', note?: string) => be.rpc<number>('check_sessions', { p_ids: ids, p_status: status, p_note: note ?? null }),
     ackRules: (studentId: string) => be.update('students', { rules_ack_at: new Date().toISOString() }, [{ op: 'eq', col: 'id', value: studentId }]),
     setExtraRoles: (orgId: string, userId: string, roles: Role[]) => be.update('organization_members', { extra_roles: roles }, [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'user_id', value: userId }]),
     savePushSubscription: async (sub: { endpoint: string; p256dh: string; auth: string; userAgent: string }) => {
@@ -274,7 +276,7 @@ export function api(be: Backend) {
     regenerateCodes: (orgId: string) => be.rpc<null>('regenerate_codes', { org: orgId }),
     createStudent: (p: { orgId: string; forSelf: boolean; name: string; ageGroup: string; direction: string; dailyNewAyahs: number; goal: string; guardianName: string; guardianEmail: string; notify: boolean; memorized: Range[] }) =>
       be.rpc<string>('create_student', { p: { org_id: p.orgId, for_self: p.forSelf, name: p.name, age_group: p.ageGroup, direction: p.direction, daily_new_ayahs: p.dailyNewAyahs, goal: p.goal, guardian_name: p.guardianName, guardian_email: p.guardianEmail, notify: p.notify, memorized: p.memorized.map(r => [r.start, r.end]) } }),
-    updateStudent: (id: string, patch: Partial<{ parent_code: string; old_pages: number | null; name: string; age_group: string; daily_new_ayahs: number; goal: string; guardian_name: string; guardian_email: string | null; notify: boolean; direction: string; archived_at: string | null }>) =>
+    updateStudent: (id: string, patch: Partial<{ new_pages: number | null; parent_code: string; old_pages: number | null; name: string; age_group: string; daily_new_ayahs: number; goal: string; guardian_name: string; guardian_email: string | null; notify: boolean; direction: string; archived_at: string | null }>) =>
       be.update('students', patch, [{ op: 'eq', col: 'id', value: id }]),
     recordSession: (p: { studentId: string; date: string; type: string; range: Range; errorsMajor: number; errorsMinor: number; errors: SessionError[]; scores: Record<string, number | null>; attendance: string; mode: string; teacherNote?: string; studentNote?: string; followUp?: boolean }) =>
       be.rpc<string>('record_session', { p: {

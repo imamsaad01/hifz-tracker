@@ -25,6 +25,8 @@ import { DailyRing, LevelBar, BadgeGrid } from '../../components/Motivation';
 import { AyahPlayer } from '../../components/AyahPlayer';
 import { AnnouncementBoard } from '../../components/Announcements';
 import { HalaqahChooser } from '../../components/HalaqahJoin';
+import { startTour } from '../../components/Tour';
+import { MyRevisionLog, RevisionStartModal, startLabel } from '../../components/RevisionSelf';
 import { QiraatStudentCard, ProfileModal, profileOf } from '../../components/Qiraat';
 import { riwayatSummary } from '../../lib/qiraat';
 import type { OrgData } from '../../app/useOrgData';
@@ -46,10 +48,11 @@ export function StudentApp({ tab }: { tab: string }) {
   const sd = useStudentData(me?.id ?? null);
   const [rec, setRec] = useState<SessionType | null>(null); const [edit, setEdit] = useState(false);
   const [justJoined, setJustJoined] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
   const ins = useMemo(() => me && data && sd.sessions ? insight(me, sd.sessions, data.revision.get(me.id) ?? [], data.assignments, data.attendance, org.settings, today) : null, [me, data, sd.sessions, org.settings, today]);
   if (error || sd.error) return <ErrorBox message={(error ?? sd.error)!} onRetry={reload} />;
   if (!data) return <Spinner />;
-  if (!me) return <Onboarding onDone={async () => { setJustJoined(true); await reload(); await refreshSession(); }} create={async d => { const id = await api.createStudent({ orgId: org.id, forSelf: true, ...d }); if (d.qiraat && id) await api.setQiraat(id, d.qiraat); }} name={user?.name ?? ''} />;
+  if (!me) return <Onboarding onDone={async () => { setJustJoined(true); await reload(); await refreshSession(); }} create={async d => { const id = await api.createStudent({ orgId: org.id, forSelf: true, ...d }); if (id && d.newPages) await api.updateStudent(id, { new_pages: d.newPages }); if (d.qiraat && id) await api.setQiraat(id, d.qiraat); }} name={user?.name ?? ''} />;
   if (!sd.sessions || !ins) return <Spinner />;
   const refresh = () => { reload(); sd.reload(); };
   const recent = recentRanges(sd.sessions, me.id, today, org.settings.revision.recentDays);
@@ -74,13 +77,13 @@ export function StudentApp({ tab }: { tab: string }) {
   return <>
     {tab === 'home' && <>
       <PageTitle title={`Assalamu alaikum, ${me.name.split(' ')[0]}`} sub={<>{niceDate(today)} · {hijriDate(today)}</>} />
-      <div className="mb-5"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
+      <div className="mb-5" data-tour="halaqah"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
       {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
-      <div className="mb-5"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} fresh /></div>
+      <div className="mb-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} fresh /></div>
+      <div className="mb-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
       {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
-      <div className="mb-5"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
-      <div className="mb-5 empty:hidden"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
-      <div className="mb-5"><NotifyToggle /></div>
+      <div className="mb-5" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
+      <div className="mb-5 empty:hidden" data-tour="notify"><NotifyToggle /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
         <Card className="p-5"><h2 className="mb-3 text-lg font-bold">Today</h2><DailyRing parts={ring} /></Card>
@@ -92,7 +95,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5"><RevisionFormCard student={me} forms={data.revisionForms} onChanged={reload} /></div>
       <div className="mb-5"><StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} /></div>
       <h2 className="mb-3 text-lg font-bold">Today’s plan</h2>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3" data-tour="today-plan">
         <PlanTile icon={<BookOpen size={20} />} title="New" body={ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'} note="Learn it, then read it to your teacher. Your teacher records New."
           action={ins.nextNew ? <AyahPlayer range={ins.nextNew} /> : null} />
         <PlanTile icon={<Repeat size={20} />} title="Recent" body={recent.length ? recent.map(formatRange).join(' · ') : 'Nothing new in the last week'} note={`Everything you learned in the last ${org.settings.revision.recentDays} days. Read it every day.`} action={recent.length ? <Button kind="secondary" onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button> : null} />
@@ -100,6 +103,8 @@ export function StudentApp({ tab }: { tab: string }) {
           note={!ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first.' : `${ins.revision.perDay} pages each revision day, in turn.`}
           action={ins.revision.isRevisionDay && ins.revision.today.length ? <Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button> : null} />
       </div>
+      <div className="mt-5" data-tour="revision-log"><MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /></div>
+      {startOpen && <RevisionStartModal student={me} onClose={() => setStartOpen(false)} onSaved={refresh} />}
       <Card className="mt-5"><CardHead title="Assignments" sub="Mark them done; your teacher reviews them" /><AssignmentList items={ins.openAssignments.concat(data.assignments.filter(a => a.studentId === me.id && a.status === 'completed'))} asStudent onChanged={reload} /></Card>
       <div className="mt-5"><Leaderboard limit={5} compact /></div>
       {ins.lastSession && <Card className="mt-5 p-5"><p className="text-xs font-bold uppercase text-ink-faint">Last session · {niceDate(ins.lastSession.date)}</p><p className="mt-1">{formatRange(ins.lastSession.range)} · {ins.lastSession.errorsMajor + ins.lastSession.errorsMinor} errors</p>{ins.lastSession.teacherNote && <p className="mt-1 text-pine-800"><b>Teacher:</b> {ins.lastSession.teacherNote}</p>}</Card>}
@@ -130,6 +135,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <Card className="mt-4 flex items-start gap-3 p-5"><KeyRound size={18} className="mt-1 text-ink-faint" /><p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span><br /><span className="text-sm text-ink-faint">Give this to a parent. They create an account and enter it to follow your progress. They cannot change anything.</span></p></Card>
       <div className="mt-4"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>
       <div className="mt-4"><NotifyToggle /></div>
+      <Button kind="secondary" className="mt-4" onClick={startTour}><Sparkles size={16} />Take the app tour again</Button>
       <p className="mt-4 text-sm text-ink-faint">Only your teachers, you and linked parents can see your records.</p>
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
     </>}

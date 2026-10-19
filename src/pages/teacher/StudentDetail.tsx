@@ -1,4 +1,6 @@
+import { sizeValue, parseSize, SIZE_OPTIONS } from '../../components/StudentForm';
 import { QiraatTeacherPanel } from '../../components/Qiraat';
+import { RevisionCheckCard, RevisionStartModal, startLabel } from '../../components/RevisionSelf';
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Plus, ClipboardList, Target, Pencil, Archive, KeyRound, RefreshCw, Award } from 'lucide-react';
 import { useOrg } from '../../app/context';
@@ -34,7 +36,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
   const toast = useToast();
   const [tab, setTab] = useState<Tab>((['overview', 'history', 'work', 'messages', 'report'].includes(initialTab ?? '') ? initialTab : 'overview') as Tab);
   const [reportKind, setReportKind] = useState<'month' | 'term'>('month');
-  const [rec, setRec] = useState(false); const [assign, setAssign] = useState(false); const [goal, setGoal] = useState(false); const [edit, setEdit] = useState(false);
+  const [rec, setRec] = useState(false); const [assign, setAssign] = useState(false); const [goal, setGoal] = useState(false); const [edit, setEdit] = useState(false); const [startOpen, setStartOpen] = useState(false);
   const [archive, setArchive] = useState(false); const [del, setDel] = useState<Session | null>(null);
   const allIns = useMemo(() => data ? data.students.map(s => insight(s, data.sessions, data.revision.get(s.id) ?? [], data.assignments, data.attendance, org.settings, today)) : [], [data, org.settings, today]);
   const st = data?.students.find(s => s.id === id);
@@ -59,6 +61,9 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
     {tab === 'overview' && <div className="flex flex-col gap-5">
       <Card><CardHead title="Adab & effort today" sub="Tap to give a point; tap again to undo" /><AdabTaps studentId={st.id} points={data.behaviour} onChanged={reload} /></Card>
       <PlanCard plan={plan} you={false} />
+      <div className="empty:hidden"><RevisionCheckCard data={data} onChanged={reload} studentId={st.id} /></div>
+      <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Old revision starts from:</b> {startLabel(st) ?? 'default order'}</span><Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => setStartOpen(true)}>Change</Button></Card>
+      {startOpen && <RevisionStartModal student={st} onClose={() => setStartOpen(false)} onSaved={reload} />}
       <QiraatTeacherPanel student={st} data={data} onChanged={reload} />
       <StandingCard studentId={st.id} you={false} revisionMissed={missedLastWeek(st.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
       <RevisionFormCard student={st} forms={data.revisionForms} readOnly onChanged={reload} />
@@ -103,18 +108,17 @@ function GoalForm({ studentId, onClose, onSaved }: { studentId: string; onClose:
 }
 
 const AGES = ['Under 7', '7–9', '10–12', '13–15', '16–18', 'Adult'];
-const DAILY = [1, 2, 3, 4, 5, 7, 10, 15, 20];
 export function EditStudent({ st, onClose, onSaved, asStudent, classes = [] }: { st: Student; onClose: () => void; onSaved: () => void; asStudent?: boolean; classes?: ClassRow[] }) {
   const { api, org } = useOrg(); const toast = useToast();
   const [oldPages, setOldPages] = useState<number>(st.oldPages ?? 0);
   const curClass = classes.find(c => c.studentIds.includes(st.id))?.id ?? '';
   const [halaqah, setHalaqah] = useState(curClass);
-  const [name, setName] = useState(st.name); const [age, setAge] = useState(st.ageGroup ?? '10–12'); const [daily, setDaily] = useState(st.dailyNewAyahs);
+  const [name, setName] = useState(st.name); const [age, setAge] = useState(st.ageGroup ?? '10–12'); const [size, setSize] = useState(sizeValue(st.dailyNewAyahs, st.newPages));
   const [dir, setDir] = useState(st.direction); const [goal, setGoal] = useState(st.goal ?? '');
   const [gName, setGName] = useState(st.guardianName ?? ''); const [gEmail, setGEmail] = useState(st.guardianEmail ?? ''); const [notify, setNotify] = useState(st.notify);
   const [busy, setBusy] = useState(false);
   const ok = name.trim().length >= 2 && (!gEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gEmail));
-  return <Modal open onClose={onClose} title={asStudent ? 'My plan' : `Edit ${st.name}`} footer={<div className="flex justify-end gap-2"><Button kind="secondary" onClick={onClose}>Cancel</Button><Button busy={busy} disabled={!ok} onClick={async () => { setBusy(true); try { await api.updateStudent(st.id, { name: name.trim(), age_group: age, daily_new_ayahs: daily, direction: dir, goal: goal.trim(), guardian_name: gName.trim(), guardian_email: gEmail.trim() || null, notify: notify && !!gEmail.trim(), ...(asStudent ? {} : { old_pages: oldPages || null }) });
+  return <Modal open onClose={onClose} title={asStudent ? 'My plan' : `Edit ${st.name}`} footer={<div className="flex justify-end gap-2"><Button kind="secondary" onClick={onClose}>Cancel</Button><Button busy={busy} disabled={!ok} onClick={async () => { setBusy(true); try { await api.updateStudent(st.id, { name: name.trim(), age_group: age, daily_new_ayahs: parseSize(size).ayahs ?? st.dailyNewAyahs, new_pages: parseSize(size).pages, direction: dir, goal: goal.trim(), guardian_name: gName.trim(), guardian_email: gEmail.trim() || null, notify: notify && !!gEmail.trim(), ...(asStudent ? {} : { old_pages: oldPages || null }) });
         if (!asStudent && halaqah !== curClass) {
           const from = classes.find(c => c.id === curClass); if (from) await api.setClassStudents(org.id, from.id, from.studentIds.filter(x => x !== st.id), from.studentIds);
           const to = classes.find(c => c.id === halaqah); if (to) await api.setClassStudents(org.id, to.id, [...to.studentIds, st.id], to.studentIds);
@@ -123,7 +127,7 @@ export function EditStudent({ st, onClose, onSaved, asStudent, classes = [] }: {
       <Field label="Name">{id => <input id={id} className={inputCls} value={name} maxLength={80} onChange={e => setName(e.target.value)} />}</Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Age">{id => <Select id={id} value={age} onChange={setAge} options={AGES.map(a => [a, a])} />}</Field>
-        <Field label="New ayahs a day">{id => <Select id={id} value={daily} onChange={v => setDaily(Number(v))} options={DAILY.map(d => [d, `${d} ayah${d > 1 ? 's' : ''}`])} />}</Field>
+        <Field label="New lesson size">{id => <Select id={id} value={size} onChange={setSize} options={SIZE_OPTIONS} />}</Field>
       </div>
       {!asStudent && classes.length > 0 && <Field label="Halaqah">{id => <Select id={id} value={halaqah} onChange={setHalaqah} options={[['', 'Not in a halaqah'], ...classes.map(c => [c.id, c.name] as [string, string])]} />}</Field>}
       {!asStudent && <Field label="Old revision per revision day" hint="Automatic follows the program setting and how much is memorised.">{id => <Select id={id} value={oldPages} onChange={v => setOldPages(Number(v))} options={[[0, 'Automatic'], ...[1, 2, 3, 4, 5, 6, 8, 10, 15, 20].map(n => [n, `${n} page${n > 1 ? 's' : ''}`] as [number, string])]} />}</Field>}

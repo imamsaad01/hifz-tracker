@@ -39,7 +39,9 @@ export function nextRevisionDay(days: number[], today: string, includeToday = fa
   return null;
 }
 
-export function plan(items: RevisionItem[], settings: OrgSettings['revision'], today: string, memorisedPages = items.length, studentOverride?: number | null): Plan {
+/** Where the student chose to start their Old revision: pages not revised since `on` go in page order from `page`, wrapping round. */
+export interface CycleStart { page: number; on: string }
+export function plan(items: RevisionItem[], settings: OrgSettings['revision'], today: string, memorisedPages = items.length, studentOverride?: number | null, start?: CycleStart | null): Plan {
   const days = settings.days?.length ? settings.days : [0, 1, 2, 3, 4, 5, 6];
   const isDay = days.includes(weekday(today));
   const perDay = pagesPerDay(settings, memorisedPages, studentOverride);
@@ -49,9 +51,16 @@ export function plan(items: RevisionItem[], settings: OrgSettings['revision'], t
   if (settings.oldPlan === 'cycle') {
     // revised today already? those pages count toward today's set
     const doneToday = items.filter(i => i.lastReviewedOn === today);
+    const rot = (p: number) => (start ? (p - start.page + 1000) % 1000 : p);
+    const fresh = (i: RevisionItem) => !!start && (!i.lastReviewedOn || i.lastReviewedOn < start.on);
     const order = items.filter(i => i.lastReviewedOn !== today).sort((a, b) => {
       const wa = a.lapses >= 2 ? 0 : 1, wb = b.lapses >= 2 ? 0 : 1;
       if (wa !== wb) return wa - wb;
+      if (start) {                       // the student's chosen starting point: go through from there, in page order
+        const fa = fresh(a), fb = fresh(b);
+        if (fa !== fb) return fa ? -1 : 1;
+        if (fa && fb) return rot(a.page) - rot(b.page);
+      }
       if (!a.lastReviewedOn !== !b.lastReviewedOn) return a.lastReviewedOn ? 1 : -1;
       return (a.lastReviewedOn ?? '').localeCompare(b.lastReviewedOn ?? '') || a.page - b.page;
     });

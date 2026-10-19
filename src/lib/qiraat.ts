@@ -67,3 +67,17 @@ export const resultLabel = (r: string | null) => RESULTS.find(x => x[0] === r)?.
 /** khatmah tracks: one for jamʿ, else one per riwayah */
 export const tracksOf = (p: { riwayat: string[]; mode: 'ifrad' | 'jam' }) => (p.mode === 'jam' ? ['jam'] : p.riwayat);
 export const trackLabel = (t: string, p: { riwayat: string[] }) => (t === 'jam' ? `Jamʿ: ${riwayatSummary(p.riwayat)}` : riwayahLabel(t));
+
+/** How much a qira'at student aims to read to the teacher each class (pages ≈ Madani muṣḥaf) */
+export const CLASS_GOALS: Array<{ key: string; label: string; pages: number }> = [
+  { key: 'half_page', label: '½ page', pages: 0.5 }, { key: 'page', label: '1 page', pages: 1 }, { key: '2_pages', label: '2 pages', pages: 2 },
+  { key: 'quarter_hizb', label: '1 rubʿ (¼ ḥizb)', pages: 2.5 }, { key: 'half_hizb', label: '½ ḥizb', pages: 5 }, { key: 'hizb', label: '1 ḥizb', pages: 10 }, { key: 'juz', label: '1 juzʾ', pages: 20 },
+];
+export const classGoalOf = (k: string | null | undefined) => CLASS_GOALS.find(g => g.key === k) ?? null;
+/** "about 9 months" for one khatmah at this goal and number of classes a week */
+export function khatmahPace(goalKey: string | null | undefined, classesPerWeek: number, surahsDone = 0): string | null {
+  const g = classGoalOf(goalKey); if (!g || !classesPerWeek) return null;
+  const pagesLeft = 604 * (1 - surahsDone / 114);
+  const weeks = Math.ceil(pagesLeft / g.pages / classesPerWeek);
+  return weeks <= 10 ? `about ${weeks} week${weeks > 1 ? 's' : ''}` : weeks < 104 ? `about ${Math.round(weeks / 4.35)} months` : `about ${(weeks / 52).toFixed(1).replace(/\.0$/, '')} years`;
+}

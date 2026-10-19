@@ -8,6 +8,7 @@ import { fmtTime } from '../../lib/schedule';
 const TIMES: Array<[string, string]> = ['06:00', '06:30', '07:00', '07:30', '08:00', '09:00', '12:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'].map(t => [t, fmtTime(t)]);
 import { DEFAULT_RULES } from '../../components/StudentAttendance';
 import { OwnerTools } from './OwnerTools';
+import { startTour } from '../../components/Tour';
 import { Crown } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
@@ -36,7 +37,7 @@ export function More() {
   const visible = SECTIONS.filter(s => !s[3] || admin);
   const sec = visible.find(s => s[0] === route[1])?.[0] ?? 'reports';
   return <>
-    <PageTitle title="More" sub={org.name} />
+    <PageTitle title="More" sub={org.name} action={<Button kind="secondary" onClick={startTour}>Take the app tour</Button>} />
     <nav aria-label="More sections" className="no-print mb-5 flex gap-1 overflow-x-auto pb-1">{visible.map(([k, l, I]) => <a key={k} href={href('more', k)} aria-current={sec === k ? 'page' : undefined} className={cx('inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold', sec === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}><I size={15} />{l}</a>)}</nav>
     {sec === 'reports' && <Reports />}
     {sec === 'applications' && <Applications />}

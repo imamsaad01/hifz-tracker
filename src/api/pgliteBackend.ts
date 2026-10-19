@@ -12,6 +12,7 @@ import m8 from '../../supabase/migrations/0008_attendance_revision_push.sql?raw'
 import m11 from '../../supabase/migrations/0011_shared_devices.sql?raw';
 import m12 from '../../supabase/migrations/0012_halaqah_requests.sql?raw';
 import m13 from '../../supabase/migrations/0013_qiraat.sql?raw';
+import m14 from '../../supabase/migrations/0014_self_revision_goals.sql?raw';
 import quran from '../../supabase/seed_quran.sql?raw';
 import { ApiError, type Backend, type Filter, type Query, type AuthUser } from './backend';
 import { PERSONAS, seedPreview } from './previewSeed';
@@ -48,10 +49,10 @@ export async function pgliteBackend(): Promise<Backend> {
   // Hosts that will not serve a .data file get the Postgres file bundle under a .wasm name (copied at build time; see vite.config.ts).
   const fsBundle = typeof document === 'undefined' ? undefined : await fetch(new URL('./assets/pglite-fs.wasm', document.baseURI)).then(r => (r.ok ? r.blob() : undefined)).catch(() => undefined);
   const opts = fsBundle ? { fsBundle } : {};
-  try { db = new PGlite('idb://hifz-tracker-preview-v8', opts); await db.waitReady; } catch { db = new PGlite(opts); await db.waitReady; }
+  try { db = new PGlite('idb://hifz-tracker-preview-v9', opts); await db.waitReady; } catch { db = new PGlite(opts); await db.waitReady; }
   const ready = await db.query<{ t: string | null }>(`select to_regclass('public.students')::text as t`);
   if (!ready.rows[0]?.t) {
-    await db.exec(AUTH_STUB); await db.exec(m1); await db.exec(m2); await db.exec(m3); await db.exec(m4); await db.exec(m5); await db.exec(m6); await db.exec(m7); await db.exec(m8); await db.exec(m11); await db.exec(m12); await db.exec(m13); await db.exec(quran);
+    await db.exec(AUTH_STUB); await db.exec(m1); await db.exec(m2); await db.exec(m3); await db.exec(m4); await db.exec(m5); await db.exec(m6); await db.exec(m7); await db.exec(m8); await db.exec(m11); await db.exec(m12); await db.exec(m13); await db.exec(m14); await db.exec(quran);
     await seedPreview(db);
   }
   let current: string | null = store.get();
@@ -73,7 +74,7 @@ export async function pgliteBackend(): Promise<Backend> {
     async signOut() { current = null; store.set(null); emit(); },
     async resetPreview() {
       await db.exec(`drop schema public cascade; create schema public; grant usage on schema public to anon, authenticated; drop schema auth cascade;`);
-      await db.exec(AUTH_STUB); await db.exec(m1); await db.exec(m2); await db.exec(m3); await db.exec(m4); await db.exec(m5); await db.exec(m6); await db.exec(m7); await db.exec(m8); await db.exec(m11); await db.exec(m12); await db.exec(m13); await db.exec(quran); await seedPreview(db);
+      await db.exec(AUTH_STUB); await db.exec(m1); await db.exec(m2); await db.exec(m3); await db.exec(m4); await db.exec(m5); await db.exec(m6); await db.exec(m7); await db.exec(m8); await db.exec(m11); await db.exec(m12); await db.exec(m13); await db.exec(m14); await db.exec(quran); await seedPreview(db);
     },
     async select<T>(q: Query) {
       const params: unknown[] = [];

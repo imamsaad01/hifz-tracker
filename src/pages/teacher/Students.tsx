@@ -28,6 +28,7 @@ export function Students() {
   const add = async (d: StudentDraft) => {
     try {
       const id = await api.createStudent({ orgId: org.id, forSelf: false, ...d });
+      if (id && d.newPages) await api.updateStudent(id, { new_pages: d.newPages });
       if (d.qiraat && id) await api.setQiraat(id, d.qiraat);
       toast(`${d.name} added.`); await reload(); go('students', id);
     } catch (e) { throw new Error(friendly(e)); }

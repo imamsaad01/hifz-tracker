@@ -11,7 +11,7 @@ export function ClassBadge({ title, teacher }: { title: string; teacher: string 
 export function PlanCard({ plan, you = true }: { plan: StudentPlan; you?: boolean }) {
   const days = plan.classDays.length === 7 ? 'every day' : plan.classDays.join(', ');
   const rows = [
-    { icon: <BookOpen size={18} />, title: 'New', text: `${plan.newPerDay} ayah${plan.newPerDay > 1 ? 's' : ''} each lesson`, sub: `Lesson days: ${days}` },
+    { icon: <BookOpen size={18} />, title: 'New', text: `${plan.newText} each lesson`, sub: `Lesson days: ${days}` },
     { icon: <Repeat size={18} />, title: 'Recent', text: `Everything learned in the last ${plan.recentDays} days`, sub: 'Read it every day so new lessons settle' },
     { icon: <RotateCcw size={18} />, title: 'Old', text: plan.oldPerDay ? `${plan.oldPerDay} page${plan.oldPerDay > 1 ? 's' : ''} on ${days}` : 'Starts once a full page is memorised', sub: plan.cycleWeeks ? `${you ? 'You go' : 'Goes'} through everything memorised about every ${plan.cycleWeeks} week${plan.cycleWeeks > 1 ? 's' : ''}` : 'Weak pages come back sooner' },
   ];

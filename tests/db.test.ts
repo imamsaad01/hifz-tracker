@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -415,5 +415,25 @@ describe("qira'at", () => {
     await as(null, `select public.qiraat_reminders()`);
     expect((await one<{ body: string }>(null, `select body from public.notification_queue where user_id = $1 and title = 'Today''s matn lines'`, [U.student]))!.body).toContain('lines 11–13');
     expect((await one<{ body: string }>(null, `select body from public.notification_queue where user_id = $1 and title = 'Revise your weak areas'`, [U.student]))!.body).toContain('Farsh: Al-Baqarah');
+  });
+});
+
+describe('self-logged revision', () => {
+  it('student sets their revision start; teacher checks or sends back; others cannot', async () => {
+    await as(U.student, `select public.set_revision_start($1, 582)`, [studentS]);
+    expect((await one<{ revision_start_page: number }>(U.teacher, `select revision_start_page from public.students where id = $1`, [studentS]))!.revision_start_page).toBe(582);
+    await rejects(U.otherStudent, `select public.set_revision_start($1, 1)`, [studentS]);
+    const sid = (await rec(U.student, { student_id: studentS, date: new Date().toISOString().slice(0, 10), type: 'old', start_ayah_id: 6200, end_ayah_id: 6210, errors_major: 0, errors_minor: 0 }))!.id;
+    await rejects(U.student, `select public.check_sessions(array[$1]::uuid[], 'ok')`, [sid]);
+    await as(U.teacher, `select public.check_sessions(array[$1]::uuid[], 'redo', 'Again with your partner')`, [sid]);
+    const r = (await one<{ check_status: string; check_note: string }>(U.student, `select check_status, check_note from public.sessions where id = $1`, [sid]))!;
+    expect(r.check_status).toBe('redo'); expect(r.check_note).toBe('Again with your partner');
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title like 'Please redo%'`, [U.student])).toHaveLength(1);
+  });
+  it('lesson size in pages and qira\'at class goal are saved', async () => {
+    await as(U.student, `update public.students set new_pages = 0.5 where id = $1`, [studentS]);
+    await rejects(U.student, `update public.students set new_pages = 7 where id = $1`, [studentS]);
+    await as(U.student, `select public.set_qiraat_profile($1, $2::jsonb)`, [studentS, JSON.stringify({ riwayat: ['asim.hafs'], class_goal: 'quarter_hizb' })]);
+    expect((await one<{ class_goal: string }>(U.teacher, `select class_goal from public.qiraat_profiles where student_id = $1`, [studentS]))!.class_goal).toBe('quarter_hizb');
   });
 });
