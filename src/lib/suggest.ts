@@ -5,15 +5,24 @@ import type { Direction } from './types';
 
 const isIn = (u: Range[], id: number) => u.some(r => r.start <= id && id <= r.end);
 /** First ayah not yet memorised, walking surah by surah in the student's direction (ayahs always go forwards inside a surah). */
-export function nextNewStart(memorised: Range[], direction: Direction): number | null {
+export interface LessonPath { from?: number | null; skipped?: number[] }
+/** Order surahs are taken in: from the student's starting surah onwards in their direction, then anything left behind,
+ *  and surahs they chose to skip only at the very end. */
+export function surahOrder(direction: Direction, path: LessonPath = {}): number[] {
+  const all = direction === 'back' ? Array.from({ length: 114 }, (_, i) => 114 - i) : Array.from({ length: 114 }, (_, i) => i + 1);
+  const skip = new Set(path.skipped ?? []);
+  const i = path.from ? Math.max(0, all.indexOf(path.from)) : 0;
+  const main = [...all.slice(i), ...all.slice(0, i)].filter(s => !skip.has(s));
+  return [...main, ...all.filter(s => skip.has(s))];
+}
+export function nextNewStart(memorised: Range[], direction: Direction, path: LessonPath = {}): number | null {
   const u = unionRanges(memorised);
-  const order = direction === 'back' ? Array.from({ length: 114 }, (_, i) => 114 - i) : Array.from({ length: 114 }, (_, i) => i + 1);
-  for (const s of order) { const r = surahRange(s); for (let id = r.start; id <= r.end; id++) if (!isIn(u, id)) return id; }
+  for (const s of surahOrder(direction, path)) { const r = surahRange(s); for (let id = r.start; id <= r.end; id++) if (!isIn(u, id)) return id; }
   return null;
 }
 /** Suggested range: from the next ayah, `daily` ayahs long, never past the end of that surah. */
-export function suggestNew(memorised: Range[], direction: Direction, daily: number, pages?: number | null): Range | null {
-  const start = nextNewStart(memorised, direction);
+export function suggestNew(memorised: Range[], direction: Direction, daily: number, pages?: number | null, path: LessonPath = {}): Range | null {
+  const start = nextNewStart(memorised, direction, path);
   if (start === null) return null;
   const { surah, ayah } = fromAyahId(start);
   const surahEnd = start + (ayahCount(surah) - ayah);

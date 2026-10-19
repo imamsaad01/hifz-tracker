@@ -8,7 +8,7 @@ import { href } from '../../app/router';
 import { insight, recentRanges } from '../../lib/insights';
 import { groupPages } from '../../lib/revision';
 import { niceDate, hijriDate, addDays } from '../../lib/dates';
-import { formatRange } from '../../quran';
+import { formatRange, surahNameEn } from '../../quran';
 import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
@@ -26,7 +26,8 @@ import { AyahPlayer } from '../../components/AyahPlayer';
 import { AnnouncementBoard } from '../../components/Announcements';
 import { HalaqahChooser } from '../../components/HalaqahJoin';
 import { startTour } from '../../components/Tour';
-import { MyRevisionLog, RevisionStartModal, startLabel } from '../../components/RevisionSelf';
+import { MemorisedModal } from '../../components/MemorisedPicker';
+import { MyRevisionLog, RevisionStartModal, startLabel, SubmitLessonModal } from '../../components/RevisionSelf';
 import { QiraatStudentCard, ProfileModal, profileOf } from '../../components/Qiraat';
 import { riwayatSummary } from '../../lib/qiraat';
 import type { OrgData } from '../../app/useOrgData';
@@ -48,11 +49,11 @@ export function StudentApp({ tab }: { tab: string }) {
   const sd = useStudentData(me?.id ?? null);
   const [rec, setRec] = useState<SessionType | null>(null); const [edit, setEdit] = useState(false);
   const [justJoined, setJustJoined] = useState(false);
-  const [startOpen, setStartOpen] = useState(false);
+  const [startOpen, setStartOpen] = useState(false); const [submitNew, setSubmitNew] = useState(false); const [memOpen, setMemOpen] = useState(false);
   const ins = useMemo(() => me && data && sd.sessions ? insight(me, sd.sessions, data.revision.get(me.id) ?? [], data.assignments, data.attendance, org.settings, today) : null, [me, data, sd.sessions, org.settings, today]);
   if (error || sd.error) return <ErrorBox message={(error ?? sd.error)!} onRetry={reload} />;
   if (!data) return <Spinner />;
-  if (!me) return <Onboarding onDone={async () => { setJustJoined(true); await reload(); await refreshSession(); }} create={async d => { const id = await api.createStudent({ orgId: org.id, forSelf: true, ...d }); if (id && d.newPages) await api.updateStudent(id, { new_pages: d.newPages }); if (d.qiraat && id) await api.setQiraat(id, d.qiraat); }} name={user?.name ?? ''} />;
+  if (!me) return <Onboarding onDone={async () => { setJustJoined(true); await reload(); await refreshSession(); }} create={async d => { const id = await api.createStudent({ orgId: org.id, forSelf: true, ...d }); if (id && d.newPages) await api.updateStudent(id, { new_pages: d.newPages }); if (id && (d.nextFromSurah || d.skippedSurahs.length)) await api.setMemorisedSurahs(id, { nextFrom: d.nextFromSurah, skipped: d.skippedSurahs }); if (d.qiraat && id) await api.setQiraat(id, d.qiraat); }} name={user?.name ?? ''} />;
   if (!sd.sessions || !ins) return <Spinner />;
   const refresh = () => { reload(); sd.reload(); };
   const recent = recentRanges(sd.sessions, me.id, today, org.settings.revision.recentDays);
@@ -65,8 +66,9 @@ export function StudentApp({ tab }: { tab: string }) {
   const pts = points(sd.sessions, beh); const lvl = level(pts.total);
   const sk = streakDetail(sd.sessions.map(s => s.date), today, org.settings.motivation.freezePerWeek);
   const todays = sd.sessions.filter(s => s.date === today);
+  const pendingNew = sd.sessions.find(s => s.type === 'new' && (s.selfLogged || s.recordedBy === 'student') && !s.checkStatus) ?? null;
   const ring = [
-    { label: 'New', due: !!ins.nextNew && ins.revision.isRevisionDay, done: todays.some(s => s.type === 'new'), color: '#047857' },
+    { label: 'New', due: !!ins.nextNew && ins.revision.isRevisionDay, done: todays.some(s => s.type === 'new' && (!s.selfLogged || s.checkStatus === 'ok')), color: '#047857' },
     { label: 'Recent', due: recent.length > 0, done: todays.some(s => s.type === 'recent'), color: '#B8893B' },
     { label: 'Old', due: ins.revision.isRevisionDay && ins.revision.today.length > 0, done: todays.some(s => s.type === 'old' || s.type === 'juz_revision'), color: '#0369A1' },
   ];
@@ -96,8 +98,9 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5"><StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} /></div>
       <h2 className="mb-3 text-lg font-bold">Today’s plan</h2>
       <div className="grid gap-4 lg:grid-cols-3" data-tour="today-plan">
-        <PlanTile icon={<BookOpen size={20} />} title="New" body={ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'} note="Learn it, then read it to your teacher. Your teacher records New."
-          action={ins.nextNew ? <AyahPlayer range={ins.nextNew} /> : null} />
+        <PlanTile icon={<BookOpen size={20} />} title="New" body={pendingNew ? formatRange(pendingNew.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'}
+          note={pendingNew ? 'Submitted. Waiting for your teacher to sign it off.' : 'Learn it, then tap “I memorised it”. It counts once your teacher signs it off.'}
+          action={ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><AyahPlayer range={ins.nextNew} /></div> : null} />
         <PlanTile icon={<Repeat size={20} />} title="Recent" body={recent.length ? recent.map(formatRange).join(' · ') : 'Nothing new in the last week'} note={`Everything you learned in the last ${org.settings.revision.recentDays} days. Read it every day.`} action={recent.length ? <Button kind="secondary" onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button> : null} />
         <PlanTile icon={<RotateCcw size={20} />} title="Old" body={!ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today'}
           note={!ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first.' : `${ins.revision.perDay} pages each revision day, in turn.`}
@@ -125,6 +128,8 @@ export function StudentApp({ tab }: { tab: string }) {
       <PageTitle title="My plan" action={<Button kind="secondary" onClick={() => setEdit(true)}><Pencil size={16} />Change</Button>} />
       <div className="mb-4"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
       <PlanCard plan={plan} />
+      <Card className="mt-4 flex flex-wrap items-center gap-3 p-5"><span className="min-w-0 flex-1"><b className="block">What I’ve memorised</b><span className="text-sm text-ink-soft">Next lesson: {ins.nextNew ? formatRange(ins.nextNew) : 'all memorised'}{me.skippedSurahs?.length ? ` · skipped for later: ${me.skippedSurahs.map(n => surahNameEn(n)).join(', ')}` : ''}</span></span><Button kind="secondary" onClick={() => setMemOpen(true)}>Change</Button></Card>
+      {memOpen && <MemorisedModal student={me} onClose={() => setMemOpen(false)} onSaved={refresh} />}
       <div className="mt-4"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>
       <div className="mt-4"><QiraatMine student={me} data={data} onChanged={reload} /></div>
       <Card className="mt-4 flex flex-col gap-2 p-5 text-[15px]">
@@ -139,6 +144,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <p className="mt-4 text-sm text-ink-faint">Only your teachers, you and linked parents can see your records.</p>
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
     </>}
+    {submitNew && ins?.nextNew && me && <SubmitLessonModal student={me} suggested={ins.nextNew} onClose={() => setSubmitNew(false)} onSaved={refresh} />}
     {rec && <RecordSheet open onClose={() => setRec(null)} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} onSaved={refresh} />}
   </>;
 }

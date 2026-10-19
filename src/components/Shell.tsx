@@ -6,7 +6,7 @@ import { outbox, useOutboxCount } from '../app/outbox';
 import { Brand } from './Brand';
 import { InstallApp } from './InstallApp';
 import { InboxBell } from './Inbox';
-import { PullToRefresh } from './PullToRefresh';
+import { PullToRefresh, AutoRefresh } from './PullToRefresh';
 import { Tour } from './Tour';
 import { cx, Select, useToast } from './ui';
 
@@ -21,6 +21,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
   useEffect(() => { const on = () => { setOnline(true); flush(); }; const off = () => setOnline(false); window.addEventListener('online', on); window.addEventListener('offline', off); if (pending) flush(); return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); }; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <div className="flex min-h-full flex-col lg:flex-row">
     <PullToRefresh />
+    <AutoRefresh />
     <Tour />
     <aside className="no-print hidden w-64 shrink-0 flex-col gap-6 border-r border-line bg-white p-5 lg:flex">
       <Brand small />

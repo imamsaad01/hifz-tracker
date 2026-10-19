@@ -48,7 +48,7 @@ export function insight(st: Student, sessions: Session[], items: RevisionItem[],
   return {
     student: st, progress, streak: streak(dates, today, s.motivation?.freezePerWeek ?? 0), longest: Math.max(longestStreak(dates), streak(dates, today, s.motivation?.freezePerWeek ?? 0)), lastSession: last, daysSinceSession: daysSince,
     recordedToday: mine.some(x => x.date === today && x.recordedBy === 'teacher'), attendanceToday: todayAtt, revision: rev,
-    nextNew: suggestNew(st.memorized, st.direction, st.dailyNewAyahs, st.newPages), openAssignments: open, overdueAssignments: overdueA,
+    nextNew: suggestNew(st.memorized, st.direction, st.dailyNewAyahs, st.newPages, { from: st.nextFromSurah, skipped: st.skippedSurahs }), openAssignments: open, overdueAssignments: overdueA,
     avgAccuracy30: acc.length ? Math.round(acc.reduce((a, b) => a + b, 0) / acc.length) : null,
     avgOverall30: overall.length ? Math.round((overall.reduce((a, b) => a + b, 0) / overall.length) * 10) / 10 : null,
     attendanceRate30: att.length ? present / att.length : null,

@@ -120,6 +120,8 @@ export async function seedPreview(db: PGlite) {
   // student-logged revision waiting for the teacher's check; Amina starts her Old revision from An-Naba'
   await db.query(`update public.students set revision_start_page = 582, revision_start_on = $2, new_pages = 1 where id = $1`, [amina.id, addDays(today, -10)]);
   await db.query(`insert into public.sessions (org_id, student_id, date, type, start_ayah_id, end_ayah_id, recorded_by, errors_minor) values ($1, $2, $3, 'old', $4, $5, 'student', 1)`, [org, amina.id, addDays(today, -1), ayahId(80, 1), ayahId(81, 29)]);
+  // Ibrahim submitted today's new lesson for sign-off
+  await db.query(`insert into public.sessions (org_id, student_id, date, type, start_ayah_id, end_ayah_id, recorded_by, self_logged, student_note) values ($1, $2, $3, 'new', $4, $5, 'student', true, 'Ayah 5 is a bit weak')`, [org, ibrahim.id, today, ayahId(104, 1), ayahId(104, 5)]);
   // qira'at: Amina reads Nāfiʿ (Qālūn and Warsh) in jamʿ and memorises the Shāṭibiyyah
   await db.query(`insert into public.qiraat_profiles (student_id, org_id, riwayat, mode, matn, matn_daily_lines) values ($1, $2, '{nafi.qalun,nafi.warsh}', 'jam', 'shatibiyyah', 3)`, [amina.id, org]);
   await db.query(`insert into public.qiraat_tests (org_id, student_id, kind, surah, title, riwayat, scheduled_on) values ($1, $2, 'farsh', 2, 'Farsh: Al-Baqarah', '{nafi.qalun,nafi.warsh}', $3)`, [org, amina.id, addDays(today, 2)]);

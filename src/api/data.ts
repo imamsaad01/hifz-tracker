@@ -53,7 +53,7 @@ export function mergeSettings(s: Row | null | undefined): OrgSettings {
 }
 const toStudent = (r: Row, ranges: Range[] = []): Student => ({
   id: r.id, orgId: r.org_id, userId: r.user_id, name: r.name, ageGroup: r.age_group, direction: r.direction, dailyNewAyahs: r.daily_new_ayahs,
-  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null, oldPages: r.old_pages ?? null, rulesAckAt: r.rules_ack_at ? ts(r.rules_ack_at) : null, revisionStartPage: r.revision_start_page ?? null, newPages: r.new_pages === null || r.new_pages === undefined ? null : Number(r.new_pages), revisionStartOn: r.revision_start_on ? iso(r.revision_start_on) : null,
+  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null, oldPages: r.old_pages ?? null, rulesAckAt: r.rules_ack_at ? ts(r.rules_ack_at) : null, revisionStartPage: r.revision_start_page ?? null, newPages: r.new_pages === null || r.new_pages === undefined ? null : Number(r.new_pages), nextFromSurah: r.next_from_surah ?? null, skippedSurahs: pgArr(r.skipped_surahs).map(Number), revisionStartOn: r.revision_start_on ? iso(r.revision_start_on) : null,
 });
 /** Postgres arrays of enums can arrive as '{a,b}' text */
 const pgArr = (v: unknown): any[] => Array.isArray(v) ? v : typeof v === 'string' ? v.replace(/^\{|\}$/g, '').split(',').filter(Boolean) : [];
@@ -63,7 +63,7 @@ const toSession = (r: Row, errs: SessionError[] = []): Session => ({
   id: r.id, orgId: r.org_id, studentId: r.student_id, date: iso(r.date), type: r.type, range: { start: r.start_ayah_id, end: r.end_ayah_id },
   errorsMajor: r.errors_major, errorsMinor: r.errors_minor,
   scores: { tajweed: num(r.score_tajweed), fluency: num(r.score_fluency), accuracy: num(r.score_accuracy), tarteel: num(r.score_tarteel), overall: num(r.score_overall) },
-  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: ts(r.created_at), checkStatus: r.check_status ?? null, checkedAt: r.checked_at ? ts(r.checked_at) : null, checkNote: r.check_note ?? null,
+  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: ts(r.created_at), checkStatus: r.check_status ?? null, checkedAt: r.checked_at ? ts(r.checked_at) : null, checkNote: r.check_note ?? null, selfLogged: !!r.self_logged,
 });
 
 export function api(be: Backend) {
@@ -188,7 +188,13 @@ export function api(be: Backend) {
       if (!n) await be.insert('revision_checkins', { org_id: orgId, student_id: p.studentId, week_start: p.weekStart, slot: p.slot, ...patch });
     },
     classmates: () => be.rpc<Array<{ student_id: string; name: string; class_name: string }>>('classmates', {}),
+    setMemorisedSurahs: (studentId: string, p: { surahs?: number[]; partial?: { surah: number; ayahs: number } | null; skipped?: number[]; nextFrom?: number | null; direction?: 'back' | 'forward' }) =>
+      be.rpc<null>('set_memorised_surahs', { p_student: studentId, p: { ...(p.surahs ? { surahs: p.surahs } : {}), ...(p.partial ? { partial: p.partial } : {}), ...(p.skipped ? { skipped: p.skipped } : {}), ...(p.nextFrom !== undefined ? { next_from: p.nextFrom ?? '' } : {}), ...(p.direction ? { direction: p.direction } : {}) } }),
     setRevisionStart: (studentId: string, page: number | null) => be.rpc<null>('set_revision_start', { p_student: studentId, p_page: page }),
+    signOff: (id: string, p: { status: 'ok' | 'redo'; errorsMajor: number; errorsMinor: number; note: string }) =>
+      be.rpc<null>('sign_off_session', { p_id: id, p: { status: p.status, errors_major: p.errorsMajor, errors_minor: p.errorsMinor, note: p.note } }),
+    submitLesson: (p: { studentId: string; start: number; end: number; note: string }) =>
+      be.rpc<string>('submit_lesson', { p: { student_id: p.studentId, start_ayah_id: p.start, end_ayah_id: p.end, student_note: p.note } }),
     checkSessions: (ids: string[], status: 'ok' | 'redo', note?: string) => be.rpc<number>('check_sessions', { p_ids: ids, p_status: status, p_note: note ?? null }),
     ackRules: (studentId: string) => be.update('students', { rules_ack_at: new Date().toISOString() }, [{ op: 'eq', col: 'id', value: studentId }]),
     setExtraRoles: (orgId: string, userId: string, roles: Role[]) => be.update('organization_members', { extra_roles: roles }, [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'user_id', value: userId }]),

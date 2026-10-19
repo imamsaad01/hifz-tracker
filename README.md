@@ -130,3 +130,11 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **Qirāʾāt goal each class**: ½ page up to 1 juzʾ, with an estimate of how long a khatmah takes at that pace.
 - **Riwāyah reciter**: whole-surah recordings for most riwāyāt (mp3quran.net), see `src/lib/reciters.ts`.
 - **App tour**: a guided tour on first login for students, parents and teachers. Skip any time; replay from *My plan* or *More*.
+
+## Lesson sign-off, skipped surahs, auto refresh
+
+- **Sign-off**: students tap *I memorised it* (new lesson) or *I revised this* (revision). Teachers see *To sign off* on Today and on each student's page: **Sign off** with big/small mistake counts and a note (quick note chips), **Send back to redo**, or a one-tap tick. A new lesson only counts as memorised once signed off. Revision mistakes mark those pages weak.
+- **Skipped surahs**: at sign-up choose *Skipped some surahs*, tap the surahs memorised and choose where the next lesson starts. Surahs passed over are kept as *skipped for later* and come last. Change it later under *Memorised & start* (teacher) or *What I've memorised* (student).
+- **No more loading screen on return**: a session renewal no longer reloads the app.
+- **Auto refresh**: after a minute without use, or on coming back after a minute away, the screen updates quietly with an "Up to date" note.
+- `supabase/manual_signoff_full.sql`: run once in the SQL editor (it removes rows, which the automated tool can't do).

@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -435,5 +435,34 @@ describe('self-logged revision', () => {
     await rejects(U.student, `update public.students set new_pages = 7 where id = $1`, [studentS]);
     await as(U.student, `select public.set_qiraat_profile($1, $2::jsonb)`, [studentS, JSON.stringify({ riwayat: ['asim.hafs'], class_goal: 'quarter_hizb' })]);
     expect((await one<{ class_goal: string }>(U.teacher, `select class_goal from public.qiraat_profiles where student_id = $1`, [studentS]))!.class_goal).toBe('quarter_hizb');
+  });
+});
+
+describe('out-of-order memorisation', () => {
+  it('replaces set-up surahs, keeps lessons, stores start point and skipped surahs', async () => {
+    await as(U.student, `select public.set_memorised_surahs($1, $2::jsonb)`, [studentS, JSON.stringify({ surahs: [114, 113, 112, 110, 78], partial: { surah: 77, ayahs: 10 }, skipped: [111, 109], next_from: 77, direction: 'back' })]);
+    const st = (await one<{ next_from_surah: number; skipped_surahs: unknown; direction: string }>(U.teacher, `select next_from_surah, skipped_surahs, direction from public.students where id = $1`, [studentS]))!;
+    expect(st.next_from_surah).toBe(77); expect(String(st.skipped_surahs)).toMatch(/109.*111/);
+    const setup = await as<{ n: number }>(null, `select count(*)::int n from public.memorized_ranges where student_id = $1 and source = 'setup'`, [studentS]);
+    expect(setup[0].n).toBe(6);
+    await rejects(U.otherStudent, `select public.set_memorised_surahs($1, '{"next_from": 1}'::jsonb)`, [studentS]);
+  });
+});
+
+describe('lesson sign-off', () => {
+  it('student submits a new lesson; it counts only after the teacher signs it off with mistakes', async () => {
+    const memBefore = (await one<{ n: number }>(null, `select count(*)::int n from public.memorized_ranges where student_id = $1`, [studentS]))!.n;
+    const sid = (await one<{ id: string }>(U.student, `select public.submit_lesson($1::jsonb) as id`, [JSON.stringify({ student_id: studentS, start_ayah_id: 1, end_ayah_id: 5, student_note: 'ok' })]))!.id;
+    expect((await one<{ n: number }>(null, `select count(*)::int n from public.memorized_ranges where student_id = $1`, [studentS]))!.n).toBe(memBefore);
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title like 'Lesson to sign off%'`, [U.teacher])).not.toHaveLength(0);
+    await rejects(U.student, `select public.sign_off_session($1, '{"status":"ok"}'::jsonb)`, [sid]);
+    await rejects(U.otherStudent, `select public.submit_lesson($1::jsonb)`, [JSON.stringify({ student_id: studentS, start_ayah_id: 1, end_ayah_id: 5 })]);
+    await as(U.teacher, `select public.sign_off_session($1, $2::jsonb)`, [sid, JSON.stringify({ status: 'ok', errors_major: 1, errors_minor: 2, note: 'Ayah 3 again' })]);
+    const r = (await one<{ check_status: string; errors_major: number; errors_minor: number; self_logged: boolean; teacher_note: string }>(U.student, `select check_status, errors_major, errors_minor, self_logged, teacher_note from public.sessions where id = $1`, [sid]))!;
+    expect(r).toMatchObject({ check_status: 'ok', errors_major: 1, errors_minor: 2, self_logged: true, teacher_note: 'Ayah 3 again' });
+    expect((await one<{ n: number }>(null, `select count(*)::int n from public.memorized_ranges where session_id = $1`, [sid]))!.n).toBe(1);
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Signed off: New'`, [U.student])).toHaveLength(1);
+    await as(U.teacher, `select public.sign_off_session($1, '{"status":"redo"}'::jsonb)`, [sid]);
+    expect((await one<{ n: number }>(null, `select count(*)::int n from public.memorized_ranges where session_id = $1`, [sid]))!.n).toBe(0);
   });
 });

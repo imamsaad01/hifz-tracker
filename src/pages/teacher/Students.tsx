@@ -29,6 +29,7 @@ export function Students() {
     try {
       const id = await api.createStudent({ orgId: org.id, forSelf: false, ...d });
       if (id && d.newPages) await api.updateStudent(id, { new_pages: d.newPages });
+      if (id && (d.nextFromSurah || d.skippedSurahs.length)) await api.setMemorisedSurahs(id, { nextFrom: d.nextFromSurah, skipped: d.skippedSurahs });
       if (d.qiraat && id) await api.setQiraat(id, d.qiraat);
       toast(`${d.name} added.`); await reload(); go('students', id);
     } catch (e) { throw new Error(friendly(e)); }

@@ -8,3 +8,5 @@ body { background: #FAF8F4; color: #1B2524; -webkit-tap-highlight-color: transpa
 :focus-visible { outline: 3px solid #B8893B; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media print { .no-print { display: none !important; } body { background: #fff; } }
+
+@keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }

@@ -5,12 +5,15 @@ import { Button, Card, Field, Select, Toggle, inputCls, ErrorBox, cx } from './u
 import { RangeLabel } from './quran';
 import { ayahCount, ayahId, surahNameEn, surahRange, TOTAL_AYAHS, type Range } from '../quran';
 import { QiraatSetup, emptyQiraat, type QiraatDraft } from './Qiraat';
+import { MemorisedPicker, toRanges, skippedFor, defaultNextFrom, type MemorisedValue } from './MemorisedPicker';
+import { Segmented } from './ui';
 
-export interface StudentDraft { name: string; ageGroup: string; direction: 'back' | 'forward'; dailyNewAyahs: number; goal: string; guardianName: string; guardianEmail: string; notify: boolean; memorized: Range[]; qiraat: QiraatDraft | null; newPages: number | null; hafidh: boolean }
+export interface StudentDraft { name: string; ageGroup: string; direction: 'back' | 'forward'; dailyNewAyahs: number; goal: string; guardianName: string; guardianEmail: string; notify: boolean; memorized: Range[]; qiraat: QiraatDraft | null; newPages: number | null; hafidh: boolean; nextFromSurah: number | null; skippedSurahs: number[] }
 const AGES = ['Under 7', '7–9', '10–12', '13–15', '16–18', 'Adult'];
 const GOALS = ['Juz ʿAmma (Juz 30)', 'Juz 29 and 30', 'Juz 26–30', '5 juz', '10 juz', 'Half the Qurʾān', 'The whole Qurʾān'];
 const DAILY = [1, 2, 3, 4, 5, 7, 10, 15, 20];
 const PAGES = [0.5, 1, 2, 3, 4, 5];
+const fromRangeSurah = (r: Range) => { for (let n = 1; n <= 114; n++) { if (surahRange(n).start === r.start) return n; } return 1; };
 /** Lesson size: ayahs or pages, one dropdown. Value 'a3' = 3 ayahs, 'p0.5' = half a page. */
 export const sizeValue = (ayahs: number, pages: number | null | undefined) => (pages ? `p${pages}` : `a${ayahs}`);
 export const parseSize = (v: string): { ayahs: number | null; pages: number | null } => (v.startsWith('p') ? { ayahs: null, pages: Number(v.slice(1)) } : { ayahs: Number(v.slice(1)), pages: null });
@@ -27,7 +30,9 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
   const [upTo, setUpTo] = useState<number>(0);                 // 0 = nothing yet; else the last whole surah
   const [partSurah, setPartSurah] = useState<number>(114); const [partAyah, setPartAyah] = useState<number>(0);
   const [size, setSize] = useState('p1'); const daily = parseSize(size).ayahs ?? 3; const newPages = parseSize(size).pages;
-  const [hafidh, setHafidh] = useState(false); const [goal, setGoal] = useState(GOALS[0]);
+  const [hafidh, setHafidh] = useState(false);
+  const [memMode, setMemMode] = useState<'order' | 'pick'>('order');
+  const [mv, setMv] = useState<MemorisedValue>({ direction: 'back', surahs: [], partial: null, nextFrom: 114 }); const [goal, setGoal] = useState(GOALS[0]);
   const [readsQ, setReadsQ] = useState(false); const [q, setQ] = useState<QiraatDraft>(emptyQiraat());
   const [gName, setGName] = useState(''); const [gEmail, setGEmail] = useState(''); const [notify, setNotify] = useState(true);
 
@@ -35,7 +40,7 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
     ? Array.from({ length: 114 - upTo + 1 }, (_, i) => surahRange(114 - i))
     : Array.from({ length: upTo }, (_, i) => surahRange(i + 1));
   const nextSurah = upTo === 0 ? (direction === 'back' ? 114 : 1) : direction === 'back' ? upTo - 1 : upTo + 1;
-  const memorized = hafidh ? [{ start: 1, end: TOTAL_AYAHS }] : [...whole, ...(partAyah > 0 ? [{ start: ayahId(partSurah, 1), end: ayahId(partSurah, partAyah) }] : [])];
+  const memorized = hafidh ? [{ start: 1, end: TOTAL_AYAHS }] : memMode === 'pick' ? toRanges(mv) : [...whole, ...(partAyah > 0 ? [{ start: ayahId(partSurah, 1), end: ayahId(partSurah, partAyah) }] : [])];
   const emailOk = !gEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gEmail);
   // a ḥāfiẓ skips the lesson-plan questions and goes straight to qirāʾāt
   const keys = hafidh ? ['about', 'mem', 'qiraat', 'parent'] as const : ['about', 'mem', 'plan', 'qiraat', 'parent'] as const;
@@ -48,7 +53,7 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
 
   const submit = async () => {
     setBusy(true); setErr(null);
-    try { await onSubmit({ name: name.trim(), ageGroup: age, direction, dailyNewAyahs: daily, newPages: hafidh ? null : newPages, hafidh, goal: hafidh ? 'The whole Qurʾān' : goal, guardianName: gName.trim(), guardianEmail: gEmail.trim(), notify: notify && !!gEmail.trim(), memorized, qiraat: readsQ && q.riwayat.length ? q : null }); }
+    try { const pick = !hafidh && memMode === 'pick'; await onSubmit({ name: name.trim(), ageGroup: age, direction: pick ? mv.direction : direction, nextFromSurah: pick ? mv.nextFrom : null, skippedSurahs: pick ? skippedFor(mv) : [], dailyNewAyahs: daily, newPages: hafidh ? null : newPages, hafidh, goal: hafidh ? 'The whole Qurʾān' : goal, guardianName: gName.trim(), guardianEmail: gEmail.trim(), notify: notify && !!gEmail.trim(), memorized, qiraat: readsQ && q.riwayat.length ? q : null }); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
   };
   return <div className="flex flex-col gap-4">
@@ -61,7 +66,9 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
       </div>}
       {key === 'mem' && <div className="flex flex-col gap-4">
         <Toggle on={hafidh} onChange={v => { setHafidh(v); if (v) setReadsQ(true); }} label={byTeacher ? 'Ḥāfiẓ: has memorised the whole Qurʾān' : 'I am a ḥāfiẓ: I have memorised the whole Qurʾān'} sub="Skips the lesson questions. Old revision goes through the whole Qurʾān." />
-        {!hafidh && <>
+        {!hafidh && <Segmented label="How was it memorised" value={memMode} onChange={m => { setMemMode(m); if (m === 'pick') { const sur = whole.map(r => fromRangeSurah(r)); setMv({ direction, surahs: sur, partial: partAyah ? { surah: partSurah, ayahs: partAyah } : null, nextFrom: defaultNextFrom(direction, sur) }); } }} options={[['order', 'In order'], ['pick', 'Skipped some surahs']]} />}
+        {!hafidh && memMode === 'pick' && <MemorisedPicker value={mv} onChange={setMv} you={byTeacher ? 'they' : 'you'} />}
+        {!hafidh && memMode === 'order' && <>
         <Field label="Which way is the memorisation going?">{id => <Select id={id} value={direction} onChange={v => { setDirection(v); setUpTo(0); setPartAyah(0); }} options={[['back', 'From An-Nās backwards (Juz ʿAmma first)'], ['forward', 'From Al-Fātiḥah forwards']]} />}</Field>
         <Field label={direction === 'back' ? `Whole surahs memorised, from An-Nās back to…` : 'Whole surahs memorised, from Al-Fātiḥah up to…'}>{id =>
           <Select id={id} value={upTo} onChange={v => { setUpTo(v); const n = v === 0 ? (direction === 'back' ? 114 : 1) : direction === 'back' ? v - 1 : v + 1; if (n >= 1 && n <= 114) setPartSurah(n); setPartAyah(0); }}

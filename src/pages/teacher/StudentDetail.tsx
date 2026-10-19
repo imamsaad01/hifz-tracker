@@ -1,5 +1,7 @@
 import { sizeValue, parseSize, SIZE_OPTIONS } from '../../components/StudentForm';
 import { QiraatTeacherPanel } from '../../components/Qiraat';
+import { MemorisedModal } from '../../components/MemorisedPicker';
+import { formatRange, surahNameEn } from '../../quran';
 import { RevisionCheckCard, RevisionStartModal, startLabel } from '../../components/RevisionSelf';
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Plus, ClipboardList, Target, Pencil, Archive, KeyRound, RefreshCw, Award } from 'lucide-react';
@@ -36,7 +38,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
   const toast = useToast();
   const [tab, setTab] = useState<Tab>((['overview', 'history', 'work', 'messages', 'report'].includes(initialTab ?? '') ? initialTab : 'overview') as Tab);
   const [reportKind, setReportKind] = useState<'month' | 'term'>('month');
-  const [rec, setRec] = useState(false); const [assign, setAssign] = useState(false); const [goal, setGoal] = useState(false); const [edit, setEdit] = useState(false); const [startOpen, setStartOpen] = useState(false);
+  const [rec, setRec] = useState(false); const [assign, setAssign] = useState(false); const [goal, setGoal] = useState(false); const [edit, setEdit] = useState(false); const [startOpen, setStartOpen] = useState(false); const [memOpen, setMemOpen] = useState(false);
   const [archive, setArchive] = useState(false); const [del, setDel] = useState<Session | null>(null);
   const allIns = useMemo(() => data ? data.students.map(s => insight(s, data.sessions, data.revision.get(s.id) ?? [], data.assignments, data.attendance, org.settings, today)) : [], [data, org.settings, today]);
   const st = data?.students.find(s => s.id === id);
@@ -64,6 +66,8 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
       <div className="empty:hidden"><RevisionCheckCard data={data} onChanged={reload} studentId={st.id} /></div>
       <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Old revision starts from:</b> {startLabel(st) ?? 'default order'}</span><Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => setStartOpen(true)}>Change</Button></Card>
       {startOpen && <RevisionStartModal student={st} onClose={() => setStartOpen(false)} onSaved={reload} />}
+      <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Next lesson:</b> {ins.nextNew ? formatRange(ins.nextNew) : 'all memorised'} <span className="text-ink-faint">· going {st.direction === 'back' ? 'backwards' : 'forwards'}{st.skippedSurahs?.length ? ` · skipped for later: ${st.skippedSurahs.map(n => surahNameEn(n)).join(', ')}` : ''}</span></span><Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => setMemOpen(true)}>Memorised & start</Button></Card>
+      {memOpen && <MemorisedModal student={st} byTeacher onClose={() => setMemOpen(false)} onSaved={reload} />}
       <QiraatTeacherPanel student={st} data={data} onChanged={reload} />
       <StandingCard studentId={st.id} you={false} revisionMissed={missedLastWeek(st.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
       <RevisionFormCard student={st} forms={data.revisionForms} readOnly onChanged={reload} />
