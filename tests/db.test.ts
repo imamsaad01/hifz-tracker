@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -338,5 +338,17 @@ describe('extra roles and site owners', () => {
 describe('revision form tenancy', () => {
   it('cannot be filed under another program', async () => {
     await rejects(U.student, `insert into public.revision_checkins (org_id, student_id, week_start, slot) values ($1, $2, public.week_start(current_date), 'fri')`, [orgB, studentS]);
+  });
+});
+
+describe('shared phone notifications', () => {
+  it('lets two accounts register the same phone, each removing only their own', async () => {
+    const ep = 'https://push.example/shared-phone';
+    await as(U.student, `insert into public.push_subscriptions (endpoint, p256dh, auth) values ($1, 'k', 'a')`, [ep]);
+    await as(U.parent, `insert into public.push_subscriptions (endpoint, p256dh, auth) values ($1, 'k', 'a')`, [ep]);
+    expect(await as(U.parent, `select 1 from public.push_subscriptions where endpoint = $1`, [ep])).toHaveLength(1);
+    await as(U.parent, `delete from public.push_subscriptions where endpoint = $1`, [ep]);
+    expect(await as(U.student, `select 1 from public.push_subscriptions where endpoint = $1`, [ep])).toHaveLength(1);
+    expect(await as(null, `select 1 from public.push_subscriptions where endpoint = $1`, [ep])).toHaveLength(1);
   });
 });

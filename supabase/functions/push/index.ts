@@ -23,7 +23,7 @@ Deno.serve(async req => {
   const { data: subs } = await db.from('push_subscriptions').select('*').in('user_id', users);
   let sent = 0, skipped = 0; const dead: string[] = [];
   for (const q of queue) {
-    const mine = (subs ?? []).filter(s => s.user_id === q.user_id && !dead.includes(s.id));
+    const mine = (subs ?? []).filter(s => s.user_id === q.user_id && !dead.includes(s.endpoint));
     let ok = false; let lastErr = '';
     for (const s of mine) {
       try {
@@ -31,12 +31,12 @@ Deno.serve(async req => {
         ok = true;
       } catch (e) {
         const code = (e as { statusCode?: number }).statusCode;
-        if (code === 404 || code === 410) dead.push(s.id); else lastErr = `${code ?? ''} ${(e as Error).message}`.slice(0, 200);
+        if (code === 404 || code === 410) dead.push(s.endpoint); else lastErr = `${code ?? ''} ${(e as Error).message}`.slice(0, 200);
       }
     }
     if (ok) { sent++; await db.from('notification_queue').update({ sent_at: new Date().toISOString() }).eq('id', q.id); }
     else { skipped++; await db.from('notification_queue').update({ error: mine.length ? lastErr || 'subscription expired' : 'no device turned on' }).eq('id', q.id); }
   }
-  if (dead.length) await db.from('push_subscriptions').delete().in('id', dead);
+  if (dead.length) await db.from('push_subscriptions').delete().in('endpoint', dead); // gone for every account on that phone
   return json({ sent, skipped, removedDevices: dead.length });
 });

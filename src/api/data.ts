@@ -146,9 +146,11 @@ export function api(be: Backend) {
     ackRules: (studentId: string) => be.update('students', { rules_ack_at: new Date().toISOString() }, [{ op: 'eq', col: 'id', value: studentId }]),
     setExtraRoles: (orgId: string, userId: string, roles: Role[]) => be.update('organization_members', { extra_roles: roles }, [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'user_id', value: userId }]),
     savePushSubscription: async (sub: { endpoint: string; p256dh: string; auth: string; userAgent: string }) => {
+      // RLS limits this to the signed-in account's own row, so other accounts on the same phone keep theirs
       await be.remove('push_subscriptions', [{ op: 'eq', col: 'endpoint', value: sub.endpoint }]);
       await be.insert('push_subscriptions', { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth, user_agent: sub.userAgent.slice(0, 200) });
     },
+    hasPushSubscription: async (endpoint: string) => (await sel<Row>({ table: 'push_subscriptions', where: [{ op: 'eq', col: 'endpoint', value: endpoint }] })).length > 0,
     removePushSubscription: (endpoint: string) => be.remove('push_subscriptions', [{ op: 'eq', col: 'endpoint', value: endpoint }]),
     ownerPrograms: () => be.rpc<Array<{ id: string; name: string; students: number; members: number; created_at: string }>>('owner_programs', {}),
     ownerList: () => be.rpc<Array<{ email: string; added_at: string }>>('owner_list', {}),
