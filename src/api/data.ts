@@ -53,6 +53,7 @@ export function api(be: Backend) {
       const rows = await be.rpc<Row[]>('class_leaderboard', { org: orgId, p_days: days });
       return (rows ?? []).map(r => ({ studentId: r.student_id, name: r.display_name, days: Number(r.days_active), pages: Number(r.pages_revised), clean: Number(r.clean_pages), points: Number(r.points), isMe: !!r.is_me }));
     },
+    canCreatePrograms: () => be.rpc<boolean>('can_create_programs', {}),
     teacherCode: (orgId: string) => be.rpc<string>('teacher_code', { org: orgId }),
     async students(orgId: string, opts: { includeArchived?: boolean } = {}): Promise<Student[]> {
       const where: Filter[] = [{ op: 'eq', col: 'org_id', value: orgId }];

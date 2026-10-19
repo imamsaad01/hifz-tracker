@@ -1,5 +1,5 @@
 // First sign-in: start a program (becomes its admin) or join one with a code.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Building2, KeyRound, LogOut } from 'lucide-react';
 import { useApp } from '../app/context';
 import { Brand } from '../components/Brand';
@@ -14,16 +14,18 @@ export function Welcome() {
   const [code, setCode] = useState(''); const [name, setName] = useState(user?.name ?? '');
   const [org, setOrg] = useState(''); const [tz, setTz] = useState(ZONES.includes(local) ? local : 'America/New_York');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const [owner, setOwner] = useState(false);
+  useEffect(() => { api.canCreatePrograms().then(v => setOwner(!!v)).catch(() => setOwner(false)); }, [api]);
   const run = async (f: () => Promise<string>) => { setBusy(true); setErr(null); try { switchOrg(await f()); } catch (e) { setErr(friendly(e)); } finally { setBusy(false); } };
   return <div className="min-h-full px-4 py-10">
     <div className="mx-auto flex max-w-lg flex-col gap-5">
       <div className="flex items-center justify-between"><Brand small /><Button kind="quiet" onClick={() => backend.signOut()}><LogOut size={16} />Sign out</Button></div>
-      <div><h1 className="text-2xl font-bold">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1><p className="text-ink-soft">Join your class with the code your teacher gave you, or start a new program as a teacher.</p></div>
+      <div><h1 className="text-2xl font-bold">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1><p className="text-ink-soft">{owner ? 'Join a program with a code, or start a new one.' : 'Join your class with the code your teacher gave you.'}</p></div>
       {err && <ErrorBox message={err} />}
       <Card className="p-5">
-        <div className="mb-4 grid grid-cols-2 gap-2">
+        {owner && <div className="mb-4 grid grid-cols-2 gap-2">
           {([['join', 'Join with a code', KeyRound], ['create', 'Start a program', Building2]] as const).map(([k, l, I]) => <button key={k} type="button" aria-pressed={mode === k} onClick={() => setMode(k)} className={`flex min-h-[48px] items-center justify-center gap-2 rounded-xl border text-sm font-bold ${mode === k ? 'border-pine-700 bg-pine-50 text-pine-800' : 'border-line bg-white text-ink-soft'}`}><I size={16} />{l}</button>)}
-        </div>
+        </div>}
         {mode === 'join' ? <form className="flex flex-col gap-4" onSubmit={e => { e.preventDefault(); run(async () => (await api.joinOrg(code, name)).org_id); }}>
           <Field label="Your name">{id => <input id={id} className={inputCls} value={name} onChange={e => setName(e.target.value)} maxLength={80} required />}</Field>
           <Field label="Class code" hint="Students: 6 characters. Teachers: 8. Parents: the 10-character code for your child. Ask the teacher.">{id => <input id={id} className={`${inputCls} font-mono uppercase tracking-widest`} value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={10} required autoCapitalize="characters" />}</Field>

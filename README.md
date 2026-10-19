@@ -17,7 +17,7 @@ npm run dev        # http://localhost:5173
 
 ### 1. Supabase (database + sign-in)
 1. Create a project at [supabase.com](https://supabase.com) (free plan).
-2. **SQL Editor** → run, in order: `supabase/migrations/0001_schema.sql`, `0002_security.sql`, `0003_functions.sql`, `0004_parent_codes.sql`, `0005_leaderboard.sql`, then `supabase/seed_quran.sql` (Qurʾān reference data, 6,236 ayahs) and `supabase/finish_setup.sql`.
+2. **SQL Editor** → run, in order: `supabase/migrations/0001_schema.sql`, `0002_security.sql`, `0003_functions.sql`, `0004_parent_codes.sql`, `0005_leaderboard.sql`, `0006_program_owners.sql`, then `supabase/seed_quran.sql` (Qurʾān reference data, 6,236 ayahs) and `supabase/finish_setup.sql`.
 3. **Project Settings → API**: copy the *Project URL* and the *anon public* key.
 
 ### 2. Sign-in
@@ -81,3 +81,11 @@ Structure: `src/api` (one Backend interface; Supabase and in-browser implementat
 ## Not built yet
 
 Audio recordings of recitation, SMS/WhatsApp messages, paid plans/billing (a `subscriptions` table exists but nothing uses it), a super-admin console across programs, and installing as an offline app (the app keeps unsent sessions on the device and retries, but needs a connection to open).
+
+## Who can start a program
+
+Only **platform owners** can create new programs; everyone else joins with a code. To add another owner, run in Supabase → SQL Editor:
+
+```sql
+insert into public.platform_owners (user_id) select id from auth.users where email = 'their@email.com';
+```

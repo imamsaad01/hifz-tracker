@@ -22,6 +22,7 @@ export async function seedPreview(db: PGlite) {
   const val = async <T>(sql: string, params: unknown[] = []) => (await db.query<{ v: T }>(sql, params)).rows[0]?.v as T;
   for (const p of PERSONAS) await db.query('insert into auth.users (id, email, name) values ($1, $2, $3) on conflict do nothing', [p.id, p.email, p.name]);
 
+  await db.query('insert into public.platform_owners (user_id) values ($1), ($2) on conflict do nothing', [T1, X1]);
   await as(T1);
   const org = await val<string>(`select public.create_organization('Al-Noor Hifz Program', 'America/New_York', 'Ustadh Bilal') as v`);
   await db.query(`update public.organizations set settings = settings || '{"leaderboard":{"enabled":true,"fullNames":false}}'::jsonb where id = $1`, [org]);

@@ -36,8 +36,9 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql']) await db.exec(sql(f));
 
+  await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
   orgB = (await one<{ id: string }>(U.otherAdmin, `select public.create_organization('Other School', 'Europe/London') as id`))!.id;
   joinA = (await one<{ join_code: string }>(U.teacher, 'select join_code from public.organizations where id = $1', [orgA]))!.join_code;
@@ -210,5 +211,15 @@ describe('leaderboard', () => {
     const mine = await as<{ display_name: string; is_me: boolean }>(U.student, 'select * from public.class_leaderboard($1, 7)', [orgA]);
     expect(mine.find(r => r.is_me)?.display_name).toBe('Student S');
     expect(mine.find(r => !r.is_me)?.display_name).toBe('Child W.');
+  });
+});
+
+describe('program owners', () => {
+  it('lets only platform owners start a program', async () => {
+    expect((await one<{ c: boolean }>(U.teacher, 'select public.can_create_programs() as c'))!.c).toBe(true);
+    expect((await one<{ c: boolean }>(U.student, 'select public.can_create_programs() as c'))!.c).toBe(false);
+    const msg = await rejects(U.student, `select public.create_organization('Sneaky School', 'America/New_York')`);
+    expect(msg).toMatch(/Only the site owner/);
+    await rejects(U.student, 'select * from public.platform_owners');
   });
 });
