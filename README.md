@@ -95,3 +95,12 @@ Only **platform owners** can create new programs; everyone else joins with a cod
 ```sql
 insert into public.platform_owners (user_id) select id from auth.users where email = 'their@email.com';
 ```
+
+## Attendance, revision forms and phone notifications
+
+- **Class times**: each halaqah has weekly time slots (e.g. Sat 5–8pm, Mon 4:30–8:30pm). Edit them in Classes → Halaqahs.
+- **Check-in**: during class, students tap *Check in* and type the 4-digit class code shown on the teacher's Live class / Attendance screen. After the grace period it is recorded as *late*. Ten minutes after class ends, anyone not checked in is marked absent (or excused if they reported it in advance).
+- **Absences**: students and parents report absences *before* class. One free absence each semester, plus excused absences up to the limit. Teachers approve these in Classes → Attendance. Semester dates and limits are set in More → Settings.
+- **Partner revision form**: three weekly slots (after the lesson, Wed night, Fri night). There are reminders the evening before, a Sunday reminder, and a Monday follow-up when too many are missed.
+- **Phone notifications**: each person turns them on from the app (iPhone: add to Home Screen first). Delivery runs through `supabase/functions/push` and pg_cron (see `supabase/cron_push.sql`).
+- **Extra roles**: in More → People, give someone more roles (e.g. a parent who also teaches). They use "View as" to switch between them.

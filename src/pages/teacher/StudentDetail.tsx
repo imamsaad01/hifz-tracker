@@ -17,6 +17,7 @@ import { certificatesFor } from '../Certificate';
 import { classLabel, studentPlan } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
 import type { ClassRow } from '../../api/data';
+import { StandingCard, RevisionFormCard, missedLastWeek } from '../../components/StudentAttendance';
 import { AssignmentForm } from '../../components/AssignmentForm';
 import { AssignmentList } from '../../components/AssignmentList';
 import { RecordSheet } from '../../components/RecordSheet';
@@ -57,6 +58,8 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
     {tab === 'overview' && <div className="flex flex-col gap-5">
       <Card><CardHead title="Adab & effort today" sub="Tap to give a point; tap again to undo" /><AdabTaps studentId={st.id} points={data.behaviour} onChanged={reload} /></Card>
       <PlanCard plan={plan} you={false} />
+      <StandingCard studentId={st.id} you={false} revisionMissed={missedLastWeek(st.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
+      <RevisionFormCard student={st} forms={data.revisionForms} readOnly onChanged={reload} />
       <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={goals} today={today} settings={org.settings} onDeleteGoal={async g => { try { await api.deleteGoal(g.id); toast('Goal removed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} />
       <div className="grid gap-5 xl:grid-cols-2"><Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={ins.streak} freezes={org.settings.motivation.freezePerWeek} frozenDays={0} /></Card><AdabSummary points={beh} /></div>
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, st.memorized)} />

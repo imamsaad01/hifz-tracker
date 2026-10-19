@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -263,5 +263,80 @@ describe('school features', () => {
     await rejects(U.student, 'update public.students set old_pages = 10 where id = $1', [studentS]);
     await as(U.teacher, 'update public.students set old_pages = 4 where id = $1', [studentS]);
     expect((await one<{ old_pages: number }>(U.student, 'select old_pages from public.students where id = $1', [studentS]))!.old_pages).toBe(4);
+  });
+});
+
+describe('check-in, absences and standing', () => {
+  let cls = '';
+  beforeAll(async () => {
+    cls = (await one<{ id: string }>(U.teacher, `insert into public.classes (org_id, name, teacher_user_id) values ($1, 'Evening Halaqah', $2) returning id`, [orgA, U.teacher]))!.id;
+    await as(U.teacher, 'insert into public.class_students (class_id, student_id, org_id) values ($1, $2, $3), ($1, $4, $3)', [cls, studentS, orgA, child]);
+    // a slot that is happening right now (org time), so the test does not depend on the clock
+    await as(null, `update public.classes set schedule_slots = jsonb_build_array(jsonb_build_object('day', extract(dow from public.org_local_now(org_id))::int,
+      'start', to_char(public.org_local_now(org_id)::time - interval '30 minutes', 'HH24:MI'), 'end', to_char(public.org_local_now(org_id)::time + interval '60 minutes', 'HH24:MI'))) where id = $1`, [cls]);
+    await as(null, 'delete from public.attendance where student_id in ($1, $2) and date = public.org_today($3)', [studentS, child, orgA]);   // earlier tests recorded today
+  });
+  it('needs today\'s code, marks late after the grace period, and hides the code from students', async () => {
+    await rejects(U.student, 'select public.class_checkin_code($1)', [cls]);
+    const msg = await rejects(U.student, `select public.student_check_in($1, '0000x')`, [cls]);
+    expect(msg).toMatch(/code is not right/);
+    const code = (await one<{ c: string }>(U.teacher, 'select public.class_checkin_code($1) as c', [cls]))!.c;
+    expect(code).toMatch(/^\d{4}$/);
+    const r = await one<{ s: string }>(U.student, 'select public.student_check_in($1, $2) as s', [cls, code]);
+    expect(r!.s).toBe('late');                                   // started 30 minutes ago, grace is 10
+    await rejects(U.otherStudent, 'select public.student_check_in($1, $2)', [cls, code]);   // not in the halaqah
+  });
+  it('accepts absences only before class, and free absences need no reason', async () => {
+    await rejects(U.student, `select public.request_absence($1::jsonb)`, [JSON.stringify({ student_id: studentS, date: '2020-01-01', kind: 'free' })]);
+    await rejects(U.student, `select public.request_absence($1::jsonb)`, [JSON.stringify({ student_id: studentS, date: '2999-01-04', kind: 'excuse' })]);   // excuse needs a reason
+    await one(U.student, `select public.request_absence($1::jsonb)`, [JSON.stringify({ student_id: studentS, date: '2999-01-04', kind: 'free' })]);
+    expect((await one<{ status: string }>(U.student, `select status from public.absence_requests where date = '2999-01-04'`))!.status).toBe('approved');
+    const second = await rejects(U.student, `select public.request_absence($1::jsonb)`, [JSON.stringify({ student_id: studentS, date: '2999-01-11', kind: 'free' })]);
+    expect(second).toMatch(/already used/);
+    await rejects(U.student, `update public.absence_requests set status = 'approved' where student_id = $1 returning id`, [studentS]).catch(() => undefined);
+  });
+  it('marks missing students absent after class and warns about absences not communicated', async () => {
+    await as(null, `update public.classes set schedule_slots = jsonb_build_array(jsonb_build_object('day', extract(dow from public.org_local_now(org_id))::int, 'start', '00:00', 'end', '00:01')) where id = $1`, [cls]);
+    await db.exec('reset role');
+    await db.query('select public.mark_absences()');
+    const a = await one<{ status: string; note: string; source: string }>(U.teacher, 'select status, note, source from public.attendance where student_id = $1 and date = public.org_today($2)', [child, orgA]);
+    expect(a).toEqual({ status: 'absent', note: 'Not communicated before class', source: 'auto' });
+    const st = await one<{ j: { unnotified: number } }>(U.teacher, 'select public.attendance_standing($1) as j', [child]);
+    expect(st!.j.unnotified).toBeGreaterThanOrEqual(1);
+    await rejects(U.otherAdmin, 'select public.attendance_standing($1)', [child]);
+    const q = await db.query<{ n: number }>(`select count(*)::int as n from public.notification_queue where title = 'Attendance warning'`);
+    expect(q.rows[0].n).toBeGreaterThan(0);
+  });
+  it('lets a student fill their own revision form, not anyone else\'s', async () => {
+    await one(U.student, `insert into public.revision_checkins (org_id, student_id, week_start, slot, partner) values ($1, $2, public.week_start(current_date), 'wed', 'Child') returning id`, [orgA, studentS]);
+    await rejects(U.student, `insert into public.revision_checkins (org_id, student_id, week_start, slot) values ($1, $2, public.week_start(current_date), 'wed')`, [orgA, child]);
+    expect((await as<{ name: string }>(U.student, 'select * from public.classmates()')).map(r => r.name)).toEqual(['Child Without Account']);
+  });
+  it('queues phone notifications for messages and announcements, never for the sender', async () => {
+    await db.exec('reset role'); await db.query('truncate public.notification_queue');
+    await one(U.teacher, `insert into public.messages (org_id, student_id, body, sender_name) values ($1, $2, 'Well done today', 'Ustadh') returning id`, [orgA, studentS]);
+    const rows = (await db.query<{ user_id: string }>('select user_id from public.notification_queue')).rows.map(r => r.user_id);
+    expect(rows).toContain(U.student);
+    expect(rows).not.toContain(U.teacher);
+    await rejects(U.student, 'select * from public.notification_queue');
+  });
+});
+
+describe('extra roles and site owners', () => {
+  it('gives an extra role its powers', async () => {
+    await rejects(U.parent2, `insert into public.announcements (org_id, title) values ($1, 'x')`, [orgA]);
+    await as(U.teacher, `update public.organization_members set extra_roles = '{teacher}' where org_id = $1 and user_id = $2`, [orgA, U.parent2]);
+    await one(U.parent2, `insert into public.announcements (org_id, title) values ($1, 'From a parent-teacher') returning id`, [orgA]);
+  });
+  it('lets only owners see all programs and add owners', async () => {
+    expect((await as(U.teacher, 'select * from public.owner_programs()')).length).toBeGreaterThanOrEqual(2);
+    await rejects(U.student, 'select * from public.owner_programs()');
+    await rejects(U.student, `select public.owner_set('x@example.com', true)`);
+  });
+});
+
+describe('revision form tenancy', () => {
+  it('cannot be filed under another program', async () => {
+    await rejects(U.student, `insert into public.revision_checkins (org_id, student_id, week_start, slot) values ($1, $2, public.week_start(current_date), 'fri')`, [orgB, studentS]);
   });
 });

@@ -24,12 +24,15 @@ export interface OrgSettings {
   motivation: { freezePerWeek: number };
   adab: { positive: string[]; negative: string[] };
   fees: { monthly: number | null; currency: string };
+  attendance: { semesterStart: string | null; semesterEnd: string | null; freeAbsences: number; excusedAbsences: number };
+  revisionForm: { slots: Array<{ key: string; label: string; day: number | null }>; allowedMisses: number };
+  rulesText: string;
 }
-export interface Org { id: string; name: string; timezone: string; joinCode: string; settings: OrgSettings; role: Role }
+export interface Org { id: string; name: string; timezone: string; joinCode: string; settings: OrgSettings; role: Role; roles: Role[] }
 export interface Student {
   id: string; orgId: string; userId: string | null; name: string; ageGroup: string | null; direction: Direction;
   dailyNewAyahs: number; goal: string | null; guardianName: string | null; guardianEmail: string | null; notify: boolean;
-  startDate: string; archivedAt: string | null; memorized: Range[]; parentCode: string | null; oldPages: number | null;
+  startDate: string; archivedAt: string | null; memorized: Range[]; parentCode: string | null; oldPages: number | null; rulesAckAt: string | null;
 }
 export interface SessionError { id?: string; ayahId: number | null; category: ErrorCategory; severity: ErrorSeverity; note?: string | null }
 export interface Session {
@@ -55,6 +58,9 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   motivation: { freezePerWeek: 1 },
   adab: { positive: ['On time', 'Focused', 'Good manners', 'Prepared', 'Helped others'], negative: ['Late', 'Not prepared', 'Distracted'] },
   fees: { monthly: null, currency: 'USD' },
+  attendance: { semesterStart: null, semesterEnd: null, freeAbsences: 1, excusedAbsences: 2 },
+  revisionForm: { slots: [{ key: 'after_lesson', label: 'After the lesson at the mosque', day: null }, { key: 'wed', label: 'Wednesday night', day: 3 }, { key: 'fri', label: 'Friday night', day: 5 }], allowedMisses: 1 },
+  rulesText: '',
 };
 export const SESSION_LABEL: Record<SessionType, string> = {
   new: 'New', recent: 'Recent revision', old: 'Old revision', juz_revision: 'Full juz revision', assessment: 'Assessment', catch_up: 'Catch-up', review: 'Review', other: 'Other',

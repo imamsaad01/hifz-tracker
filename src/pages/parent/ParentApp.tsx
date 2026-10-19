@@ -21,6 +21,10 @@ import { MessageThread } from '../../components/MessageThread';
 import { AdabSummary } from '../../components/Adab';
 import { ExamList } from '../teacher/Exams';
 import { certificatesFor } from '../Certificate';
+import { StandingCard, RevisionFormCard, RulesCard, AbsenceForm, missedLastWeek } from '../../components/StudentAttendance';
+import { NotifyToggle } from '../../components/Notifications';
+import { Button } from '../../components/ui';
+import { CalendarX } from 'lucide-react';
 
 type Tab = 'overview' | 'history' | 'messages' | 'report';
 export function ParentApp() {
@@ -28,6 +32,7 @@ export function ParentApp() {
   const { data, error, reload } = useOrgData();
   const [pick, setPick] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
+  const [absent, setAbsent] = useState(false);
   const child = data?.students.find(s => s.id === pick) ?? data?.students[0] ?? null;
   const sd = useStudentData(child?.id ?? null);
   const ins = useMemo(() => child && data && sd.sessions ? insight(child, sd.sessions, data.revision.get(child.id) ?? [], data.assignments, data.attendance, org.settings, today) : null, [child, data, sd.sessions, org.settings, today]);
@@ -48,6 +53,10 @@ export function ParentApp() {
       <Segmented label="Section" value={tab} onChange={setTab} options={[['overview', 'Progress'], ['history', 'Sessions'], ['messages', 'Messages'], ['report', 'Report']]} />
     </div>
     {tab === 'overview' && <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap gap-2"><Button kind="secondary" onClick={() => setAbsent(true)}><CalendarX size={16} />Report an absence</Button></div>
+      <NotifyToggle />
+      <StandingCard studentId={child.id} you={false} revisionMissed={missedLastWeek(child.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
+      <RevisionFormCard student={child} forms={data.revisionForms} readOnly onChanged={reload} />
       <AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={classIds} onChanged={reload} limit={3} />
       <PlanCard plan={studentPlan(child, org.settings, today)} you={false} />
       <div className="grid gap-5 xl:grid-cols-2"><Card className="p-5"><LevelBar total={pts.total} lvl={level(pts.total)} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card><AdabSummary points={beh} /></div>
@@ -57,7 +66,9 @@ export function ParentApp() {
       {data.exams.some(x => x.studentId === child.id) && <div><h2 className="mb-2 font-bold">Juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={child.id} onChanged={reload} /></div>}
       <Card><h2 className="px-5 pt-4 font-bold">Assignments</h2><AssignmentList items={ins.openAssignments} onChanged={reload} /></Card>
       <Leaderboard limit={5} compact />
+      <RulesCard text={org.settings.rulesText} ackAt={null} />
     </div>}
+    {absent && <AbsenceForm student={child} classes={data.classes} absences={data.absences} onClose={() => setAbsent(false)} onSaved={reload} />}
     {tab === 'history' && <History student={child} sessions={sd.sessions} today={today} settings={org.settings} />}
     {tab === 'messages' && <MessageThread studentId={child.id} studentName={child.name} members={data.members} />}
     {tab === 'report' && <MonthReport student={child} ins={ins} sessions={sd.sessions} today={today} settings={org.settings} orgName={org.name} />}

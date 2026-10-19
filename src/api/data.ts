@@ -6,10 +6,15 @@ import type { Range } from '../quran';
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
-export interface Membership { orgId: string; role: Role; displayName: string | null }
-export interface Member { userId: string; role: Role; displayName: string | null; createdAt: string }
-export interface ClassRow { id: string; name: string; teacherUserId: string | null; schedule: string | null; startsOn: string | null; endsOn: string | null; notes: string | null; studentIds: string[] }
-export interface Attendance { studentId: string; date: string; status: string; mode: string }
+export interface Membership { orgId: string; role: Role; extraRoles: Role[]; displayName: string | null }
+export interface Member { userId: string; role: Role; extraRoles: Role[]; displayName: string | null; createdAt: string }
+export interface Slot { day: number; start: string; end: string }
+export interface ClassRow { id: string; name: string; teacherUserId: string | null; schedule: string | null; startsOn: string | null; endsOn: string | null; notes: string | null; studentIds: string[];
+  slots: Slot[]; location: 'mosque' | 'online' | 'both'; checkinOpenMin: number; lateAfterMin: number; requireCode: boolean }
+export interface AbsenceRequest { id: string; studentId: string; date: string; kind: 'free' | 'excuse'; reason: string | null; status: 'pending' | 'approved' | 'declined'; createdAt: string }
+export interface RevisionCheckin { id: string; studentId: string; weekStart: string; slot: string; done: boolean; partner: string | null; pages: string | null; recorded: boolean; recordingLink: string | null; note: string | null }
+export interface Standing { absences: number; free: number; extra: number; unnotified: number; excused: number; over: number }
+export interface Attendance { studentId: string; date: string; status: string; mode: string; source?: string; checkedInAt?: string | null; note?: string | null }
 export interface Goal { id: string; studentId: string; period: string; metric: string; target: number; startsOn: string; endsOn: string | null }
 export interface Notice { id: string; studentId: string | null; to: string | null; template: string | null; status: string; error: string | null; createdAt: string }
 export interface BoardRow { studentId: string; name: string; days: number; pages: number; clean: number; points: number; isMe: boolean }
@@ -33,12 +38,17 @@ export function mergeSettings(s: Row | null | undefined): OrgSettings {
     motivation: { ...DEFAULT_SETTINGS.motivation, ...(x.motivation ?? {}) },
     adab: { ...DEFAULT_SETTINGS.adab, ...(x.adab ?? {}) },
     fees: { ...DEFAULT_SETTINGS.fees, ...(x.fees ?? {}) },
+    attendance: { ...DEFAULT_SETTINGS.attendance, ...(x.attendance ?? {}) },
+    revisionForm: { ...DEFAULT_SETTINGS.revisionForm, ...(x.revisionForm ?? {}) },
+    rulesText: typeof x.rulesText === 'string' ? x.rulesText : DEFAULT_SETTINGS.rulesText,
   };
 }
 const toStudent = (r: Row, ranges: Range[] = []): Student => ({
   id: r.id, orgId: r.org_id, userId: r.user_id, name: r.name, ageGroup: r.age_group, direction: r.direction, dailyNewAyahs: r.daily_new_ayahs,
-  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null, oldPages: r.old_pages ?? null,
+  goal: r.goal, guardianName: r.guardian_name, guardianEmail: r.guardian_email, notify: r.notify, startDate: String(r.start_date).slice(0, 10), archivedAt: r.archived_at, memorized: ranges, parentCode: r.parent_code ?? null, oldPages: r.old_pages ?? null, rulesAckAt: r.rules_ack_at ? ts(r.rules_ack_at) : null,
 });
+/** Postgres arrays of enums can arrive as '{a,b}' text */
+const pgArr = (v: unknown): any[] => Array.isArray(v) ? v : typeof v === 'string' ? v.replace(/^\{|\}$/g, '').split(',').filter(Boolean) : [];
 const ts = (d: unknown) => (d instanceof Date ? d.toISOString() : String(d));
 const iso = (d: unknown) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
 const toSession = (r: Row, errs: SessionError[] = []): Session => ({
@@ -54,11 +64,11 @@ export function api(be: Backend) {
     backend: be,
     async memberships(userId: string): Promise<Membership[]> {
       const rows = await sel<Row>({ table: 'organization_members', where: [{ op: 'eq', col: 'user_id', value: userId }] });
-      return rows.map(r => ({ orgId: r.org_id, role: r.role, displayName: r.display_name }));
+      return rows.map(r => ({ orgId: r.org_id, role: r.role, extraRoles: pgArr(r.extra_roles), displayName: r.display_name }));
     },
-    async org(orgId: string, role: Role): Promise<Org> {
+    async org(orgId: string, role: Role, roles: Role[] = [role]): Promise<Org> {
       const [r] = await sel<Row>({ table: 'organizations', columns: 'id,name,timezone,join_code,settings', where: [{ op: 'eq', col: 'id', value: orgId }] });
-      return { id: r.id, name: r.name, timezone: r.timezone, joinCode: r.join_code, settings: mergeSettings(r.settings), role };
+      return { id: r.id, name: r.name, timezone: r.timezone, joinCode: r.join_code, settings: mergeSettings(r.settings), role, roles };
     },
     async leaderboard(orgId: string, days: number): Promise<BoardRow[]> {
       const rows = await be.rpc<Row[]>('class_leaderboard', { org: orgId, p_days: days });
@@ -114,6 +124,35 @@ export function api(be: Backend) {
       const n = await be.update('fee_records', { amount: p.amount, paid_on: p.paidOn, method: p.method }, [{ op: 'eq', col: 'student_id', value: p.studentId }, { op: 'eq', col: 'month', value: p.month }]);
       if (!n) await be.insert('fee_records', { org_id: orgId, student_id: p.studentId, month: p.month, amount: p.amount, paid_on: p.paidOn, method: p.method });
     },
+    checkIn: (classId: string, code: string, mode: string) => be.rpc<string>('student_check_in', { p_class: classId, p_code: code, p_mode: mode }),
+    checkinCode: (classId: string) => be.rpc<string>('class_checkin_code', { p_class: classId }),
+    requestAbsence: (p: { studentId: string; date: string; kind: 'free' | 'excuse'; reason: string }) => be.rpc<string>('request_absence', { p: { student_id: p.studentId, date: p.date, kind: p.kind, reason: p.reason } }),
+    async absenceRequests(orgId: string): Promise<AbsenceRequest[]> {
+      return (await sel<Row>({ table: 'absence_requests', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['date', 'desc']], limit: 1000 }))
+        .map(r => ({ id: r.id, studentId: r.student_id, date: iso(r.date), kind: r.kind, reason: r.reason, status: r.status, createdAt: ts(r.created_at) }));
+    },
+    decideAbsence: (id: string, status: 'approved' | 'declined') => be.update('absence_requests', { status, decided_at: new Date().toISOString() }, [{ op: 'eq', col: 'id', value: id }]),
+    standing: (studentId: string) => be.rpc<Standing>('attendance_standing', { sid: studentId }),
+    async revisionCheckins(orgId: string, sinceWeek: string): Promise<RevisionCheckin[]> {
+      return (await sel<Row>({ table: 'revision_checkins', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'gte', col: 'week_start', value: sinceWeek }], limit: 5000 }))
+        .map(r => ({ id: r.id, studentId: r.student_id, weekStart: iso(r.week_start), slot: r.slot, done: r.done, partner: r.partner, pages: r.pages, recorded: r.recorded, recordingLink: r.recording_link, note: r.note }));
+    },
+    saveRevisionCheckin: async (orgId: string, p: { studentId: string; weekStart: string; slot: string; done: boolean; partner: string; pages: string; recorded: boolean; recordingLink: string }) => {
+      const patch = { done: p.done, partner: p.partner || null, pages: p.pages || null, recorded: p.recorded, recording_link: p.recordingLink || null };
+      const n = await be.update('revision_checkins', patch, [{ op: 'eq', col: 'student_id', value: p.studentId }, { op: 'eq', col: 'week_start', value: p.weekStart }, { op: 'eq', col: 'slot', value: p.slot }]);
+      if (!n) await be.insert('revision_checkins', { org_id: orgId, student_id: p.studentId, week_start: p.weekStart, slot: p.slot, ...patch });
+    },
+    classmates: () => be.rpc<Array<{ student_id: string; name: string; class_name: string }>>('classmates', {}),
+    ackRules: (studentId: string) => be.update('students', { rules_ack_at: new Date().toISOString() }, [{ op: 'eq', col: 'id', value: studentId }]),
+    setExtraRoles: (orgId: string, userId: string, roles: Role[]) => be.update('organization_members', { extra_roles: roles }, [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'user_id', value: userId }]),
+    savePushSubscription: async (sub: { endpoint: string; p256dh: string; auth: string; userAgent: string }) => {
+      await be.remove('push_subscriptions', [{ op: 'eq', col: 'endpoint', value: sub.endpoint }]);
+      await be.insert('push_subscriptions', { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth, user_agent: sub.userAgent.slice(0, 200) });
+    },
+    removePushSubscription: (endpoint: string) => be.remove('push_subscriptions', [{ op: 'eq', col: 'endpoint', value: endpoint }]),
+    ownerPrograms: () => be.rpc<Array<{ id: string; name: string; students: number; members: number; created_at: string }>>('owner_programs', {}),
+    ownerList: () => be.rpc<Array<{ email: string; added_at: string }>>('owner_list', {}),
+    ownerSet: (email: string, add: boolean) => be.rpc<null>('owner_set', { p_email: email, p_add: add }),
     canCreatePrograms: () => be.rpc<boolean>('can_create_programs', {}),
     teacherCode: (orgId: string) => be.rpc<string>('teacher_code', { org: orgId }),
     async students(orgId: string, opts: { includeArchived?: boolean } = {}): Promise<Student[]> {
@@ -154,14 +193,15 @@ export function api(be: Backend) {
     },
     async attendance(orgId: string, since: string): Promise<Attendance[]> {
       const rows = await sel<Row>({ table: 'attendance', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'gte', col: 'date', value: since }] });
-      return rows.map(r => ({ studentId: r.student_id, date: iso(r.date), status: r.status, mode: r.mode }));
+      return rows.map(r => ({ studentId: r.student_id, date: iso(r.date), status: r.status, mode: r.mode, source: r.source, checkedInAt: r.checked_in_at ? ts(r.checked_in_at) : null, note: r.note }));
     },
     async classes(orgId: string): Promise<ClassRow[]> {
       const [rows, links] = await Promise.all([
         sel<Row>({ table: 'classes', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'is', col: 'archived_at', value: null }], order: [['name', 'asc']] }),
         sel<Row>({ table: 'class_students', where: [{ op: 'eq', col: 'org_id', value: orgId }] }),
       ]);
-      return rows.map(r => ({ id: r.id, name: r.name, teacherUserId: r.teacher_user_id, schedule: r.schedule, startsOn: r.starts_on ? iso(r.starts_on) : null, endsOn: r.ends_on ? iso(r.ends_on) : null, notes: r.notes, studentIds: links.filter(l => l.class_id === r.id).map(l => l.student_id) }));
+      return rows.map(r => ({ id: r.id, name: r.name, teacherUserId: r.teacher_user_id, schedule: r.schedule, startsOn: r.starts_on ? iso(r.starts_on) : null, endsOn: r.ends_on ? iso(r.ends_on) : null, notes: r.notes, studentIds: links.filter(l => l.class_id === r.id).map(l => l.student_id),
+        slots: Array.isArray(r.schedule_slots) ? r.schedule_slots : (typeof r.schedule_slots === 'string' ? JSON.parse(r.schedule_slots) : []), location: r.location ?? 'mosque', checkinOpenMin: r.checkin_open_min ?? 15, lateAfterMin: r.late_after_min ?? 10, requireCode: r.require_code ?? true }));
     },
     async goals(orgId: string, studentId?: string): Promise<Goal[]> {
       const where: Filter[] = [{ op: 'eq', col: 'org_id', value: orgId }];
@@ -172,7 +212,7 @@ export function api(be: Backend) {
       return (await sel<Row>({ table: 'milestones', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'student_id', value: studentId }] })).map(r => ({ code: r.code, achievedOn: iso(r.achieved_on) }));
     },
     async members(orgId: string): Promise<Member[]> {
-      return (await sel<Row>({ table: 'organization_members', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'asc']] })).map(r => ({ userId: r.user_id, role: r.role, displayName: r.display_name, createdAt: ts(r.created_at) }));
+      return (await sel<Row>({ table: 'organization_members', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'asc']] })).map(r => ({ userId: r.user_id, role: r.role, extraRoles: pgArr(r.extra_roles), displayName: r.display_name, createdAt: ts(r.created_at) }));
     },
     async notifications(orgId: string): Promise<Notice[]> {
       return (await sel<Row>({ table: 'notifications', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'desc']], limit: 100 })).map(r => ({ id: r.id, studentId: r.student_id, to: r.to_address, template: r.template, status: r.status, error: r.error, createdAt: ts(r.created_at) }));
@@ -201,11 +241,11 @@ export function api(be: Backend) {
     setAssignmentStatus: (id: string, status: AssignmentStatus, feedback?: string) => be.rpc<null>('set_assignment_status', { p_id: id, p_status: status, p_feedback: feedback ?? null }),
     deleteAssignment: (id: string) => be.remove('assignments', [{ op: 'eq', col: 'id', value: id }]),
     saveAttendance: async (orgId: string, studentId: string, date: string, status: string, mode: string) => {
-      const n = await be.update('attendance', { status, mode }, [{ op: 'eq', col: 'student_id', value: studentId }, { op: 'eq', col: 'date', value: date }]);
+      const n = await be.update('attendance', { status, mode, source: 'teacher' }, [{ op: 'eq', col: 'student_id', value: studentId }, { op: 'eq', col: 'date', value: date }]);
       if (!n) await be.insert('attendance', { org_id: orgId, student_id: studentId, date, status, mode });
     },
-    createClass: (orgId: string, p: { name: string; teacherUserId: string | null; schedule: string; startsOn: string | null; notes: string }) =>
-      be.insert<Row>('classes', { org_id: orgId, name: p.name, teacher_user_id: p.teacherUserId, schedule: p.schedule || null, starts_on: p.startsOn, notes: p.notes || null }),
+    createClass: (orgId: string, p: { name: string; teacherUserId: string | null; schedule: string; startsOn: string | null; notes: string; extra?: Record<string, unknown> }) =>
+      be.insert<Row>('classes', { org_id: orgId, name: p.name, teacher_user_id: p.teacherUserId, schedule: p.schedule || null, starts_on: p.startsOn, notes: p.notes || null, ...(p.extra ?? {}) }),
     updateClass: (id: string, patch: Record<string, unknown>) => be.update('classes', patch, [{ op: 'eq', col: 'id', value: id }]),
     setClassStudents: async (orgId: string, classId: string, studentIds: string[], before: string[]) => {
       for (const s of studentIds.filter(x => !before.includes(x))) await be.insert('class_students', { class_id: classId, student_id: s, org_id: orgId });

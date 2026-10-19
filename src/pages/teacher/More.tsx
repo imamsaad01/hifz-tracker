@@ -4,6 +4,9 @@ import { Copy, RefreshCw, Download, Settings, KeyRound, Users, BarChart3, Mail, 
 import { Applications } from './Applications';
 import { Fees } from './Fees';
 import { DAY_NAMES } from '../../lib/revision';
+import { DEFAULT_RULES } from '../../components/StudentAttendance';
+import { OwnerTools } from './OwnerTools';
+import { Crown } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useRoute, href } from '../../app/router';
@@ -22,7 +25,7 @@ import { friendly } from '../../api/backend';
 
 const SECTIONS = [
   ['reports', 'Reports', BarChart3, false], ['applications', 'Applications', Inbox, false], ['fees', 'Fees', Wallet, true], ['settings', 'Settings', Settings, true], ['codes', 'Join codes', KeyRound, true], ['people', 'People', Users, true],
-  ['email', 'Email log', Mail, false], ['audit', 'Audit log', HistoryIcon, true], ['about', 'About the data', BookOpen, false],
+  ['owner', 'Site owner', Crown, true], ['email', 'Email log', Mail, false], ['audit', 'Audit log', HistoryIcon, true], ['about', 'About the data', BookOpen, false],
 ] as const;
 export function More() {
   const { org } = useOrg();
@@ -39,6 +42,7 @@ export function More() {
     {sec === 'settings' && <SettingsForm />}
     {sec === 'codes' && <Codes />}
     {sec === 'people' && <People />}
+    {sec === 'owner' && <OwnerTools />}
     {sec === 'email' && <EmailLog />}
     {sec === 'audit' && <Audit />}
     {sec === 'about' && <About />}
@@ -122,6 +126,34 @@ function SettingsForm() {
       <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
     </Card>
     <Card className="flex flex-col gap-4 p-5">
+      <h2 className="font-bold">Attendance</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Semester starts">{id => <input id={id} type="date" className={inputCls} value={s.attendance.semesterStart ?? ''} onChange={e => setS({ ...s, attendance: { ...s.attendance, semesterStart: e.target.value || null } })} />}</Field>
+        <Field label="Semester ends">{id => <input id={id} type="date" className={inputCls} value={s.attendance.semesterEnd ?? ''} onChange={e => setS({ ...s, attendance: { ...s.attendance, semesterEnd: e.target.value || null } })} />}</Field>
+        <Field label="Free absences (no reason needed)">{id => <Select id={id} value={s.attendance.freeAbsences} onChange={v => setS({ ...s, attendance: { ...s.attendance, freeAbsences: Number(v) } })} options={[0, 1, 2, 3].map(n => [n, `${n} per semester`] as [number, string])} />}</Field>
+        <Field label="Extra excused absences (with a reason)">{id => <Select id={id} value={s.attendance.excusedAbsences} onChange={v => setS({ ...s, attendance: { ...s.attendance, excusedAbsences: Number(v) } })} options={[0, 1, 2, 3, 4, 5].map(n => [n, `${n} per semester`] as [number, string])} />}</Field>
+      </div>
+      <p className="text-sm text-ink-faint">Absences must be sent before class. After class, anyone who did not check in is marked absent automatically, and students and parents get a warning when an absence was not communicated or the limit is passed.</p>
+    </Card>
+    <Card className="flex flex-col gap-4 p-5">
+      <h2 className="font-bold">Partner revision form</h2>
+      <ul className="flex flex-col gap-2">{s.revisionForm.slots.map((sl, i) => <li key={sl.key} className="flex flex-wrap items-center gap-2">
+        <input aria-label="Session name" className={cx(inputCls, '!w-auto flex-1')} maxLength={60} value={sl.label} onChange={e => setS({ ...s, revisionForm: { ...s.revisionForm, slots: s.revisionForm.slots.map((x, k) => k === i ? { ...x, label: e.target.value } : x) } })} />
+        <Select aria-label="Reminder day" className="!w-44" value={sl.day ?? -1} onChange={v => setS({ ...s, revisionForm: { ...s.revisionForm, slots: s.revisionForm.slots.map((x, k) => k === i ? { ...x, day: Number(v) < 0 ? null : Number(v) } : x) } })} options={[[-1, 'Any day (no reminder)'], ...[1, 2, 3, 4, 5, 6, 0].map(d => [d, `${DAY_NAMES[d]} night (7 pm reminder)`] as [number, string])]} />
+        {s.revisionForm.slots.length > 1 && <button type="button" aria-label="Remove session" className="px-2 text-ink-faint hover:text-bad" onClick={() => setS({ ...s, revisionForm: { ...s.revisionForm, slots: s.revisionForm.slots.filter((_, k) => k !== i) } })}><X size={15} /></button>}
+      </li>)}</ul>
+      <div className="flex flex-wrap items-end gap-3">
+        <button type="button" className="text-sm font-bold text-pine-700 underline" onClick={() => setS({ ...s, revisionForm: { ...s.revisionForm, slots: [...s.revisionForm.slots, { key: `s${Date.now().toString(36)}`, label: 'Extra session', day: null }] } })}>+ Add a session</button>
+        <Field label="Excused misses a week" className="ml-auto w-56">{id => <Select id={id} value={s.revisionForm.allowedMisses} onChange={v => setS({ ...s, revisionForm: { ...s.revisionForm, allowedMisses: Number(v) } })} options={[0, 1, 2].map(n => [n, `${n} (more is followed up)`] as [number, string])} />}</Field>
+      </div>
+    </Card>
+    <Card className="flex flex-col gap-3 p-5">
+      <h2 className="font-bold">Class expectations</h2>
+      <p className="-mt-1 text-sm text-ink-faint">Shown to students and parents. Students tap “I have read and agree”. Start a line with “- ” for a bullet; other lines become headings.</p>
+      <textarea aria-label="Class expectations" className={`${inputCls} min-h-[260px] py-2 font-mono text-sm`} value={s.rulesText} onChange={e => setS({ ...s, rulesText: e.target.value })} />
+      {!s.rulesText.trim() && <div><Button kind="secondary" onClick={() => setS({ ...s, rulesText: DEFAULT_RULES })}>Use my Hifdh Class Expectations</Button></div>}
+    </Card>
+    <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Motivation</h2>
       <Field label="Streak freezes">{id => <Select id={id} value={s.motivation.freezePerWeek} onChange={v => setS({ ...s, motivation: { freezePerWeek: Number(v) } })} options={[[0, 'None: any missed day ends the streak'], [1, '1 missed day a week is forgiven'], [2, '2 missed days a week are forgiven']]} />}</Field>
       <TagEditor label="Adab points: positive" items={s.adab.positive} onChange={positive => setS({ ...s, adab: { ...s.adab, positive } })} />
@@ -194,6 +226,7 @@ function People() {
     <ul className="mt-2 divide-y divide-line">{data.members.map(m => { const me = m.userId === user?.id; const student = data.students.find(s => s.userId === m.userId); return <li key={m.userId} className="flex flex-wrap items-center gap-3 px-5 py-3">
       <span className="min-w-0 flex-1 basis-48"><b>{m.displayName ?? student?.name ?? 'No name'}</b>{me && <Pill className="ml-2">you</Pill>}<span className="block text-sm text-ink-faint">Joined {niceDate(m.createdAt.slice(0, 10))}</span></span>
       <Select aria-label={`Role for ${m.displayName ?? 'member'}`} className="!w-40" value={m.role} disabled={me && admins <= 1} onChange={async v => { try { await api.setMemberRole(org.id, m.userId, v as Role); toast('Role changed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} options={(Object.keys(ROLE_LABEL) as Role[]).map(r => [r, ROLE_LABEL[r]])} />
+      <ExtraRoles orgId={org.id} m={m} onChanged={reload} />
       {!me && <Button kind="quiet" onClick={() => setRm(m.userId)}>Remove</Button>}
     </li>; })}</ul>
     <Confirm open={!!rm} onClose={() => setRm(null)} danger title="Remove from the program?" confirmLabel="Remove" body="They lose access straight away. Their student record and history stay." onConfirm={async () => { try { await api.removeMember(org.id, rm!); toast('Removed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} />
@@ -244,4 +277,10 @@ function TagEditor({ label, items, onChange }: { label: string; items: string[];
     <div className="flex flex-wrap gap-1.5">{items.map(i => <span key={i} className="inline-flex items-center gap-1 rounded-full bg-paper px-3 py-1 text-sm ring-1 ring-line">{i}<button type="button" aria-label={`Remove ${i}`} onClick={() => onChange(items.filter(x => x !== i))} className="text-ink-faint hover:text-bad"><X size={13} /></button></span>)}
       <form className="inline-flex" onSubmit={e => { e.preventDefault(); add(); }}><input aria-label={`Add to ${label}`} className="min-h-[34px] w-32 rounded-full border border-line px-3 text-sm" maxLength={40} value={t} onChange={e => setT(e.target.value)} placeholder="+ Add" /></form></div>
   </fieldset>;
+}
+
+function ExtraRoles({ orgId, m, onChanged }: { orgId: string; m: { userId: string; role: Role; extraRoles: Role[] }; onChanged: () => void }) {
+  const { api } = useOrg(); const toast = useToast();
+  const toggle = async (r: Role) => { const next = m.extraRoles.includes(r) ? m.extraRoles.filter(x => x !== r) : [...m.extraRoles, r]; try { await api.setExtraRoles(orgId, m.userId, next); toast('Roles updated. They can switch with “View as”.'); onChanged(); } catch (e) { toast(friendly(e), 'err'); } };
+  return <span className="flex flex-wrap items-center gap-1"><span className="text-xs text-ink-faint">Also:</span>{(['admin', 'teacher', 'parent', 'student'] as Role[]).filter(r => r !== m.role).map(r => <button key={r} type="button" aria-pressed={m.extraRoles.includes(r)} onClick={() => toggle(r)} className={cx('min-h-[32px] rounded-full px-2.5 text-xs font-bold ring-1 ring-inset', m.extraRoles.includes(r) ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{ROLE_LABEL[r]}</button>)}</span>;
 }

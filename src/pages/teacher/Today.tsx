@@ -14,6 +14,7 @@ import { RecordSheet } from '../../components/RecordSheet';
 import { StudentPicker } from '../../components/StudentPicker';
 import { Leaderboard } from '../../components/Leaderboard';
 import { AnnouncementBoard } from '../../components/Announcements';
+import { NotifyToggle } from '../../components/Notifications';
 import { Select } from '../../components/ui';
 import { PageTitle } from '../../components/Shell';
 import { href, go } from '../../app/router';
@@ -80,6 +81,7 @@ export function Today() {
               <span className="min-w-0"><b className="block">{i.student.name}</b><span className="text-sm text-ink-soft">{i.reasons.map(r => r.text).join(' · ')}</span></span></a></li>)}</ul>
               : <p className="flex items-center gap-2 px-5 py-4 text-sm text-good"><CheckCircle2 size={16} />Everyone is on track.</p>}
           </Card>
+          <NotifyToggle compact />
           <UpNext data={data} today={today} />
           <AnnouncementBoard items={data.announcements} classes={data.classes} onChanged={reload} limit={3} />
           <Leaderboard limit={5} />
@@ -101,10 +103,12 @@ function UpNext({ data, today }: { data: import('../../app/useOrgData').OrgData;
   const week = addDays(today, 7);
   const ev = data.events.filter(e => e.startsOn <= week && (e.endsOn ?? e.startsOn) >= today);
   const ex = data.exams.filter(x => x.status === 'scheduled' && x.scheduledOn <= week);
-  if (!ev.length && !ex.length) return null;
+  const ab = data.absences.filter(a => a.date >= today && a.date <= week);
+  if (!ev.length && !ex.length && !ab.length) return null;
   const name = (id: string) => data.students.find(s => s.id === id)?.name ?? '';
   return <Card><CardHead title={<span className="inline-flex items-center gap-2"><CalendarDays size={18} className="text-pine-700" />This week</span>} action={<a href={href('classes', 'calendar')} className="text-sm font-bold text-pine-700 underline">Calendar</a>} />
     <ul className="mt-2 divide-y divide-line">{ev.map(e => <li key={e.id} className="px-5 py-2.5 text-sm"><b>{e.title}</b> <span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}
-      {ex.map(x => <li key={x.id} className="px-5 py-2.5 text-sm"><b>{x.title}</b> · {name(x.studentId)} <span className={x.scheduledOn < today ? 'text-bad' : 'text-ink-faint'}>· {x.scheduledOn < today ? 'needs result' : niceDate(x.scheduledOn)}</span></li>)}</ul>
+      {ex.map(x => <li key={x.id} className="px-5 py-2.5 text-sm"><b>{x.title}</b> · {name(x.studentId)} <span className={x.scheduledOn < today ? 'text-bad' : 'text-ink-faint'}>· {x.scheduledOn < today ? 'needs result' : niceDate(x.scheduledOn)}</span></li>)}
+      {ab.map(a => <li key={a.id} className="px-5 py-2.5 text-sm"><a href={href('classes', 'attendance')} className="hover:underline"><b>Absence</b> · {name(a.studentId)} <span className={a.status === 'pending' ? 'font-bold text-warn' : 'text-ink-faint'}>· {niceDate(a.date)} · {a.status === 'pending' ? 'needs your answer' : a.status}</span></a></li>)}</ul>
   </Card>;
 }

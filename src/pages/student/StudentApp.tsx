@@ -31,6 +31,8 @@ import { KIND } from '../teacher/Calendar';
 import { certificatesFor } from '../Certificate';
 import { EditStudent } from '../teacher/StudentDetail';
 import { friendly } from '../../api/backend';
+import { CheckInCard, StandingCard, RevisionFormCard, RulesCard, missedLastWeek } from '../../components/StudentAttendance';
+import { NotifyToggle } from '../../components/Notifications';
 
 export function StudentApp({ tab }: { tab: string }) {
   const { org, today, user, api, refreshSession } = useOrg();
@@ -68,6 +70,9 @@ export function StudentApp({ tab }: { tab: string }) {
     {tab === 'home' && <>
       <PageTitle title={`Assalamu alaikum, ${me.name.split(' ')[0]}`} sub={<>{niceDate(today)} · {hijriDate(today)}</>} />
       <div className="mb-5"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
+      {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
+      <div className="mb-5"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
+      <div className="mb-5"><NotifyToggle /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
         <Card className="p-5"><h2 className="mb-3 text-lg font-bold">Today</h2><DailyRing parts={ring} /></Card>
@@ -76,6 +81,8 @@ export function StudentApp({ tab }: { tab: string }) {
       {(events.length > 0 || tests.length > 0) && <Card className="mb-5"><CardHead title={<span className="inline-flex items-center gap-2"><CalendarDays size={18} className="text-pine-700" />Coming up</span>} />
         <ul className="mt-2 divide-y divide-line">{tests.map(x => <li key={x.id} className="px-5 py-2.5"><b>{x.title}</b> <span className="text-ink-faint">· {niceDate(x.scheduledOn)}{x.examiner ? ` · with ${x.examiner}` : ''}</span></li>)}
           {events.map(e => <li key={e.id} className="flex items-center gap-2 px-5 py-2.5"><i className={`h-2.5 w-2.5 rounded-full ${KIND[e.kind][1]}`} /><b>{e.title}</b><span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}</ul></Card>}
+      <div className="mb-5"><RevisionFormCard student={me} forms={data.revisionForms} onChanged={reload} /></div>
+      <div className="mb-5"><StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} /></div>
       <h2 className="mb-3 text-lg font-bold">Today’s plan</h2>
       <div className="grid gap-4 lg:grid-cols-3">
         <PlanTile icon={<BookOpen size={20} />} title="New" body={ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'} note="Learn it, then read it to your teacher. Your teacher records New."
@@ -112,6 +119,8 @@ export function StudentApp({ tab }: { tab: string }) {
         <p><b>Parent:</b> {me.guardianName || '—'} {me.guardianEmail && <span className="text-ink-faint">({me.guardianEmail}{me.notify ? ', gets emails' : ''})</span>}</p>
       </Card>
       <Card className="mt-4 flex items-start gap-3 p-5"><KeyRound size={18} className="mt-1 text-ink-faint" /><p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span><br /><span className="text-sm text-ink-faint">Give this to a parent. They create an account and enter it to follow your progress. They cannot change anything.</span></p></Card>
+      <div className="mt-4"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>
+      <div className="mt-4"><NotifyToggle /></div>
       <p className="mt-4 text-sm text-ink-faint">Only your teachers, you and linked parents can see your records.</p>
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
     </>}

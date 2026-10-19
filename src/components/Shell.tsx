@@ -8,9 +8,10 @@ import { InstallApp } from './InstallApp';
 import { InboxBell } from './Inbox';
 import { cx, Select, useToast } from './ui';
 
+const ROLE_NAME = { admin: 'Admin', teacher: 'Teacher', student: 'Student', parent: 'Parent' } as const;
 export interface NavItem { key: string; label: string; icon: LucideIcon; href: string }
 export function Shell({ nav, active, children }: { nav: NavItem[]; active: string; children: React.ReactNode }) {
-  const { org, memberships, switchOrg, backend, user, api } = useApp();
+  const { org, memberships, switchOrg, backend, user, api, switchRole } = useApp();
   const pending = useOutboxCount();
   const toast = useToast();
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
@@ -22,6 +23,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
       <nav aria-label="Main" className="flex flex-col gap-1">{nav.map(n => <a key={n.key} href={n.href} aria-current={active === n.key ? 'page' : undefined} className={cx('flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] font-bold', active === n.key ? 'bg-pine-50 text-pine-800' : 'text-ink-soft hover:bg-paper')}><n.icon size={18} />{n.label}</a>)}</nav>
       <div className="mt-auto flex flex-col gap-2 text-sm">
         {memberships.length > 1 && <Select aria-label="Program" value={org?.id ?? ''} onChange={switchOrg} options={memberships.map(m => [m.orgId, m.orgId === org?.id ? org.name : `Program (${m.role})`])} />}
+        {org && org.roles.length > 1 && <Select aria-label="View as" value={org.role} onChange={switchRole} options={org.roles.map(r => [r, `View as ${ROLE_NAME[r]}`] as [typeof r, string])} />}
         <p className="truncate text-ink-faint">{user?.name ?? user?.email}{backend.kind === 'preview' ? ' · preview' : ''}</p>
         <button type="button" onClick={() => backend.signOut()} className="inline-flex min-h-[40px] items-center gap-2 rounded-xl px-2 font-bold text-ink-soft hover:bg-paper"><LogOut size={16} />Sign out</button>
       </div>
@@ -31,6 +33,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
         <div className="lg:hidden"><Brand small /></div>
         <p className="hidden min-w-0 truncate text-sm font-bold text-ink-soft lg:block">{org?.name}</p>
         <div className="ml-auto flex items-center gap-2">
+          {org && org.roles.length > 1 && <Select aria-label="View as" className="!w-auto !min-h-[36px] text-sm lg:hidden" value={org.role} onChange={switchRole} options={org.roles.map(r => [r, ROLE_NAME[r]] as [typeof r, string])} />}
           <InstallApp compact />
           <InboxBell />
           {(!online || pending > 0) && <button type="button" onClick={flush} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-amber-50 px-3 text-xs font-bold text-warn ring-1 ring-warn/30">{online ? <RefreshCw size={14} /> : <CloudOff size={14} />}{online ? `${pending} waiting · send now` : `Offline${pending ? ` · ${pending} waiting` : ''}`}</button>}
