@@ -117,6 +117,14 @@ export async function seedPreview(db: PGlite) {
     await db.query(`insert into public.revision_checkins (org_id, student_id, week_start, slot, partner, recorded) values ($1, $2, $3, $4, $5, $6)`, [org, sid, addDays(wk, w), slot, partner, slot === 'fri']);
   await db.query(`insert into public.absence_requests (org_id, student_id, date, kind, reason, status) values ($1, $2, $3, 'excuse', 'Family wedding out of town', 'pending')`, [org, zayd.id, addDays(today, 5)]);
   await db.query(`insert into public.class_join_requests (org_id, class_id, student_id) values ($1, $2, $3)`, [org, cls1, yusra.id]);
+  // qira'at: Amina reads Nāfiʿ (Qālūn and Warsh) in jamʿ and memorises the Shāṭibiyyah
+  await db.query(`insert into public.qiraat_profiles (student_id, org_id, riwayat, mode, matn, matn_daily_lines) values ($1, $2, '{nafi.qalun,nafi.warsh}', 'jam', 'shatibiyyah', 3)`, [amina.id, org]);
+  await db.query(`insert into public.qiraat_tests (org_id, student_id, kind, surah, title, riwayat, scheduled_on) values ($1, $2, 'farsh', 2, 'Farsh: Al-Baqarah', '{nafi.qalun,nafi.warsh}', $3)`, [org, amina.id, addDays(today, 2)]);
+  await db.query(`insert into public.qiraat_tests (org_id, student_id, kind, bab, title, riwayat, status, result, taken_on, mistakes) values ($1, $2, 'usul', 'madd', 'Uṣūl: Madd & qaṣr', '{nafi.qalun,nafi.warsh}', 'done', 'repeat', $3, $4::jsonb)`,
+    [org, amina.id, addDays(today, -4), JSON.stringify([{ text: 'Madd badal for Warsh', riwayah: 'nafi.warsh' }, { text: 'ءامنوا', riwayah: 'nafi.warsh' }, { text: 'Ṣilat mīm al-jamʿ', riwayah: 'nafi.qalun' }])]);
+  await db.query(`insert into public.qiraat_tests (org_id, student_id, kind, surah, title, riwayat, status, result, taken_on) values ($1, $2, 'farsh', 1, 'Farsh: Al-Fatihah', '{nafi.qalun,nafi.warsh}', 'done', 'excellent', $3)`, [org, amina.id, addDays(today, -12)]);
+  for (const s of [1, 2, 3, 114, 113, 112, 111, 110]) await db.query(`insert into public.qiraat_khatmah (org_id, student_id, track, surah) values ($1, $2, 'jam', $3)`, [org, amina.id, s]);
+  await db.query(`insert into public.qiraat_matn_log (org_id, student_id, matn, line_from, line_to, kind, date) values ($1, $2, 'shatibiyyah', 1, 94, 'memorised', $3), ($1, $2, 'shatibiyyah', 1, 90, 'recited', $4)`, [org, amina.id, addDays(today, -1), addDays(today, -3)]);
   // school features: board, calendar, a juz test, adab points and a message thread
   await db.query(`insert into public.announcements (org_id, title, body, pinned) values ($1, 'Revision competition this month', 'Most clean pages by the end of the month wins a prize. Keep your Old revision steady!', true)`, [org]);
   await db.query(`insert into public.announcements (org_id, class_id, title, body) values ($1, $2, 'Bring your mushaf on Wednesday', 'We will practise reading from the page.')`, [org, cls1]);

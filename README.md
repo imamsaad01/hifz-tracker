@@ -111,3 +111,12 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **Revision-day reminder**: on each revision day (More → Settings → Revision plan), students get a phone reminder at the time you choose (default 3:00 pm).
 - **New announcements first**: a student's or parent's home screen shows new announcements at the top, marked *New*.
 - **Pull to refresh**: pull down from the top of any screen to reload it (useful in the installed app).
+
+## Qirāʾāt students
+
+- **Turn it on per student**: on the student's page (*Qirāʾāt student*), at sign-up (a *Qirāʾāt* step), or by the student under *My plan*.
+- **Riwāyāt**: any of the 20 riwāyāt of the ten qurrāʾ. Tap a qāriʾ for both ruwāt or a single rāwī. With two or more, choose **jamʿ** (one khatmah together) or **ifrād** (a separate khatmah each).
+- **Tests**: farsh by surah or uṣūl by bāb, in chosen riwāyāt. Schedule ahead or record now with a grade (Excellent / Very good / Pass / Repeat), the words or rules they got wrong (optionally per rāwī), and a note. Weak areas (Repeat or mistakes in the last 60 days) are shown to the student and parent.
+- **Khatmah**: a 114-surah grid per track. Tap a surah when it is read to you.
+- **Matn**: Shāṭibiyyah (1173 lines), Durrah (241) or Ṭayyibah (1014). Students log the lines they memorise; teachers log the lines recited to them.
+- **Reminders** (times in More → Settings → Qirāʾāt reminders): a test in 2 days (evening), a test today (morning), today's matn lines (daily), and weak areas (weekly). Runs via `public.qiraat_reminders()` in the `hifz-reminders` cron job.

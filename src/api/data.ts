@@ -13,6 +13,12 @@ export interface ClassRow { id: string; name: string; teacherUserId: string | nu
   slots: Slot[]; location: 'mosque' | 'online' | 'both'; checkinOpenMin: number; lateAfterMin: number; requireCode: boolean }
 export interface AbsenceRequest { id: string; studentId: string; date: string; kind: 'free' | 'excuse'; reason: string | null; status: 'pending' | 'approved' | 'declined'; createdAt: string }
 export interface JoinRequest { id: string; classId: string; studentId: string; status: 'pending' | 'approved' | 'declined' | 'cancelled'; note: string | null; createdAt: string; decidedAt: string | null }
+export interface QiraatProfile { studentId: string; active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number }
+export interface QiraatMistake { text: string; riwayah?: string | null }
+export interface QiraatTest { id: string; studentId: string; kind: 'farsh' | 'usul'; surah: number | null; bab: string | null; title: string; riwayat: string[]; scheduledOn: string | null; takenOn: string | null; status: 'scheduled' | 'done'; result: string | null; mistakes: QiraatMistake[]; note: string | null; createdAt: string }
+export interface KhatmahMark { studentId: string; track: string; surah: number; doneOn: string }
+export interface MatnEntry { id: string; studentId: string; matn: string; lineFrom: number; lineTo: number; kind: 'memorised' | 'recited'; date: string }
+export interface QiraatData { profiles: QiraatProfile[]; tests: QiraatTest[]; khatmah: KhatmahMark[]; matn: MatnEntry[] }
 export interface RevisionCheckin { id: string; studentId: string; weekStart: string; slot: string; done: boolean; partner: string | null; pages: string | null; recorded: boolean; recordingLink: string | null; note: string | null }
 export interface Standing { absences: number; free: number; extra: number; unnotified: number; excused: number; over: number }
 export interface Attendance { studentId: string; date: string; status: string; mode: string; source?: string; checkedInAt?: string | null; note?: string | null }
@@ -42,6 +48,7 @@ export function mergeSettings(s: Row | null | undefined): OrgSettings {
     attendance: { ...DEFAULT_SETTINGS.attendance, ...(x.attendance ?? {}) },
     revisionForm: { ...DEFAULT_SETTINGS.revisionForm, ...(x.revisionForm ?? {}) },
     rulesText: typeof x.rulesText === 'string' ? x.rulesText : DEFAULT_SETTINGS.rulesText,
+    qiraat: { ...DEFAULT_SETTINGS.qiraat, ...(x.qiraat ?? {}) },
   };
 }
 const toStudent = (r: Row, ranges: Range[] = []): Student => ({
@@ -133,6 +140,36 @@ export function api(be: Backend) {
         .map(r => ({ id: r.id, studentId: r.student_id, date: iso(r.date), kind: r.kind, reason: r.reason, status: r.status, createdAt: ts(r.created_at) }));
     },
     decideAbsence: (id: string, status: 'approved' | 'declined') => be.update('absence_requests', { status, decided_at: new Date().toISOString() }, [{ op: 'eq', col: 'id', value: id }]),
+    async qiraat(orgId: string): Promise<QiraatData> {
+      const w = [{ op: 'eq' as const, col: 'org_id', value: orgId }];
+      const [p, t, k, m] = await Promise.all([
+        sel<Row>({ table: 'qiraat_profiles', where: w, limit: 2000 }),
+        sel<Row>({ table: 'qiraat_tests', where: w, order: [['created_at', 'desc']], limit: 3000 }),
+        sel<Row>({ table: 'qiraat_khatmah', where: w, limit: 5000 }),
+        sel<Row>({ table: 'qiraat_matn_log', where: w, order: [['date', 'desc']], limit: 3000 }),
+      ]);
+      const js = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : v ?? []) as QiraatMistake[];
+      return {
+        profiles: p.map(r => ({ studentId: r.student_id, active: r.active, riwayat: pgArr(r.riwayat), mode: r.mode, matn: r.matn, matnDailyLines: r.matn_daily_lines })),
+        tests: t.map(r => ({ id: r.id, studentId: r.student_id, kind: r.kind, surah: r.surah, bab: r.bab, title: r.title, riwayat: pgArr(r.riwayat), scheduledOn: r.scheduled_on ? iso(r.scheduled_on) : null, takenOn: r.taken_on ? iso(r.taken_on) : null, status: r.status, result: r.result, mistakes: js(r.mistakes), note: r.note, createdAt: ts(r.created_at) })),
+        khatmah: k.map(r => ({ studentId: r.student_id, track: r.track, surah: r.surah, doneOn: iso(r.done_on) })),
+        matn: m.map(r => ({ id: r.id, studentId: r.student_id, matn: r.matn, lineFrom: r.line_from, lineTo: r.line_to, kind: r.kind, date: iso(r.date) })),
+      };
+    },
+    setQiraat: (studentId: string, p: { active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number }) =>
+      be.rpc<null>('set_qiraat_profile', { p_student: studentId, p: { active: p.active, riwayat: p.riwayat, mode: p.mode, matn: p.matn ?? '', matn_daily_lines: p.matnDailyLines } }),
+    saveQiraatTest: (t: { id?: string; studentId: string; kind: 'farsh' | 'usul'; surah: number | null; bab: string | null; title: string; riwayat: string[]; scheduledOn: string | null; result: string | null; mistakes: QiraatMistake[]; note: string; takenOn?: string | null }) =>
+      be.rpc<string>('save_qiraat_test', { p: { id: t.id ?? '', student_id: t.studentId, kind: t.kind, surah: t.surah, bab: t.bab, title: t.title, riwayat: t.riwayat, scheduled_on: t.scheduledOn ?? '', result: t.result ?? '', mistakes: t.mistakes, note: t.note, taken_on: t.takenOn ?? '' } }),
+    removeQiraatTest: (id: string) => be.remove('qiraat_tests', [{ op: 'eq', col: 'id', value: id }]),
+    setKhatmah: async (orgId: string, studentId: string, track: string, surahs: number[], on: boolean) => {
+      for (const surah of surahs) {
+        if (on) await be.insert('qiraat_khatmah', { org_id: orgId, student_id: studentId, track, surah }).catch(e => { if (!/duplicate|unique/i.test(String((e as Error).message))) throw e; });
+        else await be.remove('qiraat_khatmah', [{ op: 'eq', col: 'student_id', value: studentId }, { op: 'eq', col: 'track', value: track }, { op: 'eq', col: 'surah', value: surah }]);
+      }
+    },
+    addMatn: (orgId: string, p: { studentId: string; matn: string; lineFrom: number; lineTo: number; kind: 'memorised' | 'recited'; date: string }) =>
+      be.insert('qiraat_matn_log', { org_id: orgId, student_id: p.studentId, matn: p.matn, line_from: p.lineFrom, line_to: p.lineTo, kind: p.kind, date: p.date }),
+    removeMatn: (id: string) => be.remove('qiraat_matn_log', [{ op: 'eq', col: 'id', value: id }]),
     async joinRequests(orgId: string): Promise<JoinRequest[]> {
       return (await sel<Row>({ table: 'class_join_requests', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'desc']], limit: 500 }))
         .map(r => ({ id: r.id, classId: r.class_id, studentId: r.student_id, status: r.status, note: r.note, createdAt: ts(r.created_at), decidedAt: r.decided_at ? ts(r.decided_at) : null }));

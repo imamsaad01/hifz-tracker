@@ -25,6 +25,10 @@ import { DailyRing, LevelBar, BadgeGrid } from '../../components/Motivation';
 import { AyahPlayer } from '../../components/AyahPlayer';
 import { AnnouncementBoard } from '../../components/Announcements';
 import { HalaqahChooser } from '../../components/HalaqahJoin';
+import { QiraatStudentCard, ProfileModal, profileOf } from '../../components/Qiraat';
+import { riwayatSummary } from '../../lib/qiraat';
+import type { OrgData } from '../../app/useOrgData';
+import type { Student } from '../../lib/types';
 import { MessageThread } from '../../components/MessageThread';
 import { AdabSummary } from '../../components/Adab';
 import { ExamList } from '../teacher/Exams';
@@ -45,7 +49,7 @@ export function StudentApp({ tab }: { tab: string }) {
   const ins = useMemo(() => me && data && sd.sessions ? insight(me, sd.sessions, data.revision.get(me.id) ?? [], data.assignments, data.attendance, org.settings, today) : null, [me, data, sd.sessions, org.settings, today]);
   if (error || sd.error) return <ErrorBox message={(error ?? sd.error)!} onRetry={reload} />;
   if (!data) return <Spinner />;
-  if (!me) return <Onboarding onDone={async () => { setJustJoined(true); await reload(); await refreshSession(); }} create={d => api.createStudent({ orgId: org.id, forSelf: true, ...d }).then(() => undefined)} name={user?.name ?? ''} />;
+  if (!me) return <Onboarding onDone={async () => { setJustJoined(true); await reload(); await refreshSession(); }} create={async d => { const id = await api.createStudent({ orgId: org.id, forSelf: true, ...d }); if (d.qiraat && id) await api.setQiraat(id, d.qiraat); }} name={user?.name ?? ''} />;
   if (!sd.sessions || !ins) return <Spinner />;
   const refresh = () => { reload(); sd.reload(); };
   const recent = recentRanges(sd.sessions, me.id, today, org.settings.revision.recentDays);
@@ -75,6 +79,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} fresh /></div>
       {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
       <div className="mb-5"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
+      <div className="mb-5 empty:hidden"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
       <div className="mb-5"><NotifyToggle /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
@@ -116,6 +121,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-4"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
       <PlanCard plan={plan} />
       <div className="mt-4"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>
+      <div className="mt-4"><QiraatMine student={me} data={data} onChanged={reload} /></div>
       <Card className="mt-4 flex flex-col gap-2 p-5 text-[15px]">
         <p><b>Order:</b> {me.direction === 'back' ? 'From An-Nās backwards' : 'From Al-Fātiḥah forwards'}</p>
         <p><b>Goal:</b> {me.goal || '—'}</p>
@@ -135,8 +141,19 @@ function PlanTile({ icon, title, body, note, action }: { icon: React.ReactNode; 
 }
 function Onboarding({ create, onDone, name }: { create: (d: StudentDraft) => Promise<void>; onDone: () => Promise<void>; name: string }) {
   return <div className="mx-auto max-w-xl">
-    <PageTitle title="Let’s set up your hifz" sub="Four quick questions. Your plan is made from your answers." />
+    <PageTitle title="Let’s set up your hifz" sub="A few quick questions. Your plan is made from your answers." />
     <StudentForm defaultName={name} onSubmit={async d => { try { await create(d); await onDone(); } catch (e) { throw new Error(friendly(e)); } }} />
     <p className="mt-3"><Pill>You can change these later</Pill></p>
   </div>;
+}
+
+/** My plan → qira'at: turn it on, or change riwayat / jamʿ / matn */
+function QiraatMine({ student, data, onChanged }: { student: Student; data: OrgData; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const p = profileOf(data, student.id); const on = !!p?.active;
+  return <Card className="flex flex-wrap items-center gap-3 p-5">
+    <span className="min-w-0 flex-1"><b className="block">Qirāʾāt</b><span className="text-sm text-ink-soft">{on && p ? `${p.mode === 'jam' && p.riwayat.length > 1 ? 'Jamʿ' : 'Ifrād'} · ${riwayatSummary(p.riwayat)}` : 'Do you read the qirāʾāt to your teacher? Choose your riwāyāt here.'}</span></span>
+    <Button kind="secondary" onClick={() => setOpen(true)}>{on ? 'Change' : 'Set up'}</Button>
+    {open && <ProfileModal student={student} profile={p} onClose={() => setOpen(false)} onSaved={onChanged} />}
+  </Card>;
 }

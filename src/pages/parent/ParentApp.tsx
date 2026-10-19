@@ -18,6 +18,7 @@ import { PlanCard, ClassBadge } from '../../components/PlanCard';
 import { LevelBar, BadgeGrid } from '../../components/Motivation';
 import { AnnouncementBoard } from '../../components/Announcements';
 import { HalaqahChooser } from '../../components/HalaqahJoin';
+import { QiraatStudentCard } from '../../components/Qiraat';
 import { MessageThread } from '../../components/MessageThread';
 import { AdabSummary } from '../../components/Adab';
 import { ExamList } from '../teacher/Exams';
@@ -60,6 +61,7 @@ export function ParentApp() {
       <NotifyToggle />
       <StandingCard studentId={child.id} you={false} revisionMissed={missedLastWeek(child.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
       <RevisionFormCard student={child} forms={data.revisionForms} readOnly onChanged={reload} />
+      <QiraatStudentCard student={child} data={data} onChanged={reload} readOnly />
       <PlanCard plan={studentPlan(child, org.settings, today)} you={false} />
       <div className="grid gap-5 xl:grid-cols-2"><Card className="p-5"><LevelBar total={pts.total} lvl={level(pts.total)} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card><AdabSummary points={beh} /></div>
       <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={data.goals.filter(g => g.studentId === child.id)} today={today} />

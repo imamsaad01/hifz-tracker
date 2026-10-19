@@ -5,6 +5,7 @@ import { Applications } from './Applications';
 import { Fees } from './Fees';
 import { DAY_NAMES } from '../../lib/revision';
 import { fmtTime } from '../../lib/schedule';
+const TIMES: Array<[string, string]> = ['06:00', '06:30', '07:00', '07:30', '08:00', '09:00', '12:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'].map(t => [t, fmtTime(t)]);
 import { DEFAULT_RULES } from '../../components/StudentAttendance';
 import { OwnerTools } from './OwnerTools';
 import { Crown } from 'lucide-react';
@@ -103,6 +104,7 @@ function SettingsForm() {
   const [name, setName] = useState(org.name); const [s, setS] = useState<OrgSettings>(org.settings); const [busy, setBusy] = useState(false);
   const r = s.revision;
   const setR = (p: Partial<OrgSettings['revision']>) => setS({ ...s, revision: { ...r, ...p } });
+  const setQ = (p: Partial<OrgSettings['qiraat']>) => setS({ ...s, qiraat: { ...s.qiraat, ...p } });
   const save = async () => { setBusy(true); try { await api.updateOrg(org.id, { name: name.trim(), settings: s }); toast('Settings saved.'); await refreshSession(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); } };
   return <div className="flex max-w-2xl flex-col gap-5">
     <Card className="flex flex-col gap-4 p-5">
@@ -129,6 +131,17 @@ function SettingsForm() {
         {r.remind !== false && <Field label="Reminder time">{id => <Select id={id} value={r.reminderTime ?? '15:00'} onChange={v => setR({ reminderTime: v })} options={['07:00', '08:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map(t => [t, fmtTime(t)] as [string, string])} />}</Field>}
       </div>
       <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
+    </Card>
+    <Card className="flex flex-col gap-4 p-5">
+      <h2 className="font-bold">Qirāʾāt reminders</h2>
+      <p className="-mt-2 text-sm text-ink-faint">For students marked as qirāʾāt students (on their page).</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Test in 2 days (evening)">{id => <Select id={id} value={s.qiraat.testEveTime} onChange={v => setQ({ testEveTime: v })} options={TIMES} />}</Field>
+        <Field label="Test today (morning)">{id => <Select id={id} value={s.qiraat.testMorningTime} onChange={v => setQ({ testMorningTime: v })} options={TIMES} />}</Field>
+        <Field label="Daily matn lines">{id => <Select id={id} value={s.qiraat.matnTime} onChange={v => setQ({ matnTime: v })} options={TIMES} />}</Field>
+        <Field label="Weekly weak-areas review">{id => <Select id={id} value={s.qiraat.weakDay} onChange={v => setQ({ weakDay: v })} options={[1, 2, 3, 4, 5, 6, 0].map(d => [d, DAY_NAMES[d]] as [number, string])} />}</Field>
+        <Field label="at">{id => <Select id={id} value={s.qiraat.weakTime} onChange={v => setQ({ weakTime: v })} options={TIMES} />}</Field>
+      </div>
     </Card>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Attendance</h2>

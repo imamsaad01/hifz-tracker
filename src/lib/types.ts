@@ -28,6 +28,8 @@ export interface OrgSettings {
   attendance: { semesterStart: string | null; semesterEnd: string | null; freeAbsences: number; excusedAbsences: number };
   revisionForm: { slots: Array<{ key: string; label: string; day: number | null }>; allowedMisses: number };
   rulesText: string;
+  /** qira'at reminders: test eve/morning, daily matn lines, weekly weak-areas review */
+  qiraat: { testEveTime: string; testMorningTime: string; matnTime: string; weakDay: number; weakTime: string };
 }
 export interface Org { id: string; name: string; timezone: string; joinCode: string; settings: OrgSettings; role: Role; roles: Role[] }
 export interface Student {
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   attendance: { semesterStart: null, semesterEnd: null, freeAbsences: 1, excusedAbsences: 2 },
   revisionForm: { slots: [{ key: 'after_lesson', label: 'After the lesson at the mosque', day: null }, { key: 'wed', label: 'Wednesday night', day: 3 }, { key: 'fri', label: 'Friday night', day: 5 }], allowedMisses: 1 },
   rulesText: '',
+  qiraat: { testEveTime: '18:00', testMorningTime: '08:00', matnTime: '07:30', weakDay: 5, weakTime: '17:00' },
 };
 export const SESSION_LABEL: Record<SessionType, string> = {
   new: 'New', recent: 'Recent revision', old: 'Old revision', juz_revision: 'Full juz revision', assessment: 'Assessment', catch_up: 'Catch-up', review: 'Review', other: 'Other',

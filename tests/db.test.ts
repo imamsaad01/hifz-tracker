@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -383,5 +383,37 @@ describe('revision day reminder', () => {
     expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Revision day today'`, [U.student])).toHaveLength(1);
     await as(null, `select public.scheduled_reminders()`);
     expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Revision day today'`, [U.student])).toHaveLength(1);
+  });
+});
+
+describe("qira'at", () => {
+  it('student sets their own riwayat; jamʿ needs two or more; unknown codes dropped', async () => {
+    await as(U.student, `select public.set_qiraat_profile($1, $2::jsonb)`, [studentS, JSON.stringify({ riwayat: ['nafi.qalun', 'nafi.warsh', 'bogus'], mode: 'jam', matn: 'shatibiyyah', matn_daily_lines: 4 })]);
+    const p = (await one<{ riwayat: string[]; mode: string; matn: string }>(U.teacher, `select riwayat, mode, matn from public.qiraat_profiles where student_id = $1`, [studentS]))!;
+    expect(p.riwayat).toEqual(['nafi.qalun', 'nafi.warsh']); expect(p.mode).toBe('jam'); expect(p.matn).toBe('shatibiyyah');
+    await as(U.student, `select public.set_qiraat_profile($1, $2::jsonb)`, [studentS, JSON.stringify({ riwayat: ['asim.hafs'], mode: 'jam' })]);
+    expect((await one<{ mode: string }>(U.teacher, `select mode from public.qiraat_profiles where student_id = $1`, [studentS]))!.mode).toBe('ifrad');
+    await rejects(U.otherStudent, `select public.set_qiraat_profile($1, $2::jsonb)`, [studentS, JSON.stringify({ riwayat: ['asim.hafs'] })]);
+    await rejects(U.student, `select public.set_qiraat_profile($1, $2::jsonb)`, [studentS, JSON.stringify({ riwayat: [] })]);
+  });
+  it('teacher schedules and marks tests; student is notified; only staff can', async () => {
+    const id = (await one<{ id: string }>(U.teacher, `select public.save_qiraat_test($1::jsonb) as id`, [JSON.stringify({ student_id: studentS, kind: 'farsh', surah: 2, title: 'Farsh: Al-Baqarah', riwayat: ['asim.hafs'], scheduled_on: '2030-01-01' })]))!.id;
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Test scheduled: Farsh: Al-Baqarah'`, [U.student])).toHaveLength(1);
+    await rejects(U.student, `select public.save_qiraat_test($1::jsonb)`, [JSON.stringify({ id, student_id: studentS, kind: 'farsh', surah: 2, title: 'x x', result: 'excellent' })]);
+    await as(U.teacher, `select public.save_qiraat_test($1::jsonb)`, [JSON.stringify({ id, student_id: studentS, kind: 'farsh', surah: 2, title: 'Farsh: Al-Baqarah', riwayat: ['asim.hafs'], result: 'repeat', mistakes: [{ text: 'مالك' }] })]);
+    const t = (await one<{ status: string; taken_on: unknown }>(U.student, `select status, taken_on from public.qiraat_tests where id = $1`, [id]))!;
+    expect(t.status).toBe('done'); expect(t.taken_on).not.toBeNull();
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title like 'Test result:%'`, [U.student])).toHaveLength(1);
+    await rejects(U.otherStudent, `insert into public.qiraat_khatmah (org_id, student_id, track, surah) values ($1, $2, 'jam', 1)`, [orgA, studentS]);
+  });
+  it('student logs memorised matn lines, not recited ones; reminders send matn lines and weak areas', async () => {
+    await as(U.student, `select public.set_qiraat_profile($1, $2::jsonb)`, [studentS, JSON.stringify({ riwayat: ['asim.hafs'], matn: 'shatibiyyah', matn_daily_lines: 3 })]);
+    await as(U.student, `insert into public.qiraat_matn_log (org_id, student_id, matn, line_from, line_to) values ($1, $2, 'shatibiyyah', 1, 10)`, [orgA, studentS]);
+    await rejects(U.student, `insert into public.qiraat_matn_log (org_id, student_id, matn, line_from, line_to, kind) values ($1, $2, 'shatibiyyah', 1, 10, 'recited')`, [orgA, studentS]);
+    await rejects(U.student, `insert into public.qiraat_matn_log (org_id, student_id, matn, line_from, line_to) values ($1, $2, 'durrah', 1, 999)`, [orgA, studentS]);
+    await as(null, `update public.organizations set settings = settings || jsonb_build_object('qiraat', jsonb_build_object('matnTime', to_char(public.org_local_now(id), 'HH24:MI'), 'weakTime', to_char(public.org_local_now(id), 'HH24:MI'), 'weakDay', extract(dow from public.org_local_now(id))::int)) where id = $1`, [orgA]);
+    await as(null, `select public.qiraat_reminders()`);
+    expect((await one<{ body: string }>(null, `select body from public.notification_queue where user_id = $1 and title = 'Today''s matn lines'`, [U.student]))!.body).toContain('lines 11–13');
+    expect((await one<{ body: string }>(null, `select body from public.notification_queue where user_id = $1 and title = 'Revise your weak areas'`, [U.student]))!.body).toContain('Farsh: Al-Baqarah');
   });
 });

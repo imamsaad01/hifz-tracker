@@ -4,8 +4,9 @@ import { ChevronRight, Check } from 'lucide-react';
 import { Button, Card, Field, Select, Toggle, inputCls, ErrorBox, cx } from './ui';
 import { RangeLabel } from './quran';
 import { ayahCount, ayahId, surahNameEn, surahRange, type Range } from '../quran';
+import { QiraatSetup, emptyQiraat, type QiraatDraft } from './Qiraat';
 
-export interface StudentDraft { name: string; ageGroup: string; direction: 'back' | 'forward'; dailyNewAyahs: number; goal: string; guardianName: string; guardianEmail: string; notify: boolean; memorized: Range[] }
+export interface StudentDraft { name: string; ageGroup: string; direction: 'back' | 'forward'; dailyNewAyahs: number; goal: string; guardianName: string; guardianEmail: string; notify: boolean; memorized: Range[]; qiraat: QiraatDraft | null }
 const AGES = ['Under 7', '7–9', '10–12', '13–15', '16–18', 'Adult'];
 const GOALS = ['Juz ʿAmma (Juz 30)', 'Juz 29 and 30', 'Juz 26–30', '5 juz', '10 juz', 'Half the Qurʾān', 'The whole Qurʾān'];
 const DAILY = [1, 2, 3, 4, 5, 7, 10, 15, 20];
@@ -18,6 +19,7 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
   const [upTo, setUpTo] = useState<number>(0);                 // 0 = nothing yet; else the last whole surah
   const [partSurah, setPartSurah] = useState<number>(114); const [partAyah, setPartAyah] = useState<number>(0);
   const [daily, setDaily] = useState(3); const [goal, setGoal] = useState(GOALS[0]);
+  const [readsQ, setReadsQ] = useState(false); const [q, setQ] = useState<QiraatDraft>(emptyQiraat());
   const [gName, setGName] = useState(''); const [gEmail, setGEmail] = useState(''); const [notify, setNotify] = useState(true);
 
   const whole: Range[] = upTo === 0 ? [] : direction === 'back'
@@ -26,17 +28,18 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
   const nextSurah = upTo === 0 ? (direction === 'back' ? 114 : 1) : direction === 'back' ? upTo - 1 : upTo + 1;
   const memorized = [...whole, ...(partAyah > 0 ? [{ start: ayahId(partSurah, 1), end: ayahId(partSurah, partAyah) }] : [])];
   const emailOk = !gEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gEmail);
-  const ok = [name.trim().length >= 2, true, true, emailOk][step];
-  const steps = ['About', 'Memorised so far', 'Plan', 'Parent'];
+  const ok = [name.trim().length >= 2, true, true, !readsQ || q.riwayat.length > 0, emailOk][step];
+  const steps = ['About', 'Memorised so far', 'Plan', 'Qirāʾāt', 'Parent'];
+  const last = steps.length - 1;
   const you = byTeacher ? 'the student' : 'you';
 
   const submit = async () => {
     setBusy(true); setErr(null);
-    try { await onSubmit({ name: name.trim(), ageGroup: age, direction, dailyNewAyahs: daily, goal, guardianName: gName.trim(), guardianEmail: gEmail.trim(), notify: notify && !!gEmail.trim(), memorized }); }
+    try { await onSubmit({ name: name.trim(), ageGroup: age, direction, dailyNewAyahs: daily, goal, guardianName: gName.trim(), guardianEmail: gEmail.trim(), notify: notify && !!gEmail.trim(), memorized, qiraat: readsQ && q.riwayat.length ? q : null }); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
   };
   return <div className="flex flex-col gap-4">
-    <ol className="grid grid-cols-4 gap-2" aria-label="Steps">{steps.map((s, i) => <li key={s} aria-current={i === step ? 'step' : undefined} className="flex flex-col gap-1.5"><span className={cx('h-1.5 rounded-full', i <= step ? 'bg-pine-700' : 'bg-black/10')} /><span className={cx('text-xs font-bold', i === step ? 'text-pine-800' : 'text-ink-faint')}>{i + 1}. {s}</span></li>)}</ol>
+    <ol className="grid grid-cols-5 gap-2" aria-label="Steps">{steps.map((s, i) => <li key={s} aria-current={i === step ? 'step' : undefined} className="flex flex-col gap-1.5"><span className={cx('h-1.5 rounded-full', i <= step ? 'bg-pine-700' : 'bg-black/10')} /><span className={cx('truncate text-xs font-bold', i === step ? 'text-pine-800' : 'text-ink-faint')}>{i + 1}. {s}</span></li>)}</ol>
     <Card className="p-5">
       {err && <div className="mb-4"><ErrorBox message={err} /></div>}
       {step === 0 && <div className="flex flex-col gap-4">
@@ -58,13 +61,17 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
         <Field label="Goal">{id => <Select id={id} value={goal} onChange={setGoal} options={GOALS.map(g => [g, g])} />}</Field>
       </div>}
       {step === 3 && <div className="flex flex-col gap-4">
+        <Toggle on={readsQ} onChange={setReadsQ} label={byTeacher ? 'Reads the qirāʾāt to you' : 'I read the qirāʾāt to my teacher'} sub="The ten qurrāʾ: choose riwāyāt, jamʿ or ifrād, and a matn. Leave off for hifz only." />
+        {readsQ && <QiraatSetup value={q} onChange={setQ} />}
+      </div>}
+      {step === 4 && <div className="flex flex-col gap-4">
         <Field label="Parent or guardian name (optional)">{id => <input id={id} className={inputCls} value={gName} onChange={e => setGName(e.target.value)} maxLength={80} />}</Field>
         <Field label="Parent’s email (optional)" error={emailOk ? null : 'That email does not look right.'} hint="Used only for progress emails.">{id => <input id={id} type="email" className={inputCls} value={gEmail} onChange={e => setGEmail(e.target.value)} maxLength={120} autoComplete="email" />}</Field>
         <Toggle on={notify} onChange={setNotify} label="Email progress updates" sub="A short summary after each session the teacher records" />
       </div>}
       <div className="mt-6 flex justify-between gap-3">
         {step === 0 ? (onCancel ? <Button kind="secondary" onClick={onCancel}>Cancel</Button> : <span />) : <Button kind="secondary" onClick={() => setStep(s => s - 1)}>Back</Button>}
-        {step < 3 ? <Button disabled={!ok} onClick={() => setStep(s => s + 1)}>Next <ChevronRight size={18} /></Button>
+        {step < last ? <Button disabled={!ok} onClick={() => setStep(s => s + 1)}>Next <ChevronRight size={18} /></Button>
           : <Button disabled={!ok} busy={busy} onClick={submit}><Check size={18} />{byTeacher ? 'Add student' : 'Start tracking'}</Button>}
       </div>
     </Card>

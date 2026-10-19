@@ -1,3 +1,4 @@
+import { QiraatTeacherPanel } from '../../components/Qiraat';
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Plus, ClipboardList, Target, Pencil, Archive, KeyRound, RefreshCw, Award } from 'lucide-react';
 import { useOrg } from '../../app/context';
@@ -58,6 +59,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
     {tab === 'overview' && <div className="flex flex-col gap-5">
       <Card><CardHead title="Adab & effort today" sub="Tap to give a point; tap again to undo" /><AdabTaps studentId={st.id} points={data.behaviour} onChanged={reload} /></Card>
       <PlanCard plan={plan} you={false} />
+      <QiraatTeacherPanel student={st} data={data} onChanged={reload} />
       <StandingCard studentId={st.id} you={false} revisionMissed={missedLastWeek(st.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
       <RevisionFormCard student={st} forms={data.revisionForms} readOnly onChanged={reload} />
       <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={goals} today={today} settings={org.settings} onDeleteGoal={async g => { try { await api.deleteGoal(g.id); toast('Goal removed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} />
