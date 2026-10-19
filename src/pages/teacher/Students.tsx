@@ -1,3 +1,4 @@
+import { weekSummary } from '../../lib/weekly';
 import { useMemo, useState } from 'react';
 import { UserPlus, Search, Users, Download } from 'lucide-react';
 import { useOrg } from '../../app/context';
@@ -46,7 +47,7 @@ export function Students() {
       {list.length ? <ul className="divide-y divide-line">{list.map(i => <li key={i.student.id}><a href={href('students', i.student.id)} className="grid gap-2 px-5 py-3.5 hover:bg-paper sm:grid-cols-[1.4fr_1fr_auto] sm:items-center">
         <span className="min-w-0"><b className="block">{i.student.name}{data.qiraat.profiles.some(p => p.studentId === i.student.id && p.active) && <span className="ml-2 rounded-full bg-brass-100 px-2 py-0.5 align-middle text-[11px] font-bold text-brass-700">Qirāʾāt</span>}</b><span className="text-sm text-ink-faint">{i.lastSession ? `Last session ${niceDate(i.lastSession.date)}` : 'No sessions yet'}{i.student.userId ? '' : ' · no account'}</span></span>
         <span className="flex items-center gap-2"><Progress value={i.progress.percent} label={`${i.student.name} memorised`} /><span className="w-24 shrink-0 text-right text-sm tabular-nums text-ink-soft">{i.progress.pages} pages</span></span>
-        <span className="flex flex-wrap gap-1 sm:justify-end">{i.reasons.filter(r => r.severity >= 2).slice(0, 2).map(r => <Pill key={r.kind} tone={r.severity >= 3 ? 'red' : 'amber'}>{r.text}</Pill>)}{i.streak >= 3 && <Pill tone="green">{i.streak}-day streak</Pill>}</span>
+        <span className="flex flex-wrap gap-1 sm:justify-end">{i.reasons.filter(r => r.severity >= 2).slice(0, 2).map(r => <Pill key={r.kind} tone={r.severity >= 3 ? 'red' : 'amber'}>{r.text}</Pill>)}{i.streak >= 3 && <Pill tone="green">{i.streak}-day streak</Pill>}{(() => { const w = weekSummary(data.sessions.filter(x => x.studentId === i.student.id), today, org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6], i.revision.perDay, false); return w.target ? <Pill tone={w.percent >= 1 ? 'green' : w.missedDays ? 'amber' : 'slate'}>Revision this week: {w.oldPages}/{w.target} pages</Pill> : null; })()}</span>
       </a></li>)}</ul> : <Empty icon={<Users size={30} />} title={data.students.length ? 'No students match' : 'No students yet'}>{data.students.length ? 'Try a different name or class.' : <>Add a student, or share the student code <b className="font-mono">{org.joinCode}</b>.</>}</Empty>}
     </Card>
     <Modal open={adding} onClose={() => go('students')} title="Add a student" wide>

@@ -131,6 +131,10 @@ function SettingsForm() {
         <Toggle on={r.remind !== false} onChange={v => setR({ remind: v })} label="Phone reminder on revision days" />
         {r.remind !== false && <Field label="Reminder time">{id => <Select id={id} value={r.reminderTime ?? '15:00'} onChange={v => setR({ reminderTime: v })} options={['07:00', '08:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map(t => [t, fmtTime(t)] as [string, string])} />}</Field>}
       </div>
+      <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+        <Toggle on={r.logRemind !== false} onChange={v => setR({ logRemind: v })} label="Remind students to log their revision" sub="On revision days, if nothing is logged by this time. Plus a weekly total on Sunday at 7 pm." />
+        {r.logRemind !== false && <Field label="Evening reminder time">{id => <Select id={id} value={r.logReminderTime ?? '20:30'} onChange={v => setR({ logReminderTime: v })} options={['18:00', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map(t => [t, fmtTime(t)] as [string, string])} />}</Field>}
+</div>
       <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
     </Card>
     <Card className="flex flex-col gap-4 p-5">

@@ -12,6 +12,7 @@ const STUDENT: TourStep[] = [
   { title: 'Assalamu alaikum! Welcome to Hifz Tracker', body: 'A one-minute tour of your app. You can skip it now and replay it any time from “My plan”.' },
   { target: 'halaqah', title: 'Your halaqah', body: 'This shows your class and teacher. If you are not in one yet, choose a class time and tap “Request to join”. Your teacher approves it.', optional: true },
   { target: 'announcements', title: 'Announcements', body: 'New announcements from your teacher always appear here at the top, marked New.', optional: true },
+  { target: 'week', title: 'This week’s revision', body: 'How many Old pages you revised this week against your target, day by day. If you haven’t logged today’s revision, the buttons here remind you. Tap the (i) buttons anywhere for what a word means.', optional: true },
   { target: 'qiraat', title: 'Your qirāʾāt', body: 'Your riwāyāt, upcoming farsh and uṣūl tests, today’s matn lines, the words to revise, a reciter in your riwāyah and your khatmah progress.', optional: true },
   { target: 'checkin', title: 'Check in at class', body: 'When class starts, tap Check in and type the 4-digit code your teacher shows. Can’t come? Tap “I can’t come” before class.', optional: true },
   { target: 'today-plan', title: 'Today’s plan', body: 'New, Recent and Old for today. Tap “I memorised it” for your new lesson and “I revised this” for revision. Your teacher signs it off and notes any mistakes.', optional: true },

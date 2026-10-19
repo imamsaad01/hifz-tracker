@@ -25,19 +25,19 @@ export function defaultRange(type: SessionType, st: Student, ins: StudentInsight
   return ins.nextNew ?? surahRange(114);
 }
 
-const TEACHER_TYPES: Array<[SessionType, string]> = [['new', 'New'], ['recent', 'Recent'], ['old', 'Old']];
+const TEACHER_TYPES: Array<[SessionType, string]> = [['new', 'New lesson'], ['recent', 'Recent revision'], ['old', 'Old revision']];
 const OTHER_TYPES: Array<[SessionType, string]> = (['juz_revision', 'assessment', 'catch_up', 'review', 'other'] as SessionType[]).map(t => [t, SESSION_LABEL[t]]);
 const CATS = Object.entries(ERROR_LABEL) as Array<[ErrorCategory, string]>;
 
-export function RecordSheet({ open, onClose, student, insight, sessions, asStudent, initialType = 'new', onSaved }: {
-  open: boolean; onClose: () => void; student: Student; insight: StudentInsight; sessions: Session[]; asStudent?: boolean; initialType?: SessionType; onSaved: () => void;
+export function RecordSheet({ open, onClose, student, insight, sessions, asStudent, initialType = 'new', initialDate, onSaved }: {
+  open: boolean; onClose: () => void; student: Student; insight: StudentInsight; sessions: Session[]; asStudent?: boolean; initialType?: SessionType; initialDate?: string; onSaved: () => void;
 }) {
   const { api, org, today } = useApp();
   const toast = useToast();
   const scale = org?.settings.scoreScale ?? 5;
   const [type, setType] = useState<SessionType>(asStudent ? 'old' : initialType);
   const [range, setRange] = useState<Range>(() => defaultRange(asStudent ? 'old' : initialType, student, insight, sessions, today));
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(initialDate ?? today);
   const [major, setMajor] = useState(0); const [minor, setMinor] = useState(0);
   const [tags, setTags] = useState<SessionError[]>([]);
   const [scores, setScores] = useState<Record<string, number | null>>({ overall: null, tajweed: null, fluency: null, accuracy: null, tarteel: null });
@@ -73,7 +73,7 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
       {err && <ErrorBox message={err} />}
       <div className="flex flex-col gap-2">
         <Segmented label="Session type" value={(asStudent ? [['old', ''], ['recent', ''], ['review', '']] : TEACHER_TYPES).some(([t]) => t === type) ? type : ('more' as SessionType)} onChange={v => (v as string) === 'more' ? pickType('juz_revision') : pickType(v)}
-          options={asStudent ? [['old', 'Old'], ['recent', 'Recent'], ['review', 'Review']] : [...TEACHER_TYPES, ['more' as SessionType, 'More…']]} />
+          options={asStudent ? [['old', 'Old revision'], ['recent', 'Recent revision'], ['review', 'Other review']] : [...TEACHER_TYPES, ['more' as SessionType, 'More…']]} />
         {!asStudent && !['new', 'recent', 'old'].includes(type) && <Select value={type} onChange={pickType} options={OTHER_TYPES} aria-label="Other session type" />}
       </div>
       {!absent && <RangePicker value={range} onChange={setRange} />}

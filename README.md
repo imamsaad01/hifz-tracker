@@ -138,3 +138,9 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **No more loading screen on return**: a session renewal no longer reloads the app.
 - **Auto refresh**: after a minute without use, or on coming back after a minute away, the screen updates quietly with an "Up to date" note.
 - `supabase/manual_signoff_full.sql`: run once in the SQL editor (it removes rows, which the automated tool can't do).
+
+## Clear words, weekly revision, log reminders
+
+- **(i) info buttons** next to New lesson, Recent revision, Old revision, mistakes, weekly revision and more (hover on a computer, tap on a phone). Wording lives in `src/lib/glossary.ts`.
+- **This week's revision** (student home, student page): distinct Old pages revised Monday–Sunday against the target (Old pages per revision day × revision days), a day strip, missed revision days, and buttons to log today's or a missed day's revision. The students list shows "Revision this week: X/Y pages".
+- **Log reminders**: on revision days, students with nothing logged get a nudge in the evening (default 8:30 pm, More → Settings → Revision plan), plus their weekly total on Sunday at 7 pm (`public.revision_log_reminders()`).

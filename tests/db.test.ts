@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -464,5 +464,14 @@ describe('lesson sign-off', () => {
     expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Signed off: New'`, [U.student])).toHaveLength(1);
     await as(U.teacher, `select public.sign_off_session($1, '{"status":"redo"}'::jsonb)`, [sid]);
     expect((await one<{ n: number }>(null, `select count(*)::int n from public.memorized_ranges where session_id = $1`, [sid]))!.n).toBe(0);
+  });
+});
+
+describe('revision log reminder', () => {
+  it('nudges students who have not logged Old revision today', async () => {
+    await as(null, `update public.organizations set settings = settings || jsonb_build_object('revision', (settings->'revision') || jsonb_build_object('days', '[0,1,2,3,4,5,6]'::jsonb, 'logReminderTime', to_char(public.org_local_now(id), 'HH24:MI'))) where id = $1`, [orgA]);
+    await as(null, `update public.sessions set deleted_at = now() where student_id = $1 and date = (public.org_local_now($2))::date and type in ('old','juz_revision')`, [studentS, orgA]);
+    await as(null, `select public.revision_log_reminders()`);
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title like 'Did you do today%'`, [U.student])).toHaveLength(1);
   });
 });

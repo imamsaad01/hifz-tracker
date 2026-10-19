@@ -1,4 +1,5 @@
 // Students log their own revision; the teacher checks it. Students choose where their Old revision starts.
+import { InfoTip } from './InfoTip';
 import { useMemo, useState } from 'react';
 import { Check, RotateCcw, ClipboardCheck, Flag, Undo2 } from 'lucide-react';
 import { useOrg } from '../app/context';
@@ -45,7 +46,7 @@ export function RevisionStartModal({ student, onClose, onSaved }: { student: Stu
 }
 
 const LOGGED: Array<Session['type']> = ['new', 'old', 'recent', 'juz_revision'];
-const TYPE_NAME: Partial<Record<Session['type'], string>> = { new: 'New lesson', old: 'Old', recent: 'Recent', juz_revision: 'Juz' };
+const TYPE_NAME: Partial<Record<Session['type'], string>> = { new: 'New lesson', old: 'Old revision', recent: 'Recent revision', juz_revision: 'Full juz revision' };
 const mistakes = (s: Session) => s.errorsMajor + s.errorsMinor;
 const statusPill = (s: Session) => s.checkStatus === 'ok' ? <Pill tone="green"><Check size={12} />Signed off{mistakes(s) ? ` · ${mistakes(s)} mistake${mistakes(s) > 1 ? 's' : ''}` : ''}</Pill>
   : s.checkStatus === 'redo' ? <Pill tone="red">Redo</Pill> : <Pill tone="slate">Waiting for sign-off</Pill>;
@@ -89,7 +90,7 @@ export function RevisionCheckCard({ data, onChanged, studentId }: { data: OrgDat
 
 function Stepper({ label, value, onChange, tone }: { label: string; value: number; onChange: (n: number) => void; tone: 'bad' | 'warn' }) {
   return <div className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2 ring-1 ring-line">
-    <span className="text-[15px] font-bold">{label}</span>
+    <span className="flex items-center gap-1 text-[15px] font-bold">{label}<InfoTip k={label.startsWith('Big') ? 'bigMistake' : 'smallMistake'} /></span>
     <span className="flex items-center gap-2">
       <button type="button" aria-label={`Fewer ${label}`} onClick={() => onChange(Math.max(0, value - 1))} className="grid h-10 w-10 place-items-center rounded-xl bg-white text-xl font-bold ring-1 ring-line">−</button>
       <span className={cx('w-8 text-center text-xl font-bold tabular-nums', value ? (tone === 'bad' ? 'text-bad' : 'text-warn') : 'text-ink-faint')}>{value}</span>

@@ -1,4 +1,8 @@
 // The student's own app: today's plan, progress and rewards, sessions, messages and their plan.
+import { WeeklyRevisionCard } from '../../components/WeeklyRevision';
+import { weekSummary } from '../../lib/weekly';
+import { InfoTip } from '../../components/InfoTip';
+import type { GlossaryKey } from '../../lib/glossary';
 import { useMemo, useState } from 'react';
 import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, CalendarDays, Sparkles } from 'lucide-react';
 import { useOrg } from '../../app/context';
@@ -47,7 +51,7 @@ export function StudentApp({ tab }: { tab: string }) {
   const { data, error, reload } = useOrgData();
   const me = data?.students.find(s => s.userId === user?.id) ?? null;
   const sd = useStudentData(me?.id ?? null);
-  const [rec, setRec] = useState<SessionType | null>(null); const [edit, setEdit] = useState(false);
+  const [rec, setRec] = useState<SessionType | null>(null); const [recDate, setRecDate] = useState<string | undefined>(); const [edit, setEdit] = useState(false);
   const [justJoined, setJustJoined] = useState(false);
   const [startOpen, setStartOpen] = useState(false); const [submitNew, setSubmitNew] = useState(false); const [memOpen, setMemOpen] = useState(false);
   const ins = useMemo(() => me && data && sd.sessions ? insight(me, sd.sessions, data.revision.get(me.id) ?? [], data.assignments, data.attendance, org.settings, today) : null, [me, data, sd.sessions, org.settings, today]);
@@ -62,15 +66,16 @@ export function StudentApp({ tab }: { tab: string }) {
   const cl = classLabel(me.id, data.classes, data.members, org.name);
   const myClassIds = data.classes.filter(c => c.studentIds.includes(me.id)).map(c => c.id);
   const plan = studentPlan(me, org.settings, today);
+  const weekRev = weekSummary(sd.sessions.filter(s => s.studentId === me.id), today, org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6], ins.revision.perDay, recent.length > 0);
   const beh = data.behaviour.filter(b => b.studentId === me.id);
   const pts = points(sd.sessions, beh); const lvl = level(pts.total);
   const sk = streakDetail(sd.sessions.map(s => s.date), today, org.settings.motivation.freezePerWeek);
   const todays = sd.sessions.filter(s => s.date === today);
   const pendingNew = sd.sessions.find(s => s.type === 'new' && (s.selfLogged || s.recordedBy === 'student') && !s.checkStatus) ?? null;
   const ring = [
-    { label: 'New', due: !!ins.nextNew && ins.revision.isRevisionDay, done: todays.some(s => s.type === 'new' && (!s.selfLogged || s.checkStatus === 'ok')), color: '#047857' },
-    { label: 'Recent', due: recent.length > 0, done: todays.some(s => s.type === 'recent'), color: '#B8893B' },
-    { label: 'Old', due: ins.revision.isRevisionDay && ins.revision.today.length > 0, done: todays.some(s => s.type === 'old' || s.type === 'juz_revision'), color: '#0369A1' },
+    { label: 'New lesson', due: !!ins.nextNew && ins.revision.isRevisionDay, done: todays.some(s => s.type === 'new' && (!s.selfLogged || s.checkStatus === 'ok')), color: '#047857' },
+    { label: 'Recent revision', due: recent.length > 0, done: todays.some(s => s.type === 'recent'), color: '#B8893B' },
+    { label: 'Old revision', due: ins.revision.isRevisionDay && ins.revision.today.length > 0, done: todays.some(s => s.type === 'old' || s.type === 'juz_revision'), color: '#0369A1' },
   ];
   const week = addDays(today, 14);
   const events = data.events.filter(e => (!e.classId || myClassIds.includes(e.classId)) && e.startsOn <= week && (e.endsOn ?? e.startsOn) >= today);
@@ -82,6 +87,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5" data-tour="halaqah"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
       {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
       <div className="mb-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} fresh /></div>
+      <div className="mb-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
       <div className="mb-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
       {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
       <div className="mb-5" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
@@ -96,13 +102,13 @@ export function StudentApp({ tab }: { tab: string }) {
           {events.map(e => <li key={e.id} className="flex items-center gap-2 px-5 py-2.5"><i className={`h-2.5 w-2.5 rounded-full ${KIND[e.kind][1]}`} /><b>{e.title}</b><span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}</ul></Card>}
       <div className="mb-5"><RevisionFormCard student={me} forms={data.revisionForms} onChanged={reload} /></div>
       <div className="mb-5"><StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} /></div>
-      <h2 className="mb-3 text-lg font-bold">Today’s plan</h2>
+      <h2 className="mb-3 text-lg font-bold">Today’s plan <span className="text-sm font-normal text-ink-faint">· what to read today</span></h2>
       <div className="grid gap-4 lg:grid-cols-3" data-tour="today-plan">
-        <PlanTile icon={<BookOpen size={20} />} title="New" body={pendingNew ? formatRange(pendingNew.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'}
+        <PlanTile tip="new" icon={<BookOpen size={20} />} title="New lesson" body={pendingNew ? formatRange(pendingNew.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'}
           note={pendingNew ? 'Submitted. Waiting for your teacher to sign it off.' : 'Learn it, then tap “I memorised it”. It counts once your teacher signs it off.'}
           action={ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><AyahPlayer range={ins.nextNew} /></div> : null} />
-        <PlanTile icon={<Repeat size={20} />} title="Recent" body={recent.length ? recent.map(formatRange).join(' · ') : 'Nothing new in the last week'} note={`Everything you learned in the last ${org.settings.revision.recentDays} days. Read it every day.`} action={recent.length ? <Button kind="secondary" onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button> : null} />
-        <PlanTile icon={<RotateCcw size={20} />} title="Old" body={!ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today'}
+        <PlanTile tip="recent" icon={<Repeat size={20} />} title="Recent revision" body={recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week'} note={`Read today: every new lesson from the last ${org.settings.revision.recentDays} days.`} action={recent.length ? <Button kind="secondary" onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button> : null} />
+        <PlanTile tip="old" icon={<RotateCcw size={20} />} title="Old revision" body={!ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today'}
           note={!ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first.' : `${ins.revision.perDay} pages each revision day, in turn.`}
           action={ins.revision.isRevisionDay && ins.revision.today.length ? <Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button> : null} />
       </div>
@@ -145,11 +151,11 @@ export function StudentApp({ tab }: { tab: string }) {
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
     </>}
     {submitNew && ins?.nextNew && me && <SubmitLessonModal student={me} suggested={ins.nextNew} onClose={() => setSubmitNew(false)} onSaved={refresh} />}
-    {rec && <RecordSheet open onClose={() => setRec(null)} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} onSaved={refresh} />}
+    {rec && <RecordSheet open onClose={() => { setRec(null); setRecDate(undefined); }} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} initialDate={recDate} onSaved={refresh} />}
   </>;
 }
-function PlanTile({ icon, title, body, note, action }: { icon: React.ReactNode; title: string; body: string; note: string; action?: React.ReactNode }) {
-  return <Card className="flex flex-col gap-2 p-5"><div className="flex items-center gap-2 text-pine-700">{icon}<h3 className="text-lg font-bold text-ink">{title}</h3></div><p className="text-[17px] font-bold">{body}</p>{note && <p className="text-sm text-ink-faint">{note}</p>}{action && <div className="mt-auto pt-2">{action}</div>}</Card>;
+function PlanTile({ icon, title, body, note, action, tip }: { icon: React.ReactNode; title: string; body: string; note: string; action?: React.ReactNode; tip?: GlossaryKey }) {
+  return <Card className="flex flex-col gap-2 p-5"><div className="flex items-center gap-2 text-pine-700">{icon}<h3 className="text-lg font-bold text-ink">{title}</h3>{tip && <InfoTip k={tip} />}</div><p className="text-[17px] font-bold">{body}</p>{note && <p className="text-sm text-ink-faint">{note}</p>}{action && <div className="mt-auto pt-2">{action}</div>}</Card>;
 }
 function Onboarding({ create, onDone, name }: { create: (d: StudentDraft) => Promise<void>; onDone: () => Promise<void>; name: string }) {
   return <div className="mx-auto max-w-xl">

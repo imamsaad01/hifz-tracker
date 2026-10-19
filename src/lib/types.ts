@@ -18,7 +18,8 @@ export interface OrgSettings {
   revision: { recentDays: number; maxIntervalDays: number; weakThreshold: number; failThreshold: number; dailyOldPages: number | null; maxOverdueBeforeNew: number | null;
     /** 'cycle': go through all memorised pages in turn on revision days; 'spaced': each page returns on its own schedule */
     oldPlan: 'cycle' | 'spaced'; days: number[];
-    /** phone reminder on revision days */ remind?: boolean; reminderTime?: string };
+    /** phone reminder on revision days */ remind?: boolean; reminderTime?: string;
+    /** evening nudge to log revision if nothing logged */ logRemind?: boolean; logReminderTime?: string };
   accuracy: { major: number; minor: number };
   email: { enabled: boolean; onSession: boolean; lowRevision: boolean; weekly: boolean };
   leaderboard: { enabled: boolean; fullNames: boolean };
@@ -58,7 +59,7 @@ export interface Milestone { code: string; achievedOn: string }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
   scoreScale: 5,
-  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null, oldPlan: 'spaced', days: [0, 1, 2, 3, 4, 5, 6], remind: true, reminderTime: '15:00' },
+  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null, oldPlan: 'spaced', days: [0, 1, 2, 3, 4, 5, 6], remind: true, reminderTime: '15:00', logRemind: true, logReminderTime: '20:30' },
   accuracy: { major: 10, minor: 3 },
   email: { enabled: true, onSession: true, lowRevision: true, weekly: false },
   leaderboard: { enabled: false, fullNames: false },
@@ -71,7 +72,7 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   qiraat: { testEveTime: '18:00', testMorningTime: '08:00', matnTime: '07:30', weakDay: 5, weakTime: '17:00' },
 };
 export const SESSION_LABEL: Record<SessionType, string> = {
-  new: 'New', recent: 'Recent revision', old: 'Old revision', juz_revision: 'Full juz revision', assessment: 'Assessment', catch_up: 'Catch-up', review: 'Review', other: 'Other',
+  new: 'New lesson', recent: 'Recent revision', old: 'Old revision', juz_revision: 'Full juz revision', assessment: 'Assessment', catch_up: 'Catch-up', review: 'Review', other: 'Other',
 };
 export const ERROR_LABEL: Record<ErrorCategory, string> = {
   forgot_ayah: 'Forgot ayah', added_missed_word: 'Added / missed word', word_substitution: 'Word substitution', similar_ayah: 'Similar ayah confusion',
