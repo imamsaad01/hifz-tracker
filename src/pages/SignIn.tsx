@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { GraduationCap, BookOpen, Users, Building2, ShieldCheck, RotateCcw } from 'lucide-react';
 import { useApp } from '../app/context';
 import { Brand } from '../components/Brand';
+import { InstallApp } from '../components/InstallApp';
 import { Button, Card, ErrorBox, Field, inputCls, Segmented, useToast } from '../components/ui';
 import { friendly } from '../api/backend';
 
@@ -24,6 +25,7 @@ export function SignIn() {
         {backend.kind === 'live' ? <>
           <EmailAuth />
           {import.meta.env.VITE_GOOGLE_AUTH === 'on' && <Button kind="secondary" className="mt-3 w-full" busy={busy === 'g'} onClick={async () => { setBusy('g'); try { await backend.signInWithGoogle!(); } catch (e) { setErr(friendly(e)); setBusy(null); } }}><GoogleMark />Continue with Google</Button>}
+          <InstallApp className="mt-4" />
           <p className="mt-4 flex items-start gap-2 text-sm text-ink-faint"><ShieldCheck size={16} className="mt-0.5 shrink-0" />Student records are private to their program. Nothing is public.</p>
         </> : <div className="mt-5 flex flex-col gap-3">
           <p className="rounded-xl bg-brass-100 px-3 py-2 text-sm text-brass-700"><b>Preview.</b> The real database runs inside this browser with sample people, so you can try every role. Choose who to be:</p>
