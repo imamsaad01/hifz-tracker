@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -350,5 +350,38 @@ describe('shared phone notifications', () => {
     await as(U.parent, `delete from public.push_subscriptions where endpoint = $1`, [ep]);
     expect(await as(U.student, `select 1 from public.push_subscriptions where endpoint = $1`, [ep])).toHaveLength(1);
     expect(await as(null, `select 1 from public.push_subscriptions where endpoint = $1`, [ep])).toHaveLength(1);
+  });
+});
+
+describe('halaqah join requests', () => {
+  it('student asks, teacher is told, teacher approves, student is added and told', async () => {
+    const cls = (await one<{ id: string }>(U.teacher, `insert into public.classes (org_id, name) values ($1, 'Monday Halaqah') returning id`, [orgA]))!.id;
+    const r1 = (await one<{ id: string }>(U.student, `select public.request_class_join($1) as id`, [cls]))!.id;
+    const r2 = (await one<{ id: string }>(U.student, `select public.request_class_join($1) as id`, [cls]))!.id;
+    expect(r2).toBe(r1);
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Halaqah request'`, [U.teacher])).not.toHaveLength(0);
+    await rejects(U.student, `select public.decide_class_join($1, true)`, [r1]);
+    await rejects(U.otherStudent, `select public.request_class_join($1, $2)`, [cls, studentS]);
+    await as(U.teacher, `select public.decide_class_join($1, true)`, [r1]);
+    expect(await as(null, `select 1 from public.class_students where class_id = $1 and student_id = $2`, [cls, studentS])).toHaveLength(1);
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Welcome to Monday Halaqah'`, [U.student])).toHaveLength(1);
+    expect(await rejects(U.student, `select public.request_class_join($1)`, [cls])).toMatch(/already/);
+  });
+  it('student can cancel their own pending request only', async () => {
+    const cls = (await one<{ id: string }>(U.teacher, `insert into public.classes (org_id, name) values ($1, 'Saturday Halaqah') returning id`, [orgA]))!.id;
+    const r = (await one<{ id: string }>(U.student, `select public.request_class_join($1) as id`, [cls]))!.id;
+    await rejects(U.otherStudent, `select public.cancel_class_join($1)`, [r]);
+    await as(U.student, `select public.cancel_class_join($1)`, [r]);
+    expect((await one<{ status: string }>(null, `select status from public.class_join_requests where id = $1`, [r]))!.status).toBe('cancelled');
+  });
+});
+
+describe('revision day reminder', () => {
+  it('reminds students with accounts at the set time on revision days', async () => {
+    await as(null, `update public.organizations set settings = settings || jsonb_build_object('revision', jsonb_build_object('days', '[0,1,2,3,4,5,6]'::jsonb, 'reminderTime', to_char(public.org_local_now(id), 'HH24:MI'))) where id = $1`, [orgA]);
+    await as(null, `select public.scheduled_reminders()`);
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Revision day today'`, [U.student])).toHaveLength(1);
+    await as(null, `select public.scheduled_reminders()`);
+    expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Revision day today'`, [U.student])).toHaveLength(1);
   });
 });

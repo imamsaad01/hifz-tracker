@@ -1,4 +1,5 @@
 // Small shared building blocks. Accessible by default: real buttons, labelled fields, visible focus.
+import { createPortal } from 'react-dom';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Loader2, X, AlertTriangle, Check } from 'lucide-react';
 
@@ -91,13 +92,14 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
     return () => { document.removeEventListener('keydown', k); prev?.focus?.(); };
   }, [open, onClose]);
   if (!open) return null;
-  return <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
-    <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className={cx('flex max-h-[94vh] w-full flex-col rounded-t-3xl bg-paper shadow-2xl sm:rounded-3xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-xl')}>
+  // Rendered at the page level: a parent with blur/transform (like the sticky top bar) would otherwise trap and clip it.
+  return createPortal(<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 pt-[max(16px,env(safe-area-inset-top))] sm:items-center sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className={cx('flex max-h-[90dvh] w-full flex-col rounded-t-3xl bg-paper shadow-2xl sm:max-h-[94vh] sm:rounded-3xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-xl')}>
       <div className="flex items-center gap-3 border-b border-line px-5 py-4"><h2 className="min-w-0 flex-1 text-lg font-bold">{title}</h2><button data-close type="button" onClick={onClose} aria-label="Close" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-black/5"><X size={20} /></button></div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+      <div className={cx('min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4', !footer && 'pb-[max(16px,env(safe-area-inset-bottom))]')}>{children}</div>
       {footer && <div className="border-t border-line px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">{footer}</div>}
     </div>
-  </div>;
+  </div>, document.body);
 }
 export function Confirm({ open, title, body, confirmLabel, danger, onConfirm, onClose }: { open: boolean; title: string; body: React.ReactNode; confirmLabel: string; danger?: boolean; onConfirm: () => Promise<void> | void; onClose: () => void }) {
   const [busy, setBusy] = useState(false);

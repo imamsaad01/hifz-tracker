@@ -4,6 +4,7 @@ import { Copy, RefreshCw, Download, Settings, KeyRound, Users, BarChart3, Mail, 
 import { Applications } from './Applications';
 import { Fees } from './Fees';
 import { DAY_NAMES } from '../../lib/revision';
+import { fmtTime } from '../../lib/schedule';
 import { DEFAULT_RULES } from '../../components/StudentAttendance';
 import { OwnerTools } from './OwnerTools';
 import { Crown } from 'lucide-react';
@@ -122,6 +123,10 @@ function SettingsForm() {
         <Field label="Weak page at">{id => <Select id={id} value={r.weakThreshold} onChange={v => setR({ weakThreshold: Number(v), failThreshold: Math.max(Number(v) + 1, r.failThreshold) })} options={[1, 2, 3, 4, 5].map(d => [d, `${d} error${d > 1 ? 's' : ''} or more`])} />}</Field>
         <Field label="Failed page at">{id => <Select id={id} value={r.failThreshold} onChange={v => setR({ failThreshold: Number(v) })} options={[2, 3, 4, 5, 6, 8].filter(d => d > r.weakThreshold).map(d => [d, `${d} errors or more`])} />}</Field>
         {r.oldPlan === 'spaced' && <Field label="Longest gap between reviews">{id => <Select id={id} value={r.maxIntervalDays} onChange={v => setR({ maxIntervalDays: Number(v) })} options={[7, 14, 21, 30, 45, 60, 90].map(d => [d, `${d} days`])} />}</Field>}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+        <Toggle on={r.remind !== false} onChange={v => setR({ remind: v })} label="Phone reminder on revision days" />
+        {r.remind !== false && <Field label="Reminder time">{id => <Select id={id} value={r.reminderTime ?? '15:00'} onChange={v => setR({ reminderTime: v })} options={['07:00', '08:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map(t => [t, fmtTime(t)] as [string, string])} />}</Field>}
       </div>
       <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
     </Card>

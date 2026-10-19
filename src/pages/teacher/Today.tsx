@@ -1,4 +1,5 @@
 // "Who needs my attention today?" — the teacher's home, with one-tap recording.
+import { JoinRequestsCard } from '../../components/HalaqahJoin';
 import { useMemo, useState } from 'react';
 import { Plus, UserPlus, ClipboardList, AlertTriangle, CheckCircle2, Users, Radio, CalendarDays } from 'lucide-react';
 import { useOrg } from '../../app/context';
@@ -46,6 +47,7 @@ export function Today() {
 
   return <>
     <PageTitle title="Today" sub={<>{niceDate(today)} · {hijriDate(today)}</>} action={<div className="flex flex-wrap gap-2"><Button onClick={() => go('classes', 'live')}><Radio size={18} />Live class</Button><Button kind="secondary" onClick={() => setPick(true)}><Plus size={18} />Record</Button><Button kind="secondary" onClick={() => go('assignments', 'new')}><ClipboardList size={18} />Assign</Button><Button kind="secondary" onClick={() => go('students', 'new')}><UserPlus size={18} />Add student</Button></div>} />
+    <div className="mb-5 empty:hidden"><JoinRequestsCard data={data} onChanged={reload} /></div>
     {data.classes.length > 0 && <div className="mb-4 flex items-center gap-2"><span className="text-sm font-bold text-ink-soft">Halaqah</span><Select aria-label="Halaqah" className="!w-auto" value={activeCls} onChange={setCls} options={[['all', 'All students'], ...data.classes.map(c => [c.id, c.name] as [string, string])]} /></div>}
     {!data.students.length ? <Card><Empty icon={<Users size={32} />} title="No students yet" action={<Button onClick={() => go('students', 'new')}><UserPlus size={18} />Add your first student</Button>}>Add students yourself, or share the class code <b className="font-mono">{org.joinCode}</b> so they can join and set themselves up.</Empty></Card> : <div className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

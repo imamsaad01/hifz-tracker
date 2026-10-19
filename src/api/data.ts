@@ -12,6 +12,7 @@ export interface Slot { day: number; start: string; end: string }
 export interface ClassRow { id: string; name: string; teacherUserId: string | null; schedule: string | null; startsOn: string | null; endsOn: string | null; notes: string | null; studentIds: string[];
   slots: Slot[]; location: 'mosque' | 'online' | 'both'; checkinOpenMin: number; lateAfterMin: number; requireCode: boolean }
 export interface AbsenceRequest { id: string; studentId: string; date: string; kind: 'free' | 'excuse'; reason: string | null; status: 'pending' | 'approved' | 'declined'; createdAt: string }
+export interface JoinRequest { id: string; classId: string; studentId: string; status: 'pending' | 'approved' | 'declined' | 'cancelled'; note: string | null; createdAt: string; decidedAt: string | null }
 export interface RevisionCheckin { id: string; studentId: string; weekStart: string; slot: string; done: boolean; partner: string | null; pages: string | null; recorded: boolean; recordingLink: string | null; note: string | null }
 export interface Standing { absences: number; free: number; extra: number; unnotified: number; excused: number; over: number }
 export interface Attendance { studentId: string; date: string; status: string; mode: string; source?: string; checkedInAt?: string | null; note?: string | null }
@@ -132,6 +133,13 @@ export function api(be: Backend) {
         .map(r => ({ id: r.id, studentId: r.student_id, date: iso(r.date), kind: r.kind, reason: r.reason, status: r.status, createdAt: ts(r.created_at) }));
     },
     decideAbsence: (id: string, status: 'approved' | 'declined') => be.update('absence_requests', { status, decided_at: new Date().toISOString() }, [{ op: 'eq', col: 'id', value: id }]),
+    async joinRequests(orgId: string): Promise<JoinRequest[]> {
+      return (await sel<Row>({ table: 'class_join_requests', where: [{ op: 'eq', col: 'org_id', value: orgId }], order: [['created_at', 'desc']], limit: 500 }))
+        .map(r => ({ id: r.id, classId: r.class_id, studentId: r.student_id, status: r.status, note: r.note, createdAt: ts(r.created_at), decidedAt: r.decided_at ? ts(r.decided_at) : null }));
+    },
+    requestClassJoin: (classId: string, studentId?: string | null, note?: string) => be.rpc<string>('request_class_join', { p_class: classId, p_student: studentId ?? null, p_note: note ?? null }),
+    cancelClassJoin: (id: string) => be.rpc<null>('cancel_class_join', { p_id: id }),
+    decideClassJoin: (id: string, approve: boolean) => be.rpc<null>('decide_class_join', { p_id: id, p_approve: approve }),
     standing: (studentId: string) => be.rpc<Standing>('attendance_standing', { sid: studentId }),
     async revisionCheckins(orgId: string, sinceWeek: string): Promise<RevisionCheckin[]> {
       return (await sel<Row>({ table: 'revision_checkins', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'gte', col: 'week_start', value: sinceWeek }], limit: 5000 }))

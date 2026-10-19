@@ -6,6 +6,7 @@ import { outbox, useOutboxCount } from '../app/outbox';
 import { Brand } from './Brand';
 import { InstallApp } from './InstallApp';
 import { InboxBell } from './Inbox';
+import { PullToRefresh } from './PullToRefresh';
 import { cx, Select, useToast } from './ui';
 
 const ROLE_NAME = { admin: 'Admin', teacher: 'Teacher', student: 'Student', parent: 'Parent' } as const;
@@ -18,6 +19,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
   const flush = async () => { const n = await outbox.flush(p => api.recordSession(p as never)); if (n) toast(`${n} saved session${n > 1 ? 's' : ''} sent.`); };
   useEffect(() => { const on = () => { setOnline(true); flush(); }; const off = () => setOnline(false); window.addEventListener('online', on); window.addEventListener('offline', off); if (pending) flush(); return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); }; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <div className="flex min-h-full flex-col lg:flex-row">
+    <PullToRefresh />
     <aside className="no-print hidden w-64 shrink-0 flex-col gap-6 border-r border-line bg-white p-5 lg:flex">
       <Brand small />
       <nav aria-label="Main" className="flex flex-col gap-1">{nav.map(n => <a key={n.key} href={n.href} aria-current={active === n.key ? 'page' : undefined} className={cx('flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] font-bold', active === n.key ? 'bg-pine-50 text-pine-800' : 'text-ink-soft hover:bg-paper')}><n.icon size={18} />{n.label}</a>)}</nav>

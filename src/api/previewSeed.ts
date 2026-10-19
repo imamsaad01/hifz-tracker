@@ -116,6 +116,7 @@ export async function seedPreview(db: PGlite) {
   for (const [sid, slot, partner, w] of [[amina.id, 'after_lesson', 'Yusra Karim', 0], [amina.id, 'wed', 'Yusra Karim', -7], [amina.id, 'fri', 'Yusra Karim', -7], [amina.id, 'after_lesson', 'Yusra Karim', -7], [zayd.id, 'after_lesson', 'Ibrahim Rahman', -7]] as const)
     await db.query(`insert into public.revision_checkins (org_id, student_id, week_start, slot, partner, recorded) values ($1, $2, $3, $4, $5, $6)`, [org, sid, addDays(wk, w), slot, partner, slot === 'fri']);
   await db.query(`insert into public.absence_requests (org_id, student_id, date, kind, reason, status) values ($1, $2, $3, 'excuse', 'Family wedding out of town', 'pending')`, [org, zayd.id, addDays(today, 5)]);
+  await db.query(`insert into public.class_join_requests (org_id, class_id, student_id) values ($1, $2, $3)`, [org, cls1, yusra.id]);
   // school features: board, calendar, a juz test, adab points and a message thread
   await db.query(`insert into public.announcements (org_id, title, body, pinned) values ($1, 'Revision competition this month', 'Most clean pages by the end of the month wins a prize. Keep your Old revision steady!', true)`, [org]);
   await db.query(`insert into public.announcements (org_id, class_id, title, body) values ($1, $2, 'Bring your mushaf on Wednesday', 'We will practise reading from the page.')`, [org, cls1]);

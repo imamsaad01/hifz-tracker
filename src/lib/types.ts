@@ -17,7 +17,8 @@ export interface OrgSettings {
   scoreScale: number;                       // 5 = 1–5 stars, 10 = 0–10
   revision: { recentDays: number; maxIntervalDays: number; weakThreshold: number; failThreshold: number; dailyOldPages: number | null; maxOverdueBeforeNew: number | null;
     /** 'cycle': go through all memorised pages in turn on revision days; 'spaced': each page returns on its own schedule */
-    oldPlan: 'cycle' | 'spaced'; days: number[] };
+    oldPlan: 'cycle' | 'spaced'; days: number[];
+    /** phone reminder on revision days */ remind?: boolean; reminderTime?: string };
   accuracy: { major: number; minor: number };
   email: { enabled: boolean; onSession: boolean; lowRevision: boolean; weekly: boolean };
   leaderboard: { enabled: boolean; fullNames: boolean };
@@ -51,7 +52,7 @@ export interface Milestone { code: string; achievedOn: string }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
   scoreScale: 5,
-  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null, oldPlan: 'spaced', days: [0, 1, 2, 3, 4, 5, 6] },
+  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null, oldPlan: 'spaced', days: [0, 1, 2, 3, 4, 5, 6], remind: true, reminderTime: '15:00' },
   accuracy: { major: 10, minor: 3 },
   email: { enabled: true, onSession: true, lowRevision: true, weekly: false },
   leaderboard: { enabled: false, fullNames: false },

@@ -1,5 +1,6 @@
 // Full history for one student (all dates), plus milestones. RLS decides whether the caller may see it.
 import { useCallback, useEffect, useState } from 'react';
+import { useRefresh } from '../components/PullToRefresh';
 import { useOrg } from './context';
 import type { Milestone, Session } from '../lib/types';
 import { friendly } from '../api/backend';
@@ -14,6 +15,7 @@ export function useStudentData(studentId: string | null) {
     catch (e) { setError(friendly(e)); }
   }, [api, org.id, studentId]);
   useEffect(() => { reload(); }, [reload]);
+  useRefresh(reload);
   useEffect(() => backend.subscribe?.(['sessions', 'milestones'], reload), [backend, reload]);
   return { sessions, milestones, error, reload };
 }

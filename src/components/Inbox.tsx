@@ -1,5 +1,6 @@
 // "What's new" bell: new messages and announcements since this person last looked (remembered on this device).
 import { useCallback, useEffect, useState } from 'react';
+import { useRefresh } from './PullToRefresh';
 import { Bell, MessageCircle, Megaphone } from 'lucide-react';
 import { useApp } from '../app/context';
 import type { Announcement, Message } from '../api/data';
@@ -26,6 +27,7 @@ export function InboxBell() {
     } catch { /* offline: keep what we have */ }
   }, [api, org, user]);
   useEffect(() => { load(); }, [load]);
+  useRefresh(load);
   useEffect(() => backend.subscribe?.(['messages', 'announcements'], load), [backend, load]);
   useEffect(() => { const l = () => setSeen(seenAt()); listeners.add(l); return () => { listeners.delete(l); }; }, []);
   if (!org) return null;

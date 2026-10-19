@@ -10,6 +10,7 @@ import { useRoute, href } from '../../app/router';
 import { LiveClass } from './LiveClass';
 import { CalendarView } from './Calendar';
 import { AttendancePage } from './AttendancePage';
+import { JoinRequestsCard } from '../../components/HalaqahJoin';
 import { scheduleText, fmtTime } from '../../lib/schedule';
 import { DAY_NAMES } from '../../lib/revision';
 import type { Slot } from '../../api/data';
@@ -40,6 +41,7 @@ function Halaqahs({ data, reload }: { data: OrgData; reload: () => void }) {
   const [register, setRegister] = useState<ClassRow | 'all' | null>(null);
   const teacherName = (uid: string | null) => data.members.find(m => m.userId === uid)?.displayName ?? '—';
   return <>
+    <div className="mb-5 empty:hidden"><JoinRequestsCard data={data} onChanged={reload} /></div>
     <div className="mb-4 flex flex-wrap justify-end gap-2"><Button kind="secondary" onClick={() => setRegister('all')} disabled={!data.students.length}><CalendarCheck size={16} />Attendance</Button><Button onClick={() => setEdit('new')}><Plus size={18} />New halaqah</Button></div>
     {data.classes.length ? <div className="grid gap-4 md:grid-cols-2">{data.classes.map(c => <Card key={c.id}>
       <CardHead title={c.name} sub={[scheduleText(c.slots), `Teacher: ${teacherName(c.teacherUserId)}`].filter(Boolean).join(' · ')} action={<Button kind="quiet" onClick={() => setEdit(c)} aria-label={`Edit ${c.name}`}><Pencil size={16} /></Button>} />

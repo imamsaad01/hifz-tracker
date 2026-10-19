@@ -24,6 +24,7 @@ import { PlanCard, ClassBadge } from '../../components/PlanCard';
 import { DailyRing, LevelBar, BadgeGrid } from '../../components/Motivation';
 import { AyahPlayer } from '../../components/AyahPlayer';
 import { AnnouncementBoard } from '../../components/Announcements';
+import { HalaqahChooser } from '../../components/HalaqahJoin';
 import { MessageThread } from '../../components/MessageThread';
 import { AdabSummary } from '../../components/Adab';
 import { ExamList } from '../teacher/Exams';
@@ -70,6 +71,8 @@ export function StudentApp({ tab }: { tab: string }) {
     {tab === 'home' && <>
       <PageTitle title={`Assalamu alaikum, ${me.name.split(' ')[0]}`} sub={<>{niceDate(today)} · {hijriDate(today)}</>} />
       <div className="mb-5"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
+      {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
+      <div className="mb-5"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} fresh /></div>
       {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
       <div className="mb-5"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
       <div className="mb-5"><NotifyToggle /></div>
@@ -92,7 +95,6 @@ export function StudentApp({ tab }: { tab: string }) {
           note={!ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first.' : `${ins.revision.perDay} pages each revision day, in turn.`}
           action={ins.revision.isRevisionDay && ins.revision.today.length ? <Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button> : null} />
       </div>
-      <div className="mt-5"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} /></div>
       <Card className="mt-5"><CardHead title="Assignments" sub="Mark them done; your teacher reviews them" /><AssignmentList items={ins.openAssignments.concat(data.assignments.filter(a => a.studentId === me.id && a.status === 'completed'))} asStudent onChanged={reload} /></Card>
       <div className="mt-5"><Leaderboard limit={5} compact /></div>
       {ins.lastSession && <Card className="mt-5 p-5"><p className="text-xs font-bold uppercase text-ink-faint">Last session · {niceDate(ins.lastSession.date)}</p><p className="mt-1">{formatRange(ins.lastSession.range)} · {ins.lastSession.errorsMajor + ins.lastSession.errorsMinor} errors</p>{ins.lastSession.teacherNote && <p className="mt-1 text-pine-800"><b>Teacher:</b> {ins.lastSession.teacherNote}</p>}</Card>}
@@ -113,6 +115,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <PageTitle title="My plan" action={<Button kind="secondary" onClick={() => setEdit(true)}><Pencil size={16} />Change</Button>} />
       <div className="mb-4"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
       <PlanCard plan={plan} />
+      <div className="mt-4"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>
       <Card className="mt-4 flex flex-col gap-2 p-5 text-[15px]">
         <p><b>Order:</b> {me.direction === 'back' ? 'From An-Nās backwards' : 'From Al-Fātiḥah forwards'}</p>
         <p><b>Goal:</b> {me.goal || '—'}</p>

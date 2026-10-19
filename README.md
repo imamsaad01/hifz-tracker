@@ -104,3 +104,10 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **Partner revision form**: three weekly slots (after the lesson, Wed night, Fri night). There are reminders the evening before, a Sunday reminder, and a Monday follow-up when too many are missed.
 - **Phone notifications**: each person turns them on from the app (iPhone: add to Home Screen first). Delivery runs through `supabase/functions/push` and pg_cron (see `supabase/cron_push.sql`).
 - **Extra roles**: in More → People, give someone more roles (e.g. a parent who also teaches). They use "View as" to switch between them.
+
+## Joining a halaqah, revision reminders, pull to refresh
+
+- **Halaqah requests**: students (or parents) see every halaqah with its times and teacher, and tap *Request to join*. Teachers approve or decline on Today or in Classes → Halaqahs. Both sides get a phone notification.
+- **Revision-day reminder**: on each revision day (More → Settings → Revision plan), students get a phone reminder at the time you choose (default 3:00 pm).
+- **New announcements first**: a student's or parent's home screen shows new announcements at the top, marked *New*.
+- **Pull to refresh**: pull down from the top of any screen to reload it (useful in the installed app).
