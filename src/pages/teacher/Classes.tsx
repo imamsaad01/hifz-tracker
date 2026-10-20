@@ -4,7 +4,7 @@ import { Plus, Users, Pencil, CalendarCheck } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { addDays, niceDate } from '../../lib/dates';
-import { Button, Card, CardHead, Spinner, ErrorBox, Empty, Modal, Field, Select, inputCls, Segmented, Toggle, useToast, cx } from '../../components/ui';
+import { Button, Card, CardHead, Spinner, ErrorBox, Empty, Modal, Field, Select, inputCls, Segmented, SubNav, Toggle, useToast, cx } from '../../components/ui';
 import { PageTitle } from '../../components/Shell';
 import { useRoute, href } from '../../app/router';
 import { LiveClass } from './LiveClass';
@@ -28,7 +28,7 @@ export function Classes() {
   if (!data) return <Spinner />;
   return <>
     <PageTitle title={tab === 'live' ? 'Live class' : tab === 'calendar' ? 'Calendar' : tab === 'attendance' ? 'Attendance' : 'Halaqahs'} sub={tab === 'live' ? 'See their revision (confirmed by partners), then hear the new lesson.' : tab === 'calendar' ? 'Class days, holidays, tests and events' : tab === 'attendance' ? 'Check-ins, absence requests and semester standing' : 'Groups, teachers and class times'} />
-    <nav aria-label="Class sections" className="no-print mb-5 flex gap-1 overflow-x-auto">{([['live', 'Live class'], ['attendance', 'Attendance'], ['halaqahs', 'Halaqahs'], ['calendar', 'Calendar']] as const).map(([k, l]) => <a key={k} href={href('classes', k)} aria-current={tab === k ? 'page' : undefined} className={cx('inline-flex min-h-[40px] shrink-0 items-center rounded-xl px-4 text-sm font-bold', tab === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}>{l}</a>)}</nav>
+    <SubNav label="Halaqah sections" active={tab} href={k => href('classes', k)} items={[{ key: 'live', label: 'Live class' }, { key: 'attendance', label: 'Attendance' }, { key: 'halaqahs', label: 'Halaqahs' }, { key: 'calendar', label: 'Calendar' }]} />
     {tab === 'live' && <LiveClass data={data} reload={reload} />}
     {tab === 'calendar' && <CalendarView events={data.events} exams={data.exams} students={data.students} classes={data.classes} onChanged={reload} />}
     {tab === 'halaqahs' && <Halaqahs data={data} reload={reload} />}
@@ -128,7 +128,7 @@ function Register({ data, cls, onClose, onSaved }: { data: OrgData; cls: ClassRo
     <ul className="flex flex-col divide-y divide-line">{students.map(s => <li key={s.id} className="flex flex-wrap items-center gap-2 py-2.5">
       <b className="min-w-0 flex-1 basis-40">{s.name}</b>
       <div className="flex gap-1" role="radiogroup" aria-label={`${s.name} attendance`}>{STATUS.map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={marks[s.id] === v} onClick={() => setMarks(m => ({ ...m, [s.id]: v }))}
-        className={cx('min-h-[40px] rounded-lg px-3 text-sm font-bold ring-1 ring-inset', marks[s.id] === v ? (v === 'absent' ? 'bg-bad text-white ring-bad' : v === 'present' ? 'bg-pine-700 text-white ring-pine-700' : 'bg-brass-500 text-white ring-brass-500') : 'bg-white text-ink-soft ring-line')}>{l}</button>)}</div>
+        className={cx('min-h-[44px] rounded-lg px-3 text-sm font-bold ring-1 ring-inset', marks[s.id] === v ? (v === 'absent' ? 'bg-bad text-white ring-bad' : v === 'present' ? 'bg-pine-700 text-white ring-pine-700' : 'bg-brass-500 text-white ring-brass-500') : 'bg-white text-ink-soft ring-line')}>{l}</button>)}</div>
     </li>)}</ul>
   </Modal>;
 }

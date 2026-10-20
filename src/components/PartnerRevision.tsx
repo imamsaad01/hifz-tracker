@@ -35,7 +35,7 @@ export function AyahMistakePicker({ start, end, value, onChange }: { start: numb
             {sev && <span className="shrink-0 text-[11px] font-bold uppercase">{sev === 'major' ? 'Big' : 'Small'}</span>}
           </button>
           : <button type="button" onClick={() => tap(id)} aria-pressed={!!sev} aria-label={`${surahNameEn(surah)} ayah ${ayah}${sev ? `, ${sev === 'major' ? 'big' : 'small'} mistake` : ''}`}
-            className={cx('grid h-9 min-w-[36px] place-items-center rounded-lg px-1.5 text-sm font-bold tabular-nums ring-1 ring-inset', tone)}>{ayah}</button>}</span>;
+            className={cx('grid h-11 min-w-[44px] place-items-center rounded-lg px-1.5 text-sm font-bold tabular-nums ring-1 ring-inset', tone)}>{ayah}</button>}</span>;
     })}</div>
     {value.length > 0 && <p className="mt-1 text-xs text-ink-faint">{value.filter(v => v.severity === 'major').length} big · {value.filter(v => v.severity === 'minor').length} small</p>}
   </div>;
@@ -55,7 +55,7 @@ export function PartnerRequestsCard() {
     <CardHead title={<span className="inline-flex items-center gap-2"><Users size={18} className="text-brass-500" />Confirm your partner’s revision<InfoTip k="partner" /></span>} sub="You listened to them. Note any mistakes, then confirm." />
     <ul className="mt-2 divide-y divide-line">{rows.map(r => <li key={r.session_id} className="flex flex-wrap items-center gap-2 px-5 py-3">
       <span className="min-w-0 basis-full sm:basis-0 sm:flex-1"><b>{r.student_name}</b> · {TYPE[r.type] ?? r.type}<span className="block text-sm text-ink-soft">{formatRange({ start: r.start_ayah_id, end: r.end_ayah_id })} · {niceDate(r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date).slice(0, 10))}</span></span>
-      <Button className="min-h-[40px]" onClick={() => setOpen(r)}><Check size={16} />Confirm</Button></li>)}</ul>
+      <Button className="min-h-[44px]" onClick={() => setOpen(r)}><Check size={16} />Confirm</Button></li>)}</ul>
     {open && <PartnerConfirmModal r={open} onClose={() => setOpen(null)} onSaved={load} />}
   </Card>;
 }
@@ -86,7 +86,7 @@ export function WeakAyahsCard({ sessions, studentId, you = true, limit = 12 }: {
   return <Card>
     <CardHead title={<span className="inline-flex items-center gap-2"><AlertTriangle size={18} className="text-warn" />Weak ayahs<InfoTip text="Ayahs where a mistake was marked in the last 60 days, by your partner or your teacher. Tap one to hear it on repeat." title="Weak ayahs" /></span>} sub={you ? 'Tap one to listen to it 5 times' : 'Mistakes marked in the last 60 days'} />
     <ul className="flex flex-wrap gap-1.5 px-5 pt-3">{list.slice(0, limit).map(w => { const { surah, ayah } = fromAyahId(w.ayahId); return <li key={w.ayahId}>
-      <button type="button" aria-pressed={pick === w.ayahId} onClick={() => setPick(pick === w.ayahId ? null : w.ayahId)} className={cx('min-h-[36px] rounded-lg px-2.5 py-1 text-sm ring-1 ring-inset', pick === w.ayahId ? 'bg-pine-700 text-white ring-pine-700' : w.big ? 'bg-red-50 text-bad ring-bad/25' : 'bg-amber-50 text-warn ring-warn/25')}>
+      <button type="button" aria-pressed={pick === w.ayahId} onClick={() => setPick(pick === w.ayahId ? null : w.ayahId)} className={cx('min-h-[44px] rounded-lg px-2.5 py-1 text-sm ring-1 ring-inset', pick === w.ayahId ? 'bg-pine-700 text-white ring-pine-700' : w.big ? 'bg-red-50 text-bad ring-bad/25' : 'bg-amber-50 text-warn ring-warn/25')}>
       <b>{surahNameEn(surah)} {ayah}</b> <span className="opacity-80">×{w.n}</span></button></li>; })}
       {list.length > limit && <li className="px-1 py-1 text-sm text-ink-faint">+{list.length - limit} more</li>}</ul>
     <div className="px-5 pb-5 pt-3">{pick !== null ? <AyahPlayer key={pick} range={{ start: pick, end: pick }} initialRepeat={5} compact /> : null}</div>

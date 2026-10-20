@@ -26,9 +26,9 @@ export function AssignmentList({ items, nameOf, asStudent, onChanged }: { items:
       </span>
       <Pill tone={late ? 'red' : STATUS_TONE[a.status]}>{late ? 'overdue' : a.status}</Pill>
       <span className="flex gap-1">
-        {asStudent && a.status === 'assigned' && <Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => act(() => api.setAssignmentStatus(a.id, 'started'), 'Started.')}>Start</Button>}
-        {asStudent && (a.status === 'assigned' || a.status === 'started') && <Button className="min-h-[38px] px-3 text-sm" onClick={() => act(() => api.setAssignmentStatus(a.id, 'completed'), 'Marked done. Your teacher will review it.')}><CheckCircle2 size={15} />Done</Button>}
-        {staff && a.status !== 'reviewed' && <Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => { setReview(a); setFb(a.feedback ?? ''); }}>Review</Button>}
+        {asStudent && a.status === 'assigned' && <Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => act(() => api.setAssignmentStatus(a.id, 'started'), 'Started.')}>Start</Button>}
+        {asStudent && (a.status === 'assigned' || a.status === 'started') && <Button className="min-h-[44px] px-3 text-sm" onClick={() => act(() => api.setAssignmentStatus(a.id, 'completed'), 'Marked done. Your teacher will review it.')}><CheckCircle2 size={15} />Done</Button>}
+        {staff && a.status !== 'reviewed' && <Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => { setReview(a); setFb(a.feedback ?? ''); }}>Review</Button>}
         {staff && <button type="button" aria-label="Delete assignment" className="grid h-[38px] w-[38px] place-items-center rounded-xl text-ink-faint hover:bg-red-50 hover:text-bad" onClick={() => act(() => api.deleteAssignment(a.id), 'Deleted.')}><Trash2 size={16} /></button>}
       </span>
     </li>; })}</ul>

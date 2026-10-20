@@ -22,7 +22,7 @@ import { pagesInRange, SOURCE } from '../../quran';
 import { sessionRows } from '../../components/StudentReport';
 import type { OrgSettings, Role } from '../../lib/types';
 import type { AuditRow, Notice } from '../../api/data';
-import { Button, Card, CardHead, Field, Select, Toggle, inputCls, Spinner, ErrorBox, Pill, Stat, Empty, Confirm, useToast, cx } from '../../components/ui';
+import { Button, Card, CardHead, Field, Select, Toggle, inputCls, Spinner, ErrorBox, Pill, Stat, Empty, Confirm, useToast, cx, SubNav, SubTabs } from '../../components/ui';
 import { DailyBars } from '../../components/quran';
 import { PageTitle } from '../../components/Shell';
 import { friendly } from '../../api/backend';
@@ -39,7 +39,7 @@ export function More() {
   const sec = visible.find(s => s[0] === route[1])?.[0] ?? 'reports';
   return <>
     <PageTitle title="More" sub={org.name} action={<Button kind="secondary" onClick={startTour}>Take the app tour</Button>} />
-    <nav aria-label="More sections" className="no-print mb-5 flex gap-1 overflow-x-auto pb-1">{visible.map(([k, l, I]) => <a key={k} href={href('more', k)} aria-current={sec === k ? 'page' : undefined} className={cx('inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-bold', sec === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}><I size={15} />{l}</a>)}</nav>
+    <SubNav label="More sections" active={sec} href={k => href('more', k)} items={visible.map(([k, l, I]) => ({ key: k, label: l, icon: I }))} />
     {sec === 'reports' && <Reports />}
     {sec === 'applications' && <Applications />}
     {sec === 'fees' && <Fees />}
@@ -110,7 +110,7 @@ function SettingsForm() {
   const setQ = (p: Partial<OrgSettings['qiraat']>) => setS({ ...s, qiraat: { ...s.qiraat, ...p } });
   const save = async () => { setBusy(true); try { await api.updateOrg(org.id, { name: name.trim(), settings: s }); toast('Settings saved.'); await refreshSession(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); } };
   return <div className="flex max-w-2xl flex-col gap-5">
-    <nav aria-label="Settings sections" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">{([['program', 'Program'], ['revision', 'Revision'], ['attendance', 'Attendance'], ['reminders', 'Qirāʾāt'], ['motivation', 'Motivation'], ['fees', 'Fees']] as const).map(([k, l]) => <button key={k} type="button" aria-pressed={sec === k} onClick={() => setSec(k)} className={cx('inline-flex min-h-[40px] shrink-0 items-center rounded-xl px-4 text-sm font-bold', sec === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}>{l}</button>)}</nav>
+    <SubTabs label="Settings sections" className="mb-0" active={sec} onChange={setSec} items={([['program', 'Program'], ['revision', 'Revision'], ['attendance', 'Attendance'], ['reminders', 'Qirāʾāt'], ['motivation', 'Motivation'], ['fees', 'Fees']] as const).map(([k, l]) => ({ key: k, label: l }))} />
     {sec === 'program' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Program</h2>
@@ -124,7 +124,7 @@ function SettingsForm() {
       <h2 className="font-bold">Revision plan</h2>
       <Field label="How Old revision works">{id => <Select id={id} value={r.oldPlan} onChange={v => setR({ oldPlan: v as 'cycle' | 'spaced' })} options={[['cycle', 'In turn: a few pages each revision day, weak pages first'], ['spaced', 'Spaced: each page comes back on its own schedule']]} />}</Field>
       <fieldset><legend className="mb-2 text-sm font-bold">Revision and lesson days</legend>
-        <div className="flex flex-wrap gap-1.5">{[1, 2, 3, 4, 5, 6, 0].map(d => { const on = r.days.includes(d); return <button key={d} type="button" aria-pressed={on} onClick={() => setR({ days: on ? r.days.filter(x => x !== d) : [...r.days, d] })} className={cx('min-h-[40px] min-w-[52px] rounded-xl px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{DAY_NAMES[d]}</button>; })}</div>
+        <div className="flex flex-wrap gap-1.5">{[1, 2, 3, 4, 5, 6, 0].map(d => { const on = r.days.includes(d); return <button key={d} type="button" aria-pressed={on} onClick={() => setR({ days: on ? r.days.filter(x => x !== d) : [...r.days, d] })} className={cx('min-h-[44px] min-w-[52px] rounded-xl px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{DAY_NAMES[d]}</button>; })}</div>
         <p className="mt-1 text-sm text-ink-faint">Old revision is given on these days only. New lessons are estimated on these days too.</p></fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Old pages per revision day">{id => <Select id={id} value={r.dailyOldPages ?? 0} onChange={v => setR({ dailyOldPages: Number(v) || null })} options={[[0, r.oldPlan === 'cycle' ? 'Automatic: 3 pages up to 5 juz, 4 above' : 'Automatic (by pages memorised)'], ...[2, 3, 4, 5, 6, 8, 10, 15, 20, 30].map(d => [d, `${d} pages for everyone`] as [number, string])]} />}</Field>
@@ -327,12 +327,12 @@ function TagEditor({ label, items, onChange }: { label: string; items: string[];
   const add = () => { const v = t.trim(); if (v && !items.includes(v) && items.length < 10) onChange([...items, v]); setT(''); };
   return <fieldset><legend className="mb-2 text-sm font-bold">{label}</legend>
     <div className="flex flex-wrap gap-1.5">{items.map(i => <span key={i} className="inline-flex items-center gap-1 rounded-full bg-paper px-3 py-1 text-sm ring-1 ring-line">{i}<button type="button" aria-label={`Remove ${i}`} onClick={() => onChange(items.filter(x => x !== i))} className="text-ink-faint hover:text-bad"><X size={13} /></button></span>)}
-      <form className="inline-flex" onSubmit={e => { e.preventDefault(); add(); }}><input aria-label={`Add to ${label}`} className="min-h-[34px] w-32 rounded-full border border-line px-3 text-sm" maxLength={40} value={t} onChange={e => setT(e.target.value)} placeholder="+ Add" /></form></div>
+      <form className="inline-flex" onSubmit={e => { e.preventDefault(); add(); }}><input aria-label={`Add to ${label}`} className="min-h-[44px] w-32 rounded-full border border-line px-3 text-sm" maxLength={40} value={t} onChange={e => setT(e.target.value)} placeholder="+ Add" /></form></div>
   </fieldset>;
 }
 
 function ExtraRoles({ orgId, m, onChanged }: { orgId: string; m: { userId: string; role: Role; extraRoles: Role[] }; onChanged: () => void }) {
   const { api, org } = useOrg(); const parentsOn = org.settings.parentsEnabled; const toast = useToast();
   const toggle = async (r: Role) => { const next = m.extraRoles.includes(r) ? m.extraRoles.filter(x => x !== r) : [...m.extraRoles, r]; try { await api.setExtraRoles(orgId, m.userId, next); toast('Roles updated. They can switch with “View as”.'); onChanged(); } catch (e) { toast(friendly(e), 'err'); } };
-  return <span className="flex flex-wrap items-center gap-1"><span className="text-xs text-ink-faint">Also:</span>{(['admin', 'teacher', 'parent', 'student'] as Role[]).filter(r => r !== m.role && (r !== 'parent' || parentsOn)).map(r => <button key={r} type="button" aria-pressed={m.extraRoles.includes(r)} onClick={() => toggle(r)} className={cx('min-h-[32px] rounded-full px-2.5 text-xs font-bold ring-1 ring-inset', m.extraRoles.includes(r) ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{ROLE_LABEL[r]}</button>)}</span>;
+  return <span className="flex flex-wrap items-center gap-1"><span className="text-xs text-ink-faint">Also:</span>{(['admin', 'teacher', 'parent', 'student'] as Role[]).filter(r => r !== m.role && (r !== 'parent' || parentsOn)).map(r => <button key={r} type="button" aria-pressed={m.extraRoles.includes(r)} onClick={() => toggle(r)} className={cx('min-h-[44px] rounded-full px-2.5 text-xs font-bold ring-1 ring-inset', m.extraRoles.includes(r) ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{ROLE_LABEL[r]}</button>)}</span>;
 }

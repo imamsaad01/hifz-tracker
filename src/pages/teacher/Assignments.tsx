@@ -4,14 +4,13 @@ import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useRoute, go } from '../../app/router';
 import { insight } from '../../lib/insights';
-import { Button, Card, Spinner, ErrorBox, Field, Select } from '../../components/ui';
+import { Button, Card, Spinner, ErrorBox, Field, Select, SubNav } from '../../components/ui';
 import { AssignmentForm } from '../../components/AssignmentForm';
 import { AssignmentList } from '../../components/AssignmentList';
 import { PageTitle } from '../../components/Shell';
 import { ExamList } from './Exams';
 import { RevisionForms } from './AttendancePage';
 import { href } from '../../app/router';
-import { cx } from '../../components/ui';
 
 export function Assignments() {
   const { org, today } = useOrg();
@@ -26,7 +25,8 @@ export function Assignments() {
     show === 'open' ? a.status === 'assigned' || a.status === 'started' : show === 'overdue' ? (a.status === 'assigned' || a.status === 'started') && a.dueOn < today : show === 'review' ? a.status === 'completed' : show === 'done' ? a.status === 'reviewed' : true))
     .sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.priority - b.priority);
   const toReview = data.assignments.filter(a => a.status === 'completed').length;
-  const tabs = <nav aria-label="Work sections" className="no-print mb-5 flex gap-1">{([['', 'Assignments'], ['revision', 'Revision forms'], ['tests', 'Juz tests']] as const).map(([k, l]) => { const on = (route[1] === 'tests' || route[1] === 'revision' ? route[1] : '') === k; return <a key={k} href={k ? href('assignments', k) : href('assignments')} aria-current={on ? 'page' : undefined} className={cx('inline-flex min-h-[40px] items-center rounded-xl px-4 text-sm font-bold', on ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}>{l}</a>; })}</nav>;
+  const tabs = <SubNav label="Task sections" active={(route[1] === 'tests' || route[1] === 'revision' ? route[1] : '') as '' | 'revision' | 'tests'} href={k => (k ? href('assignments', k) : href('assignments'))}
+    items={[{ key: '', label: 'Assignments' }, { key: 'revision', label: 'Revision forms' }, { key: 'tests', label: 'Juz tests' }]} />;
   if (route[1] === 'revision') return <><PageTitle title="Revision forms" sub="Partner revision each week: who did it, with whom, and who needs a follow-up" />{tabs}<RevisionForms data={data} /></>;
   if (route[1] === 'tests') return <><PageTitle title="Juz tests" sub="Schedule a test when a juz is finished; record pass or retake" />{tabs}<ExamList exams={data.exams} students={data.students} onChanged={reload} /></>;
   return <>

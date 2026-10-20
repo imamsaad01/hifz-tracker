@@ -35,8 +35,8 @@ export function HalaqahChooser({ student, data, onChanged, forChild }: { student
         </div>
         {mine ? <span className="inline-flex items-center gap-1 rounded-full bg-pine-50 px-3 py-1.5 text-sm font-bold text-pine-800"><Check size={15} />{forChild ? 'Joined' : 'You’re in'}</span>
           : p ? <span className="flex items-center gap-2"><span className="rounded-full bg-brass-100 px-3 py-1.5 text-sm font-bold text-brass-700">Waiting for approval</span>
-              <Button kind="quiet" className="min-h-[38px] px-2 text-sm" busy={busy === p.id} onClick={() => act(p.id, () => api.cancelClassJoin(p.id), 'Request cancelled.')}>Cancel</Button></span>
-          : <Button className="min-h-[40px]" busy={busy === c.id} onClick={() => act(c.id, () => api.requestClassJoin(c.id, student.id), 'Request sent. Your teacher will approve it.')}><UserPlus size={16} />Request to join</Button>}
+              <Button kind="quiet" className="min-h-[44px] px-2 text-sm" busy={busy === p.id} onClick={() => act(p.id, () => api.cancelClassJoin(p.id), 'Request cancelled.')}>Cancel</Button></span>
+          : <Button className="min-h-[44px]" busy={busy === c.id} onClick={() => act(c.id, () => api.requestClassJoin(c.id, student.id), 'Request sent. Your teacher will approve it.')}><UserPlus size={16} />Request to join</Button>}
       </li>;
     })}</ul>
   </Card>;
@@ -55,8 +55,8 @@ export function JoinRequestsCard({ data, onChanged }: { data: OrgData; onChanged
     <CardHead title={<span className="inline-flex items-center gap-2"><UserPlus size={18} className="text-brass-500" />Halaqah requests <span className="rounded-full bg-brass-100 px-2 text-sm text-brass-700">{pending.length}</span></span>} sub="Students asking to join a class" />
     <ul className="mt-2 divide-y divide-line">{pending.map(r => <li key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
       <p className="min-w-0 basis-full sm:basis-0 sm:flex-1"><b>{name(r.studentId)}</b> <span className="text-ink-soft">→ {cls(r.classId)}</span>{r.note && <span className="block text-sm text-ink-faint">“{r.note}”</span>}</p>
-      <Button className="min-h-[40px]" busy={busy === r.id + true} onClick={() => decide(r.id, true)}><Check size={16} />Approve</Button>
-      <Button kind="secondary" className="min-h-[40px]" busy={busy === r.id + false} onClick={() => decide(r.id, false)}><X size={16} />Decline</Button>
+      <Button className="min-h-[44px]" busy={busy === r.id + true} onClick={() => decide(r.id, true)}><Check size={16} />Approve</Button>
+      <Button kind="secondary" className="min-h-[44px]" busy={busy === r.id + false} onClick={() => decide(r.id, false)}><X size={16} />Decline</Button>
     </li>)}</ul>
   </Card>;
 }

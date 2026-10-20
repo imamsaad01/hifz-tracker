@@ -34,7 +34,7 @@ export function SetupCard({ data, onChanged }: { data: OrgData; onChanged: () =>
   const addTo = async (sid: string, cid: string) => { const c = data.classes.find(x => x.id === cid); if (!c) return; try { await api.setClassStudents(org.id, c.id, [...c.studentIds, sid], c.studentIds); toast('Added.'); onChanged(); } catch (e) { toast(friendly(e), 'err'); } };
   return <Card>
     <CardHead title={<span className="inline-flex items-center gap-2"><ClipboardList size={18} className="text-pine-700" />Getting everyone set up</span>} sub={`${students.length} students with accounts`}
-      action={<button type="button" aria-label="Hide for today" onClick={() => { setHidden(true); try { localStorage.setItem(HIDE, new Date().toISOString().slice(0, 10)); } catch { /* */ } }} className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint hover:bg-black/5"><X size={16} /></button>} />
+      action={<button type="button" aria-label="Hide for today" onClick={() => { setHidden(true); try { localStorage.setItem(HIDE, new Date().toISOString().slice(0, 10)); } catch { /* */ } }} className="grid h-11 w-11 place-items-center rounded-lg text-ink-faint hover:bg-black/5"><X size={16} /></button>} />
     <ul className="mt-2 divide-y divide-line">{rows.map(r => <li key={r.key} className="px-5 py-3">
       <button type="button" onClick={() => setOpen(open === r.key ? null : r.key)} aria-expanded={open === r.key} className="flex w-full items-center gap-3 text-left">
         <span className={cx('grid h-8 min-w-[32px] place-items-center rounded-full px-2 text-sm font-bold', r.key === 'class' || r.key === 'notif' ? 'bg-amber-50 text-warn' : 'bg-black/[.05] text-ink-soft')}>{r.n}</span>
@@ -44,9 +44,9 @@ export function SetupCard({ data, onChanged }: { data: OrgData; onChanged: () =>
       {open === r.key && <div className="mt-3 flex flex-col gap-2">
         <p className="text-sm text-ink-soft">{r.hint}</p>
         {r.key === 'class' ? <ul className="flex flex-col gap-1.5">{r.who.map(s => <li key={s.id} className="flex flex-wrap items-center gap-2"><span className="min-w-0 flex-1">{s.name}</span>
-          <Select aria-label={`Halaqah for ${s.name}`} className="!min-h-[38px] !w-auto text-sm" value="" onChange={v => v && addTo(s.id, v)} options={[['', 'Add to…'], ...data.classes.map(c => [c.id, c.name] as [string, string])]} /></li>)}</ul>
+          <Select aria-label={`Halaqah for ${s.name}`} className="!min-h-[44px] !w-auto text-sm" value="" onChange={v => v && addTo(s.id, v)} options={[['', 'Add to…'], ...data.classes.map(c => [c.id, c.name] as [string, string])]} /></li>)}</ul>
           : <p className="text-sm">{r.who.map(s => s.name).join(', ')}</p>}
-        {'msg' in r && r.msg && <div className="flex flex-wrap gap-2"><Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => copy(r.msg!)}><Copy size={15} />Copy message for WhatsApp</Button></div>}
+        {'msg' in r && r.msg && <div className="flex flex-wrap gap-2"><Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => copy(r.msg!)}><Copy size={15} />Copy message for WhatsApp</Button></div>}
       </div>}
     </li>)}</ul>
     {rows.every(r => r.key !== 'class') && <p className="flex items-center gap-1.5 px-5 pb-4 text-sm text-good"><Check size={15} />Everyone is in a halaqah.</p>}

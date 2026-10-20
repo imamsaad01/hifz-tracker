@@ -14,7 +14,7 @@ import { useStudentData } from '../../app/useStudentData';
 import { href, go } from '../../app/router';
 import { insight } from '../../lib/insights';
 import { METRIC_LABEL } from '../../lib/goals';
-import { Button, Card, CardHead, Spinner, ErrorBox, Segmented, Modal, Field, Select, inputCls, Toggle, Confirm, useToast } from '../../components/ui';
+import { Button, Card, CardHead, Spinner, ErrorBox, Segmented, SubTabs, Modal, Field, Select, inputCls, Toggle, Confirm, useToast } from '../../components/ui';
 import { Overview, History, MonthReport, TermReport } from '../../components/StudentReport';
 import { PlanCard, ClassBadge } from '../../components/PlanCard';
 import { AdabTaps, AdabSummary } from '../../components/Adab';
@@ -62,7 +62,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
     <PageTitle title={st.name} sub={[st.ageGroup, st.goal && `Goal: ${st.goal}`, st.direction === 'back' ? 'from An-Nās backwards' : 'from Al-Fātiḥah forwards'].filter(Boolean).join(' · ')}
       action={<div className="no-print flex flex-wrap gap-2"><Button onClick={() => setRec(true)}><Plus size={18} />Record</Button><Button kind="secondary" onClick={() => setAssign(true)}><ClipboardList size={16} />Assign</Button><Button kind="secondary" onClick={() => setGoal(true)}><Target size={16} />Goal</Button><Button kind="secondary" onClick={() => setEdit(true)}><Pencil size={16} />Edit</Button></div>} />
     <div className="no-print mb-3"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
-    <div className="no-print mb-5"><Segmented label="Section" value={tab} onChange={setTab} options={[['overview', 'Overview'], ['history', 'History'], ['work', 'Work & tests'], ['messages', 'Messages'], ['report', 'Reports']]} /></div>
+    <SubTabs label="Student sections" className="mb-5" active={tab} onChange={setTab} items={[{ key: 'overview', label: 'Overview' }, { key: 'history', label: 'History' }, { key: 'work', label: 'Tasks & tests' }, { key: 'messages', label: 'Messages' }, { key: 'report', label: 'Reports' }]} />
     {tab === 'overview' && <div className="flex flex-col gap-5">
       <Card><CardHead title="Adab & effort today" sub="Tap to give a point; tap again to undo" /><AdabTaps studentId={st.id} points={data.behaviour} onChanged={reload} /></Card>
       <PlanCard plan={plan} you={false} />
@@ -70,9 +70,9 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
       <Card className="p-5"><h2 className="mb-2 font-bold">Revision this week</h2><RevisionReadOnly sessions={sd.sessions} studentId={st.id} names={id => (data.students.find(x => x.id === id)?.name ?? 'partner').split(' ')[0]} /></Card>
       <WeeklyRevisionCard w={weekSummary(sd.sessions.filter(s => s.studentId === st.id), today, org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6], ins.revision.perDay, false)} you={false} />
       <div className="empty:hidden"><RevisionCheckCard data={data} onChanged={reload} studentId={st.id} /></div>
-      <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Old revision starts from:</b> {startLabel(st) ?? 'default order'}</span><Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => setStartOpen(true)}>Change</Button></Card>
+      <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Old revision starts from:</b> {startLabel(st) ?? 'default order'}</span><Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => setStartOpen(true)}>Change</Button></Card>
       {startOpen && <RevisionStartModal student={st} onClose={() => setStartOpen(false)} onSaved={reload} />}
-      <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Next lesson:</b> {ins.nextNew ? formatRange(ins.nextNew) : 'all memorised'} <span className="text-ink-faint">· going {st.direction === 'back' ? 'backwards' : 'forwards'}{st.skippedSurahs?.length ? ` · skipped for later: ${st.skippedSurahs.map(n => surahNameEn(n)).join(', ')}` : ''}</span></span><Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => setMemOpen(true)}>Memorised & start</Button></Card>
+      <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Next lesson:</b> {ins.nextNew ? formatRange(ins.nextNew) : 'all memorised'} <span className="text-ink-faint">· going {st.direction === 'back' ? 'backwards' : 'forwards'}{st.skippedSurahs?.length ? ` · skipped for later: ${st.skippedSurahs.map(n => surahNameEn(n)).join(', ')}` : ''}</span></span><Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => setMemOpen(true)}>Memorised & start</Button></Card>
       {memOpen && <MemorisedModal student={st} byTeacher onClose={() => setMemOpen(false)} onSaved={reload} />}
       <QiraatTeacherPanel student={st} data={data} onChanged={reload} />
       <StandingCard studentId={st.id} you={false} revisionMissed={missedLastWeek(st.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
@@ -80,7 +80,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
       <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={goals} today={today} settings={org.settings} onDeleteGoal={async g => { try { await api.deleteGoal(g.id); toast('Goal removed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} />
       <div className="grid gap-5 xl:grid-cols-2"><Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={ins.streak} freezes={org.settings.motivation.freezePerWeek} frozenDays={0} /></Card><AdabSummary points={beh} /></div>
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, st.memorized)} />
-      {certs.length > 0 && <Card><CardHead title="Certificates" sub="Open one to print or save as PDF" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', st.id, c.code)} className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700 hover:bg-brass-100/70"><Award size={16} />{c.title}</a>)}</div></Card>}
+      {certs.length > 0 && <Card><CardHead title="Certificates" sub="Open one to print or save as PDF" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', st.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700 hover:bg-brass-100/70"><Award size={16} />{c.title}</a>)}</div></Card>}
     </div>}
     {tab === 'history' && <History student={st} sessions={sd.sessions} today={today} settings={org.settings} onDelete={setDel} />}
     {tab === 'work' && <div className="flex flex-col gap-5"><Card><CardHead title="Assignments" /><AssignmentList items={assignments} onChanged={reload} /></Card><div><h2 className="mb-2 font-bold">Juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={st.id} onChanged={reload} /></div></div>}

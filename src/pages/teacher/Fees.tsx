@@ -39,7 +39,7 @@ export function Fees() {
       <b className="min-w-0 flex-1 basis-40">{s.name}</b>
       <input aria-label={`Amount for ${s.name}`} type="number" min={0} step="1" className={cx(inputCls, '!w-28')} defaultValue={r?.amount ?? def} onBlur={e => { const v = Number(e.target.value); if (!Number.isNaN(v) && v !== (r?.amount ?? def)) save(s.id, { amount: v }); }} />
       <Select aria-label={`Method for ${s.name}`} className="!w-32" value={r?.method ?? ''} onChange={v => save(s.id, { method: v || null })} options={[['', 'Method'], ['Cash', 'Cash'], ['Card', 'Card'], ['Bank', 'Bank'], ['Zelle', 'Zelle'], ['Other', 'Other']]} />
-      <button type="button" aria-pressed={!!r?.paidOn} onClick={() => save(s.id, { paidOn: r?.paidOn ? null : today })} className={cx('min-h-[40px] rounded-xl px-4 text-sm font-bold ring-1 ring-inset', r?.paidOn ? 'bg-good text-white ring-good' : 'bg-white text-ink-soft ring-line')}>{r?.paidOn ? `Paid ${r.paidOn.slice(5)}` : 'Mark paid'}</button>
+      <button type="button" aria-pressed={!!r?.paidOn} onClick={() => save(s.id, { paidOn: r?.paidOn ? null : today })} className={cx('min-h-[44px] rounded-xl px-4 text-sm font-bold ring-1 ring-inset', r?.paidOn ? 'bg-good text-white ring-good' : 'bg-white text-ink-soft ring-line')}>{r?.paidOn ? `Paid ${r.paidOn.slice(5)}` : 'Mark paid'}</button>
     </li>; })}</ul></Card>
   </div>;
 }

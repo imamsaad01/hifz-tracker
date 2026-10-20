@@ -39,10 +39,28 @@ export function Select<T extends string | number>({ value, onChange, options, id
     {options.map(([v, l]) => <option key={String(v)} value={String(v)}>{l}</option>)}
   </select>;
 }
+/** One look for every row of sections in the app: pills, 44px tall, scroll sideways on a phone. */
+const pill = (on: boolean) => cx('inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-bold ring-1 ring-inset transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pine-600',
+  on ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line hover:bg-pine-50');
+type SectionItem<T extends string> = { key: T; label: React.ReactNode; icon?: import('lucide-react').LucideIcon };
+/** Sections that are their own address (links), e.g. Halaqah → Live class / Attendance */
+export function SubNav<T extends string>({ items, active, label, href: link, className }: { items: SectionItem<T>[]; active: T; label: string; href: (k: T) => string; className?: string }) {
+  return <nav aria-label={label} className={cx('no-print -mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1', className)} data-no-pull>
+    {items.map(({ key, label: l, icon: I }) => <a key={key} href={link(key)} aria-current={active === key ? 'page' : undefined} className={pill(active === key)}>{I && <I size={15} />}{l}</a>)}
+  </nav>;
+}
+/** Sections inside one screen (tabs). Arrow keys move between them. */
+export function SubTabs<T extends string>({ items, active, onChange, label, className }: { items: SectionItem<T>[]; active: T; onChange: (k: T) => void; label: string; className?: string }) {
+  const key = (e: React.KeyboardEvent, i: number) => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return; e.preventDefault(); const n = items[(i + d + items.length) % items.length]; onChange(n.key); (e.currentTarget.parentElement?.children[(i + d + items.length) % items.length] as HTMLElement | undefined)?.focus(); };
+  return <div role="tablist" aria-label={label} className={cx('no-print -mx-1 mb-4 flex gap-1.5 overflow-x-auto px-1 pb-1', className)} data-no-pull>
+    {items.map(({ key: k, label: l, icon: I }, i) => <button key={k} type="button" role="tab" aria-selected={active === k} tabIndex={active === k ? 0 : -1} onKeyDown={e => key(e, i)} onClick={() => onChange(k)} className={pill(active === k)}>{I && <I size={15} />}{l}</button>)}
+  </div>;
+}
+
 export function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: Array<[T, string]>; label: string }) {
   return <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1 rounded-xl bg-black/[.04] p-1">
     {options.map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}
-      className={cx('min-h-[40px] flex-1 whitespace-nowrap rounded-lg px-3 text-sm font-bold transition', value === v ? 'bg-white text-pine-800 shadow-card' : 'text-ink-soft hover:text-ink')}>{l}</button>)}
+      className={cx('min-h-[44px] flex-1 whitespace-nowrap rounded-lg px-3 text-sm font-bold transition', value === v ? 'bg-white text-pine-800 shadow-card' : 'text-ink-soft hover:text-ink')}>{l}</button>)}
   </div>;
 }
 export function Stepper({ value, onChange, label, max = 99 }: { value: number; onChange: (v: number) => void; label: string; max?: number }) {
@@ -77,7 +95,7 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
   return <div className="grid min-h-[40vh] place-items-center" role="status"><div className="flex items-center gap-2 text-ink-soft"><Loader2 className="animate-spin" size={20} aria-hidden />{label}…</div></div>;
 }
 export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
-  return <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-bad"><AlertTriangle size={18} aria-hidden /><span className="min-w-0 flex-1">{message}</span>{onRetry && <Button kind="danger" className="min-h-[36px] px-3" onClick={onRetry}>Try again</Button>}</div>;
+  return <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-bad"><AlertTriangle size={18} aria-hidden /><span className="min-w-0 flex-1">{message}</span>{onRetry && <Button kind="danger" className="min-h-[44px] px-3" onClick={onRetry}>Try again</Button>}</div>;
 }
 
 /* ---------------------------------------------------------------- modal / sheet */
@@ -95,7 +113,7 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
   // Rendered at the page level: a parent with blur/transform (like the sticky top bar) would otherwise trap and clip it.
   return createPortal(<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 pt-[max(16px,env(safe-area-inset-top))] sm:items-center sm:p-6" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
     <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className={cx('flex max-h-[90dvh] w-full flex-col rounded-t-3xl bg-paper shadow-2xl sm:max-h-[94vh] sm:rounded-3xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-xl')}>
-      <div className="flex items-center gap-3 border-b border-line px-5 py-4"><h2 className="min-w-0 flex-1 text-lg font-bold">{title}</h2><button data-close type="button" onClick={onClose} aria-label="Close" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-black/5"><X size={20} /></button></div>
+      <div className="flex items-center gap-3 border-b border-line px-5 py-4"><h2 className="min-w-0 flex-1 text-lg font-bold">{title}</h2><button data-close type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 place-items-center rounded-xl hover:bg-black/5"><X size={20} /></button></div>
       <div className={cx('min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4', !footer && 'pb-[max(16px,env(safe-area-inset-bottom))]')}>{children}</div>
       {footer && <div className="border-t border-line px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">{footer}</div>}
     </div>

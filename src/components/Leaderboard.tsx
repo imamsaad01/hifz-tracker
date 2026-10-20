@@ -30,7 +30,7 @@ export function Leaderboard({ limit, compact }: { limit?: number; compact?: bool
   return <Card>
     <CardHead title={<span className="inline-flex items-center gap-2"><Trophy size={18} className="text-brass-500" />Most consistent</span>}
       sub={staff && !org.settings.leaderboard.enabled ? 'Only teachers can see this. Turn it on for students in More → Settings.' : myRank ? `You are #${myRank} of ${rows!.length}` : 'Rewards showing up and revising, not speed'}
-      action={<button type="button" onClick={() => setWhy(w => !w)} aria-expanded={why} aria-label="How points work" className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint hover:bg-black/5"><Info size={16} /></button>} />
+      action={<button type="button" onClick={() => setWhy(w => !w)} aria-expanded={why} aria-label="How points work" className="grid h-11 w-11 place-items-center rounded-lg text-ink-faint hover:bg-black/5"><Info size={16} /></button>} />
     {why && <p className="mx-5 mt-2 rounded-xl bg-pine-50 px-3 py-2 text-sm text-pine-800">10 points for each day with a session, 2 for each page of revision and 1 more for each page with no mistakes. Revision counts up to 20 pages a day. New lessons give no points, so going faster never wins.</p>}
     <div className="flex flex-col gap-2 px-5 pt-3"><Segmented label="Ranking" value={kind} onChange={setKind} options={[['consistency', 'Revision consistency'], ['points', 'Points']]} />{kind === 'points' && !compact && <Segmented label="Period" value={days} onChange={setDays} options={[['7', 'This week'], ['30', 'Last 30 days']]} />}</div>
     {kind === 'consistency' && <ConsistencyList rows={cons} limit={limit} />}

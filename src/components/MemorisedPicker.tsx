@@ -53,12 +53,12 @@ export function MemorisedPicker({ value, onChange, you = 'you' }: { value: Memor
     <Field label="Which way are the lessons going?">{id => <Select id={id} value={value.direction} onChange={d => set({ direction: d, nextFrom: defaultNextFrom(d, value.surahs) })} options={[['back', 'Backwards: from An-Nās towards Al-Baqarah'], ['forward', 'Forwards: from Al-Fātiḥah towards An-Nās']]} />}</Field>
     <div>
       <p className="mb-1.5 text-[13px] font-bold text-ink-soft">Tap every surah {you === 'you' ? 'you have' : 'they have'} memorised fully <span className="font-normal text-ink-faint">({value.surahs.length} chosen)</span></p>
-      <div className="mb-2 flex flex-wrap gap-1.5">{[30, 29, 28, 27, 26, 1].map(j => <button key={j} type="button" onClick={() => quick(j)} className="min-h-[34px] rounded-full bg-white px-3 text-xs font-bold text-ink-soft ring-1 ring-line hover:bg-pine-50">Juz {j}</button>)}
-        {value.surahs.length > 0 && <button type="button" onClick={() => set({ surahs: [], nextFrom: defaultNextFrom(value.direction, []) })} className="min-h-[34px] rounded-full px-3 text-xs font-bold text-bad">Clear</button>}</div>
+      <div className="mb-2 flex flex-wrap gap-1.5">{[30, 29, 28, 27, 26, 1].map(j => <button key={j} type="button" onClick={() => quick(j)} className="min-h-[44px] rounded-full bg-white px-3 text-xs font-bold text-ink-soft ring-1 ring-line hover:bg-pine-50">Juz {j}</button>)}
+        {value.surahs.length > 0 && <button type="button" onClick={() => set({ surahs: [], nextFrom: defaultNextFrom(value.direction, []) })} className="min-h-[44px] rounded-full px-3 text-xs font-bold text-bad">Clear</button>}</div>
       <ul className="grid max-h-[340px] grid-cols-2 gap-1.5 overflow-y-auto overscroll-contain rounded-xl bg-paper p-2 ring-1 ring-line sm:grid-cols-3" data-no-pull>{order.map(s => {
         const on = have.has(s); const isStart = s === start; const sk = skipped.includes(s);
         return <li key={s}><button type="button" aria-pressed={on} onClick={() => toggle(s)}
-          className={cx('flex min-h-[40px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm ring-1 ring-inset', on ? 'bg-pine-700 font-bold text-white ring-pine-700' : isStart ? 'bg-brass-100 font-bold text-brass-700 ring-brass-500' : sk ? 'bg-amber-50 text-warn ring-warn/30' : 'bg-white text-ink-soft ring-line')}>
+          className={cx('flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2 text-left text-sm ring-1 ring-inset', on ? 'bg-pine-700 font-bold text-white ring-pine-700' : isStart ? 'bg-brass-100 font-bold text-brass-700 ring-brass-500' : sk ? 'bg-amber-50 text-warn ring-warn/30' : 'bg-white text-ink-soft ring-line')}>
           <span className="w-7 shrink-0 text-right tabular-nums opacity-80">{s}</span><span className="min-w-0 flex-1 truncate">{surahNameEn(s)}</span>{on && <Check size={14} />}{isStart && !on && <span className="text-[10px] uppercase">next</span>}
         </button></li>;
       })}</ul>

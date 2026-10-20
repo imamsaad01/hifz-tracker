@@ -23,10 +23,10 @@ export function AyahPlayer({ range, compact, initialRepeat = 1 }: { range: Range
   return <div className={compact ? 'flex flex-wrap items-center gap-2' : 'flex flex-col gap-2 rounded-xl bg-paper p-3 ring-1 ring-line'}>
     {!compact && <p className="flex items-center gap-2 text-sm font-bold text-pine-800"><Headphones size={16} />Listen and repeat</p>}
     <div className="flex flex-wrap items-center gap-2">
-      <button type="button" onClick={toggle} className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-pine-700 px-3 text-sm font-bold text-white" aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={16} /> : <Play size={16} />}{playing ? 'Pause' : cur ? 'Resume' : 'Play'}</button>
-      {cur && <button type="button" onClick={stop} className="grid h-10 w-10 place-items-center rounded-xl ring-1 ring-line" aria-label="Stop"><Square size={14} /></button>}
-      <Select aria-label="Reciter" className="!min-h-[40px] !w-auto text-sm" value={reciter} onChange={v => { setReciter(v); try { localStorage.setItem(KEY, v); } catch { /* */ } stop(); }} options={RECITERS} />
-      <Select aria-label="Repeat" className="!min-h-[40px] !w-auto text-sm" value={repeat} onChange={v => setRepeat(Number(v))} options={[[1, 'Once'], [3, '3 times'], [5, '5 times'], [10, '10 times']]} />
+      <button type="button" onClick={toggle} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-pine-700 px-3 text-sm font-bold text-white" aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={16} /> : <Play size={16} />}{playing ? 'Pause' : cur ? 'Resume' : 'Play'}</button>
+      {cur && <button type="button" onClick={stop} className="grid h-11 w-11 place-items-center rounded-xl ring-1 ring-line" aria-label="Stop"><Square size={14} /></button>}
+      <Select aria-label="Reciter" className="!min-h-[44px] !w-auto text-sm" value={reciter} onChange={v => { setReciter(v); try { localStorage.setItem(KEY, v); } catch { /* */ } stop(); }} options={RECITERS} />
+      <Select aria-label="Repeat" className="!min-h-[44px] !w-auto text-sm" value={repeat} onChange={v => setRepeat(Number(v))} options={[[1, 'Once'], [3, '3 times'], [5, '5 times'], [10, '10 times']]} />
     </div>
     {now && <p className="text-xs text-ink-faint">Playing {surahNameEn(now.surah)} {now.surah}:{now.ayah} · {cur! - range.start + 1} of {total}{repeat > 1 ? ` · round ${pass.current} of ${repeat}` : ''}</p>}
     {err && <p className="text-xs text-bad">Could not play the audio. Check the connection and try again.</p>}

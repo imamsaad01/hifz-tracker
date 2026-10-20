@@ -32,8 +32,8 @@ const TEACHER: TourStep[] = [
   { target: 'qiraat-due', title: 'Qirāʾāt tests', body: 'Farsh and uṣūl tests due this week. Tap a name to mark it.', optional: true, route: 'today' },
   { target: 'today-students', title: 'Today’s students', body: 'Who still needs to be heard, and who needs attention (overdue revision, missed days, weak pages).', optional: true, route: 'today' },
   { target: 'nav-students', title: 'Students', body: 'Open any student for their plan, revision start point, qirāʾāt (tests, khatmah, matn), history, messages and reports.' },
-  { target: 'nav-classes', title: 'Class', body: 'Live class, attendance with the check-in code, halaqahs and their times, and the calendar.' },
-  { target: 'nav-assignments', title: 'Work', body: 'Assignments, juz tests and the weekly partner revision forms.' },
+  { target: 'nav-classes', title: 'Halaqah', body: 'Live class, attendance with the check-in code, halaqahs and their times, and the calendar.' },
+  { target: 'nav-assignments', title: 'Tasks', body: 'Assignments, juz tests and the weekly partner revision forms.' },
   { target: 'nav-more', title: 'More', body: 'Settings (revision days, reminders, attendance, class expectations), people and roles, join codes and reports.' },
   { target: 'inbox', title: 'What’s new', body: 'New messages and announcements. Turn on phone notifications too, so absence requests and messages reach you.' },
   { title: 'Bismillah', body: 'That’s it. Replay this tour any time from More.' },
@@ -120,14 +120,14 @@ export function Tour() {
       <div className="flex items-start gap-3">
         {!hole && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brass-100 text-brass-700"><Sparkles size={20} /></span>}
         <div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-wider text-ink-faint">{i + 1} of {steps.length}</p><h2 className="text-lg font-bold">{step.title}</h2></div>
-        <button type="button" onClick={close} aria-label="Skip the tour" className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint hover:bg-black/5"><X size={18} /></button>
+        <button type="button" onClick={close} aria-label="Skip the tour" className="grid h-11 w-11 place-items-center rounded-lg text-ink-faint hover:bg-black/5"><X size={18} /></button>
       </div>
       <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{step.body}</p>
       <div className="mt-4 flex items-center gap-2">
-        <button type="button" onClick={close} className="min-h-[40px] rounded-xl px-2 text-sm font-bold text-ink-faint hover:text-ink">Skip tour</button>
+        <button type="button" onClick={close} className="min-h-[44px] rounded-xl px-2 text-sm font-bold text-ink-faint hover:text-ink">Skip tour</button>
         <span className="flex-1" />
-        {i > 0 && <button type="button" onClick={back} className="inline-flex min-h-[40px] items-center gap-1 rounded-xl px-3 text-sm font-bold text-ink-soft ring-1 ring-line"><ChevronLeft size={16} />Back</button>}
-        <button type="button" onClick={next} autoFocus className="inline-flex min-h-[40px] items-center gap-1 rounded-xl bg-pine-700 px-4 text-sm font-bold text-white">{i >= steps.length - 1 ? 'Finish' : i === 0 ? 'Show me' : 'Next'}{i < steps.length - 1 && <ChevronRight size={16} />}</button>
+        {i > 0 && <button type="button" onClick={back} className="inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-sm font-bold text-ink-soft ring-1 ring-line"><ChevronLeft size={16} />Back</button>}
+        <button type="button" onClick={next} autoFocus className="inline-flex min-h-[44px] items-center gap-1 rounded-xl bg-pine-700 px-4 text-sm font-bold text-white">{i >= steps.length - 1 ? 'Finish' : i === 0 ? 'Show me' : 'Next'}{i < steps.length - 1 && <ChevronRight size={16} />}</button>
       </div>
       <div className="mt-3 flex justify-center gap-1" aria-hidden>{steps.map((_, n) => <i key={n} className={cx('h-1.5 rounded-full transition-all', n === i ? 'w-5 bg-pine-700' : 'w-1.5 bg-black/15')} />)}</div>
     </div>

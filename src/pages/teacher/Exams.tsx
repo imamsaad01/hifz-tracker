@@ -17,14 +17,14 @@ export function ExamList({ exams, students, onChanged, fixedStudent }: { exams: 
   const list = exams.filter(e => !fixedStudent || e.studentId === fixedStudent).sort((a, b) => (a.status === 'scheduled' ? 0 : 1) - (b.status === 'scheduled' ? 0 : 1) || a.scheduledOn.localeCompare(b.scheduledOn));
   const name = (id: string) => students.find(s => s.id === id)?.name ?? '';
   return <Card>
-    {staff && <div className="flex justify-end border-b border-line px-5 py-3"><Button className="min-h-[38px] px-3 text-sm" onClick={() => setAdd(true)} disabled={!students.length}><Plus size={15} />Schedule a test</Button></div>}
+    {staff && <div className="flex justify-end border-b border-line px-5 py-3"><Button className="min-h-[44px] px-3 text-sm" onClick={() => setAdd(true)} disabled={!students.length}><Plus size={15} />Schedule a test</Button></div>}
     {list.length ? <ul className="divide-y divide-line">{list.map(x => <li key={x.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3">
       <span className="min-w-0 flex-1 basis-56"><b className="block">{x.title}{!fixedStudent && <span className="font-normal text-ink-soft"> · {name(x.studentId)}</span>}</b>
         <span className="text-sm text-ink-faint">{niceDate(x.scheduledOn)}{x.examiner ? ` · Examiner: ${x.examiner}` : ''}{x.range ? ` · ${formatRange(x.range)}` : ''}{x.score !== null ? ` · ${x.score}%` : ''}</span>
         {x.notes && <span className="block text-sm text-ink-soft">{x.notes}</span>}</span>
       <Pill tone={x.status === 'scheduled' && x.scheduledOn < today ? 'red' : TONE[x.status]}>{x.status === 'scheduled' && x.scheduledOn < today ? 'needs result' : x.status}</Pill>
-      {staff && <span className="flex gap-1">{x.status === 'scheduled' && <Button kind="secondary" className="min-h-[36px] px-3 text-sm" onClick={() => setResult(x)}>Result</Button>}
-        <button type="button" aria-label="Remove test" className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint hover:text-bad" onClick={async () => { try { await api.removeExam(x.id); onChanged(); } catch (e) { toast(friendly(e), 'err'); } }}><Trash2 size={15} /></button></span>}
+      {staff && <span className="flex gap-1">{x.status === 'scheduled' && <Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => setResult(x)}>Result</Button>}
+        <button type="button" aria-label="Remove test" className="grid h-11 w-11 place-items-center rounded-lg text-ink-faint hover:text-bad" onClick={async () => { try { await api.removeExam(x.id); onChanged(); } catch (e) { toast(friendly(e), 'err'); } }}><Trash2 size={15} /></button></span>}
     </li>)}</ul> : <Empty title="No tests scheduled">{staff ? 'Schedule a juz test when a student finishes a juz.' : undefined}</Empty>}
     {add && <ExamForm students={students} fixedStudent={fixedStudent} onClose={() => setAdd(false)} onSaved={onChanged} />}
     {result && <ResultForm exam={result} onClose={() => setResult(null)} onSaved={onChanged} />}

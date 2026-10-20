@@ -1,37 +1,55 @@
 import { LayoutDashboard, Users, School, ClipboardList, MoreHorizontal, Home, TrendingUp, History as HistoryIcon, User, MessageCircle } from 'lucide-react';
-import { Certificate } from './pages/Certificate';
-import { Apply } from './pages/public/Apply';
 import { useApp } from './app/context';
 import { useRoute, href } from './app/router';
 import { Spinner } from './components/ui';
 import { Shell, type NavItem } from './components/Shell';
 import { SignIn } from './pages/SignIn';
 import { Welcome } from './pages/Welcome';
-import { Today } from './pages/teacher/Today';
-import { Students } from './pages/teacher/Students';
-import { StudentDetail } from './pages/teacher/StudentDetail';
-import { Classes } from './pages/teacher/Classes';
-import { Assignments } from './pages/teacher/Assignments';
-import { More } from './pages/teacher/More';
-import { StudentApp } from './pages/student/StudentApp';
-import { ParentApp } from './pages/parent/ParentApp';
 import { NewPassword } from './components/NewPassword';
+import { lazy, Suspense, useEffect } from 'react';
+
+// Each role downloads only its own screens (a student's phone never loads the teacher pages).
+// After the first screen shows, the rest of that role's screens are fetched quietly so tab switches stay instant.
+const load = {
+  today: () => import('./pages/teacher/Today'), students: () => import('./pages/teacher/Students'), detail: () => import('./pages/teacher/StudentDetail'),
+  classes: () => import('./pages/teacher/Classes'), tasks: () => import('./pages/teacher/Assignments'), more: () => import('./pages/teacher/More'),
+  student: () => import('./pages/student/StudentApp'), parent: () => import('./pages/parent/ParentApp'),
+  certificate: () => import('./pages/Certificate'), apply: () => import('./pages/public/Apply'),
+};
+const Today = lazy(() => load.today().then(m => ({ default: m.Today })));
+const Students = lazy(() => load.students().then(m => ({ default: m.Students })));
+const StudentDetail = lazy(() => load.detail().then(m => ({ default: m.StudentDetail })));
+const Classes = lazy(() => load.classes().then(m => ({ default: m.Classes })));
+const Assignments = lazy(() => load.tasks().then(m => ({ default: m.Assignments })));
+const More = lazy(() => load.more().then(m => ({ default: m.More })));
+const StudentApp = lazy(() => load.student().then(m => ({ default: m.StudentApp })));
+const ParentApp = lazy(() => load.parent().then(m => ({ default: m.ParentApp })));
+const Certificate = lazy(() => load.certificate().then(m => ({ default: m.Certificate })));
+const Apply = lazy(() => load.apply().then(m => ({ default: m.Apply })));
+const idle = (f: () => void) => { const w = window as unknown as { requestIdleCallback?: (cb: () => void) => void }; if (w.requestIdleCallback) w.requestIdleCallback(f); else setTimeout(f, 1500); };
+function usePreload(role: string | undefined) {
+  useEffect(() => {
+    if (!role) return;
+    idle(() => { const list = role === 'admin' || role === 'teacher' ? [load.today, load.students, load.detail, load.classes, load.tasks, load.more] : role === 'student' ? [load.student] : [load.parent]; list.forEach(f => f().catch(() => undefined)); });
+  }, [role]);
+}
 
 const STAFF_NAV: NavItem[] = [
   { key: 'today', label: 'Today', icon: LayoutDashboard, href: href('today') }, { key: 'students', label: 'Students', icon: Users, href: href('students') },
-  { key: 'classes', label: 'Class', icon: School, href: href('classes') }, { key: 'assignments', label: 'Work', icon: ClipboardList, href: href('assignments') },
+  { key: 'classes', label: 'Halaqah', icon: School, href: href('classes') }, { key: 'assignments', label: 'Tasks', icon: ClipboardList, href: href('assignments') },
   { key: 'more', label: 'More', icon: MoreHorizontal, href: href('more') },
 ];
 const STUDENT_NAV: NavItem[] = [
   { key: 'home', label: 'Today', icon: Home, href: href('home') }, { key: 'progress', label: 'Progress', icon: TrendingUp, href: href('progress') },
-  { key: 'history', label: 'Sessions', icon: HistoryIcon, href: href('history') }, { key: 'messages', label: 'Messages', icon: MessageCircle, href: href('messages') }, { key: 'me', label: 'My plan', icon: User, href: href('me') },
+  { key: 'history', label: 'History', icon: HistoryIcon, href: href('history') }, { key: 'messages', label: 'Messages', icon: MessageCircle, href: href('messages') }, { key: 'me', label: 'My plan', icon: User, href: href('me') },
 ];
 export function App() {
-  return <><Main /><NewPassword /></>;
+  return <><Suspense fallback={<Spinner />}><Main /></Suspense><NewPassword /></>;
 }
 function Main() {
   const { user, org, loading } = useApp();
   const route = useRoute();
+  usePreload(org?.role);
   const [page = '', sub, third] = route;
   if (page === 'apply' && sub) return <Apply orgId={sub} />;
   if (loading) return <Spinner />;

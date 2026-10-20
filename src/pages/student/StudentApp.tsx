@@ -19,7 +19,7 @@ import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
 import type { SessionType } from '../../lib/types';
-import { Button, Card, CardHead, Spinner, ErrorBox, Pill, cx } from '../../components/ui';
+import { Button, Card, CardHead, Spinner, ErrorBox, Pill, cx, SubTabs } from '../../components/ui';
 import { Overview, History } from '../../components/StudentReport';
 import { AssignmentList } from '../../components/AssignmentList';
 import { RecordSheet } from '../../components/RecordSheet';
@@ -89,13 +89,12 @@ export function StudentApp({ tab }: { tab: string }) {
     {tab === 'home' && <>
       <PageTitle title={`Assalamu alaikum, ${me.name.split(' ')[0]}`} sub={<>{niceDate(today)} · {hijriDate(today)}</>} />
       <div className="mb-5" data-tour="halaqah"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-6">
+      <div className="min-w-0">
       {/* 1. things that need doing now */}
       {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
       {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
       <div className="mb-5 empty:hidden" data-tour="partner"><PartnerRequestsCard /></div>
-      <div className="mb-5 empty:hidden" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
-      <div className="mb-5 empty:hidden" data-tour="notify"><NotifyToggle compact /></div>
-      <div className="mb-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={2} fresh /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
       {ring.some(r => r.due) && ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />}
       {/* 2. today's reading */}
@@ -114,12 +113,18 @@ export function StudentApp({ tab }: { tab: string }) {
           note: !ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first. Read to your partner, then log it.' : `${ins.revision.perDay} pages each revision day, in turn. Read to your partner, then log it.`,
           action: ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={firstRun(ins.revision.today.map(r => r.page))} /></div> : null },
       ]} /></div>
+      <div className="mt-5 empty:hidden" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
+      <div className="mt-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={2} fresh /></div>
       {/* 3. this week */}
       <div className="mt-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
-      <div className="mt-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
+      </div>
+      {/* side column on wide screens; below on phones */}
+      <aside className="mt-5 lg:mt-0">
+      <div className="mb-5 empty:hidden" data-tour="notify"><NotifyToggle compact /></div>
+      <div className="mb-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
       {startOpen && <RevisionStartModal student={me} onClose={() => setStartOpen(false)} onSaved={refresh} />}
       {/* 4. one notebook with tabs instead of a long scroll */}
-      <div className="mt-5" data-tour="revision-log"><Notebook initial={ins.openAssignments.length ? 'work' : 'log'} tabs={[
+      <div data-tour="revision-log"><Notebook initial={ins.openAssignments.length ? 'work' : 'log'} tabs={[
         { key: 'log', label: 'My log', node: <MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /> },
         { key: 'weak', label: `Weak ayahs${weakCount ? ` · ${weakCount}` : ''}`, node: weakCount ? <WeakAyahsCard sessions={sd.sessions} studentId={me.id} /> : <Card className="p-5 text-sm text-ink-faint">No mistakes marked in the last 60 days. Mā shāʾ Allāh.</Card> },
         { key: 'soon', label: `Coming up${events.length + tests.length ? ` · ${events.length + tests.length}` : ''}`, node: <Card>{events.length + tests.length ? <ul className="divide-y divide-line">{tests.map(x => <li key={x.id} className="px-5 py-3"><b>{x.title}</b> <span className="text-ink-faint">· {niceDate(x.scheduledOn)}{x.examiner ? ` · with ${x.examiner}` : ''}</span></li>)}
@@ -127,7 +132,9 @@ export function StudentApp({ tab }: { tab: string }) {
           : <p className="p-5 text-sm text-ink-faint">Nothing in the next two weeks.</p>}</Card> },
         ...(ins.openAssignments.length ? [{ key: 'work', label: `Assignments · ${ins.openAssignments.length}`, node: <Card><CardHead title="Assignments" sub="Mark them done; your teacher reviews them" /><AssignmentList items={ins.openAssignments} asStudent onChanged={reload} /></Card> }] : []),
       ]} /></div>
-      {/* 4. everything else, folded away */}
+      </aside>
+      </div>
+      {/* 5. everything else, folded away */}
       <details className="group mt-5 rounded-2xl border border-line bg-white shadow-card">
         <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: streak, standing, partner form, leaderboard</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
         <div className="flex flex-col gap-5 border-t border-line p-4">
@@ -146,7 +153,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <PageTitle title="My progress" />
       <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, me.memorized)} />
-      {certs.length > 0 && <Card><CardHead title="My certificates" sub="Open one to print or save" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', me.id, c.code)} className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Card>}
+      {certs.length > 0 && <Card><CardHead title="My certificates" sub="Open one to print or save" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', me.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Card>}
       <Leaderboard />
       {tests.length + data.exams.filter(x => x.studentId === me.id).length > 0 && <div><h2 className="mb-2 font-bold">My juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={me.id} onChanged={reload} /></div>}
       <AdabSummary points={beh} title="Adab & effort from your teacher" />
@@ -199,8 +206,7 @@ function Notebook({ tabs, initial }: { tabs: Array<{ key: string; label: string;
   const cur = tabs.find(x => x.key === t) ?? tabs[0];
   const pick = (k: string) => { setT(k); try { localStorage.setItem('hifz-notebook', k); } catch { /* */ } };
   return <div>
-    <div role="tablist" aria-label="More for you" className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" data-no-pull>{tabs.map(x => <button key={x.key} type="button" role="tab" aria-selected={x.key === cur.key} onClick={() => pick(x.key)}
-      className={cx('min-h-[40px] shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-bold ring-1 ring-inset transition', x.key === cur.key ? 'bg-ink text-paper ring-ink' : 'bg-white text-ink-soft ring-line hover:bg-pine-50')}>{x.label}</button>)}</div>
+    <SubTabs label="More for you" className="mb-3" active={cur.key} onChange={pick} items={tabs.map(x => ({ key: x.key, label: x.label }))} />
     <div role="tabpanel">{cur.node}</div>
   </div>;
 }

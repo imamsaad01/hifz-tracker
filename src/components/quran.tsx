@@ -48,7 +48,7 @@ export function RangePicker({ value, onChange, label = 'Qur’an range' }: { val
     <RangeLabel range={value} />
   </fieldset>;
 }
-const QuickBtn = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => <button type="button" onClick={onClick} className="min-h-[34px] rounded-full bg-white px-3 text-sm font-bold text-pine-800 ring-1 ring-inset ring-line hover:bg-pine-50">{children}</button>;
+const QuickBtn = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => <button type="button" onClick={onClick} className="min-h-[44px] rounded-full bg-white px-3 text-sm font-bold text-pine-800 ring-1 ring-inset ring-line hover:bg-pine-50">{children}</button>;
 export function RangeLabel({ range, compact }: { range: Range; compact?: boolean }) {
   if (!isValidRange(range)) return <p className="text-sm font-bold text-bad">That range is not valid.</p>;
   const s = fromAyahId(range.start).surah;
@@ -65,7 +65,7 @@ export function ScoreInput({ label, value, onChange, scale }: { label: string; v
     <span className="w-20 text-[13px] font-bold text-ink-soft">{label}</span>
     <div className="flex flex-wrap gap-1">
       {opts.map(n => scale === 5
-        ? <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} of 5`} onClick={() => onChange(value === n ? null : n)} className="grid h-10 w-10 place-items-center rounded-lg hover:bg-brass-100">
+        ? <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} of 5`} onClick={() => onChange(value === n ? null : n)} className="grid h-11 w-11 place-items-center rounded-lg hover:bg-brass-100">
             <Star size={24} className={value !== null && n <= value ? 'fill-brass-500 text-brass-500' : 'text-black/25'} /></button>
         : <button key={n} type="button" role="radio" aria-checked={value === n} onClick={() => onChange(value === n ? null : n)} className={cx('h-10 min-w-[40px] rounded-lg border text-sm font-bold', value === n ? 'border-pine-700 bg-pine-700 text-white' : 'border-line bg-white')}>{n}</button>)}
     </div>

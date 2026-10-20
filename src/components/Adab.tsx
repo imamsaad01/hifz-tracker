@@ -14,7 +14,7 @@ export function AdabTaps({ studentId, points, onChanged, compact }: { studentId:
     catch (e) { toast(friendly(e), 'err'); }
   };
   const chip = (c: string, v: 1 | -1) => { const on = todays.some(p => p.category === c); return <button key={c} type="button" aria-pressed={on} onClick={() => tap(c, v)}
-    className={cx('inline-flex min-h-[36px] items-center gap-1 rounded-full px-3 text-sm font-bold ring-1 ring-inset transition', on ? (v > 0 ? 'bg-good text-white ring-good' : 'bg-bad text-white ring-bad') : (v > 0 ? 'bg-white text-good ring-good/30' : 'bg-white text-bad ring-bad/30'))}>
+    className={cx('inline-flex min-h-[44px] items-center gap-1 rounded-full px-3 text-sm font-bold ring-1 ring-inset transition', on ? (v > 0 ? 'bg-good text-white ring-good' : 'bg-bad text-white ring-bad') : (v > 0 ? 'bg-white text-good ring-good/30' : 'bg-white text-bad ring-bad/30'))}>
     {v > 0 ? <ThumbsUp size={13} /> : <ThumbsDown size={13} />}{c}</button>; };
   return <div className={cx('flex flex-wrap gap-1.5', compact ? '' : 'px-5 py-3')}>{org.settings.adab.positive.map(c => chip(c, 1))}{org.settings.adab.negative.map(c => chip(c, -1))}</div>;
 }

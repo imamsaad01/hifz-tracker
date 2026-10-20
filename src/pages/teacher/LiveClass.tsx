@@ -76,7 +76,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
         onPointerCancel={() => { sw.current = null; setDx(0); }}
         className="touch-pan-y">
     <Card className="border-2 border-pine-600 p-5">
-      <p className="flex items-center text-xs font-bold uppercase tracking-wider text-pine-700"><span className="flex-1">Up now</span>{waiting.length > 1 && <span className="font-normal normal-case tracking-normal text-ink-faint">Swipe left to skip</span>}</p>
+      <p className="flex items-center text-xs font-bold uppercase tracking-wider text-pine-700"><span className="flex-1">Up now</span>{waiting.length > 1 && <span className="font-normal normal-case tracking-normal text-ink-faint lg:hidden">Swipe left to skip</span>}</p>
       <h2 className="mt-1 text-2xl font-bold">{current.student.name}</h2>
       {(() => {
         const sid = current.student.id; const pend = pendingNew(sid); const t = lastTest(sid);
@@ -85,7 +85,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
         const weak = weakAyahs(data.sessions, sid, today);
         const pct = t ? Math.round(((t.total - t.peeked.length) / t.total) * 100) : null;
         const chip = (k: 'rev' | 'weak' | 'test', tone: 'green' | 'amber' | 'red' | 'slate', label: string) => <button type="button" onClick={() => setMore(more === k ? null : k)} aria-expanded={more === k}
-          className={cx('inline-flex min-h-[34px] items-center gap-1 rounded-full px-3 text-sm font-bold ring-1 ring-inset', { green: 'bg-emerald-50 text-good ring-good/25', amber: 'bg-amber-50 text-warn ring-warn/25', red: 'bg-red-50 text-bad ring-bad/25', slate: 'bg-black/[.04] text-ink-soft ring-line' }[tone])}>{label}<ChevronDown size={14} className={cx('transition', more === k && 'rotate-180')} /></button>;
+          className={cx('inline-flex min-h-[44px] items-center gap-1 rounded-full px-3 text-sm font-bold ring-1 ring-inset', { green: 'bg-emerald-50 text-good ring-good/25', amber: 'bg-amber-50 text-warn ring-warn/25', red: 'bg-red-50 text-bad ring-bad/25', slate: 'bg-black/[.04] text-ink-soft ring-line' }[tone])}>{label}<ChevronDown size={14} className={cx('transition', more === k && 'rotate-180')} /></button>;
         return <>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {w.target > 0 && chip('rev', w.percent >= 1 ? 'green' : w.missedDays ? 'amber' : 'slate', `Revision ${w.oldPages}/${w.target} pages${waitingPartner ? ` · ${waitingPartner} waiting` : ''}`)}
@@ -105,7 +105,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
             {waiting.length > 1 ? <Button kind="secondary" onClick={() => skip(sid)}><Clock3 size={16} />Later</Button> : <span />}<Button kind="secondary" onClick={() => absentNow(sid)}><UserX size={16} />Absent</Button></div>
         </>;
       })()}
-      <details className="group mt-3"><summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-1 text-sm font-bold text-ink-soft">Note manners (adab)<ChevronDown size={15} className="transition group-open:rotate-180" /></summary>
+      <details className="group mt-3"><summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-sm font-bold text-ink-soft">Note manners (adab)<ChevronDown size={15} className="transition group-open:rotate-180" /></summary>
         <div className="-mx-1 pt-1"><AdabTaps studentId={current.student.id} points={data.behaviour} onChanged={reload} compact /></div></details>
     </Card></div></div> : <Card><Empty icon={<CheckCircle2 size={30} />} title={ins.length ? 'Everyone is done for today' : 'No students in this halaqah'}>{ins.length ? 'Mā shāʾ Allāh. Check Today for anything that needs attention.' : 'Add students to the halaqah under Classes.'}</Empty></Card>}
     {waiting.length > 1 && <Card><h3 className="flex items-baseline gap-2 px-5 pt-4 font-bold">Next <span className="text-xs font-normal text-ink-faint">Drag ⋮⋮ to change the order</span></h3><ol ref={listRef} className="mt-2 divide-y divide-line">{waiting.slice(1).map((i, k) => <li key={i.student.id} className={cx('flex items-center gap-3 py-2.5 pl-2 pr-5 transition-colors', drag?.from === k && 'bg-pine-50', drag && drag.to === k && drag.from !== k && 'bg-brass-100/60')}>
@@ -116,7 +116,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
         onPointerCancel={() => setDrag(null)}
         onKeyDown={e => { if (e.key === 'ArrowUp') { e.preventDefault(); move(k + 1, Math.max(0, k)); } if (e.key === 'ArrowDown') { e.preventDefault(); move(k + 1, Math.min(ids.length - 1, k + 2)); } }}><GripVertical size={18} /></span>
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black/[.05] text-xs font-bold">{k + 2}</span><span className="min-w-0 flex-1"><b>{i.student.name}</b><span className="block text-sm text-ink-faint">{i.nextNew ? formatRange(i.nextNew) : ''}{(() => { const t = lastTest(i.student.id); return t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''; })()}</span></span>
-      <Button kind="quiet" className="min-h-[36px] px-2 text-sm" onClick={() => setRec(i.student.id)}>Record<ChevronRight size={14} /></Button></li>)}</ol></Card>}
+      <Button kind="quiet" className="min-h-[44px] px-2 text-sm" onClick={() => setRec(i.student.id)}>Record<ChevronRight size={14} /></Button></li>)}</ol></Card>}
     {(done.length > 0 || absent.length > 0) && <div className="flex flex-wrap gap-1.5">{done.map(i => { const t = lastTest(i.student.id); return <Pill key={i.student.id} tone="green"><CheckCircle2 size={12} />{i.student.name}{t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''}</Pill>; })}{absent.map(i => <Pill key={i.student.id} tone="amber">{i.student.name} · absent</Pill>)}</div>}
     {signOff && <SignOffModal s={signOff} who={data.students.find(x => x.id === signOff.studentId)?.name ?? ''} onClose={() => setSignOff(null)} onSaved={reload} />}
     {recIns && <RecordSheet key={recIns.student.id + firstType(recIns.student.id)} open onClose={() => setRec(null)} student={recIns.student} insight={recIns} sessions={data.sessions} initialType={firstType(recIns.student.id)} onSaved={reload} />}

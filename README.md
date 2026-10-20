@@ -173,3 +173,19 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **Works offline**: logging revision, submitting a new lesson and confirming a partner are saved on the phone and sent when the connection returns.
 - **Settings in sections**: Program, Revision, Attendance, Reminders, Motivation, Fees, with one Save bar.
 - **Live class**: swipe the “Up now” card left (or tap Later) to move a student to the end; drag ⋮⋮ in “Next” to change the order. The order is kept on that device for the day.
+
+## Site map and navigation rules
+Bottom bar on phones and tablets (under 1024px), sidebar on desktop. Never more than 3 levels: tab → section → item.
+
+**Teacher / admin**
+- **Today**: needs attention, students still to hear, sign-offs (More: announcements, leaderboard, charts)
+- **Students**: list → student (Overview · History · Tasks & tests · Messages · Reports)
+- **Halaqah**: Live class · Attendance · Halaqahs · Calendar
+- **Tasks**: Assignments · Revision forms · Juz tests
+- **More**: Reports · Applications · Fees · Settings (Program · Revision · Attendance · Qirāʾāt · Motivation · Fees) · owner tools
+
+**Student**
+- **Today**: things to act on (expectations, partner requests) → Today path (New → Recent → Old) → check-in → announcements → this week; side column on desktop: qirāʾāt, notebook tabs (My log · Weak ayahs · Coming up · Assignments), then "More" folded
+- **Progress** · **History** · **Messages** · **My plan** (profile, display, tour)
+
+Rules: one primary button per card; sections always use the same pill tabs (`SubNav` for addresses, `SubTabs` inside a screen, arrow keys work); every tap target is at least 44px; utility actions (bell, install, sign out) stay in the header; each role downloads only its own screens and preloads the rest when the phone is idle; "Skip to content" for keyboard users.

@@ -83,8 +83,8 @@ export function Today() {
             </span>
           </div>
           <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
-            {!i.recordedToday && i.attendanceToday !== 'absent' && <Button kind="quiet" className="min-h-[40px] px-3 text-sm" onClick={() => markAbsent(i.student.id)}>Absent</Button>}
-            <Button className="min-h-[40px] px-4 text-sm" onClick={() => setRec(i.student.id)}>Record</Button>
+            {!i.recordedToday && i.attendanceToday !== 'absent' && <Button kind="quiet" className="min-h-[44px] px-3 text-sm" onClick={() => markAbsent(i.student.id)}>Absent</Button>}
+            <Button className="min-h-[44px] px-4 text-sm" onClick={() => setRec(i.student.id)}>Record</Button>
           </div>
         </li>)}</ul>
         <button type="button" onClick={() => setAllStudents(v => !v)} className="w-full border-t border-line px-5 py-3 text-left text-sm font-bold text-pine-700">{allStudents ? 'Show only students still to hear' : `Show all ${order.length} students`}</button>

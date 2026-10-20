@@ -84,7 +84,7 @@ export function ParentApp() {
       <div className="grid gap-5 xl:grid-cols-2"><Card className="p-5"><LevelBar total={pts.total} lvl={level(pts.total)} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card><AdabSummary points={beh} /></div>
       <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={data.goals.filter(g => g.studentId === child.id)} today={today} />
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, child.memorized)} />
-      {certs.length > 0 && <Card><CardHead title="Certificates" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', child.id, c.code)} className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Card>}
+      {certs.length > 0 && <Card><CardHead title="Certificates" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', child.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Card>}
       {data.exams.some(x => x.studentId === child.id) && <div><h2 className="mb-2 font-bold">Juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={child.id} onChanged={reload} /></div>}
           <Leaderboard limit={5} compact />
         </div>

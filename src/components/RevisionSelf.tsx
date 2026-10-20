@@ -87,12 +87,12 @@ export function RevisionCheckCard({ data, onChanged, studentId }: { data: OrgDat
   const quick = async (ids: string[]) => { setBusy(ids.join()); try { await api.checkSessions(ids, 'ok'); toast(`${ids.length} signed off.`); onChanged(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(null); } };
   return <Card>
     <CardHead title={<span className="inline-flex items-center gap-2"><ClipboardCheck size={18} className="text-pine-700" />New lessons to sign off <span className="rounded-full bg-pine-50 px-2 text-sm text-pine-800">{todo.length}</span></span>}
-      sub="Students say they memorised these. Hear them, then sign off." action={todo.length > 1 ? <Button kind="secondary" className="min-h-[38px] px-3 text-sm" busy={busy === todo.map(t => t.id).join()} onClick={() => quick(todo.map(t => t.id))}><Check size={15} />Sign off all (no mistakes)</Button> : undefined} />
+      sub="Students say they memorised these. Hear them, then sign off." action={todo.length > 1 ? <Button kind="secondary" className="min-h-[44px] px-3 text-sm" busy={busy === todo.map(t => t.id).join()} onClick={() => quick(todo.map(t => t.id))}><Check size={15} />Sign off all (no mistakes)</Button> : undefined} />
     <ul className="mt-2 divide-y divide-line">{todo.slice(0, 40).map(s => <li key={s.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5">
       <span className="min-w-0 basis-full sm:basis-0 sm:flex-1">{!studentId && <b>{name(s.studentId)} · </b>}<span className={s.type === 'new' ? 'font-bold text-pine-800' : ''}>{TYPE_NAME[s.type]}</span>: {formatRange(s.range)}
         <span className="block text-sm text-ink-faint">{niceDate(s.date)}{mistakes(s) ? ` · student noted ${mistakes(s)} mistake(s)` : ''}{s.studentNote ? ` · “${s.studentNote}”` : ''}</span></span>
-      <Button className="min-h-[38px] px-3 text-sm" onClick={() => setOpen(s)}><ClipboardCheck size={15} />Sign off</Button>
-      <Button kind="quiet" aria-label="Sign off with no mistakes" className="min-h-[38px] px-2 text-sm" busy={busy === s.id} onClick={() => quick([s.id])}><Check size={16} /></Button>
+      <Button className="min-h-[44px] px-3 text-sm" onClick={() => setOpen(s)}><ClipboardCheck size={15} />Sign off</Button>
+      <Button kind="quiet" aria-label="Sign off with no mistakes" className="min-h-[44px] px-2 text-sm" busy={busy === s.id} onClick={() => quick([s.id])}><Check size={16} /></Button>
     </li>)}</ul>
     {open && <SignOffModal s={open} who={name(open.studentId)} onClose={() => setOpen(null)} onSaved={onChanged} />}
   </Card>;
@@ -102,9 +102,9 @@ function Stepper({ label, value, onChange, tone }: { label: string; value: numbe
   return <div className="flex items-center justify-between gap-3 rounded-xl bg-paper px-3 py-2 ring-1 ring-line">
     <span className="flex items-center gap-1 text-[15px] font-bold">{label}<InfoTip k={label.startsWith('Big') ? 'bigMistake' : 'smallMistake'} /></span>
     <span className="flex items-center gap-2">
-      <button type="button" aria-label={`Fewer ${label}`} onClick={() => onChange(Math.max(0, value - 1))} className="grid h-10 w-10 place-items-center rounded-xl bg-white text-xl font-bold ring-1 ring-line">−</button>
+      <button type="button" aria-label={`Fewer ${label}`} onClick={() => onChange(Math.max(0, value - 1))} className="grid h-11 w-11 place-items-center rounded-xl bg-white text-xl font-bold ring-1 ring-line">−</button>
       <span className={cx('w-8 text-center text-xl font-bold tabular-nums', value ? (tone === 'bad' ? 'text-bad' : 'text-warn') : 'text-ink-faint')}>{value}</span>
-      <button type="button" aria-label={`More ${label}`} onClick={() => onChange(Math.min(99, value + 1))} className="grid h-10 w-10 place-items-center rounded-xl bg-white text-xl font-bold ring-1 ring-line">+</button>
+      <button type="button" aria-label={`More ${label}`} onClick={() => onChange(Math.min(99, value + 1))} className="grid h-11 w-11 place-items-center rounded-xl bg-white text-xl font-bold ring-1 ring-line">+</button>
     </span>
   </div>;
 }
@@ -124,7 +124,7 @@ export function SignOffModal({ s, who, onClose, onSaved }: { s: Session; who: st
       <Stepper label="Big mistakes" value={maj} onChange={setMaj} tone="bad" />
       <Stepper label="Small mistakes" value={min} onChange={setMin} tone="warn" />
       <Field label="Note for the student (optional)">{id => <textarea id={id} className={`${inputCls} min-h-[80px] py-2`} maxLength={500} value={note} onChange={e => setNote(e.target.value)} placeholder="Which ayahs, what to fix…" />}</Field>
-      <div className="flex flex-wrap gap-1.5">{NOTE_CHIPS.map(c => <button key={c} type="button" onClick={() => setNote(n => (n ? `${n} ${c}.` : `${c}.`))} className="min-h-[34px] rounded-full bg-white px-3 text-xs font-bold text-ink-soft ring-1 ring-line hover:bg-pine-50">{c}</button>)}</div>
+      <div className="flex flex-wrap gap-1.5">{NOTE_CHIPS.map(c => <button key={c} type="button" onClick={() => setNote(n => (n ? `${n} ${c}.` : `${c}.`))} className="min-h-[44px] rounded-full bg-white px-3 text-xs font-bold text-ink-soft ring-1 ring-line hover:bg-pine-50">{c}</button>)}</div>
     </div>
   </Modal>;
 }

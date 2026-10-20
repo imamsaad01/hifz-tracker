@@ -56,7 +56,7 @@ export function InboxBell() {
   const day = (iso: string) => { const d = new Date(iso); const t = new Date(); const y = new Date(Date.now() - 864e5); return d.toDateString() === t.toDateString() ? 'Today' : d.toDateString() === y.toDateString() ? 'Yesterday' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); };
   let lastDay = '';
   return <>
-    <button type="button" data-tour="inbox" onClick={() => setOpen(true)} className="relative grid h-10 w-10 place-items-center rounded-xl text-ink-soft hover:bg-black/5" aria-label={unread ? `${unread} new` : 'What’s new'}>
+    <button type="button" data-tour="inbox" onClick={() => setOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5" aria-label={unread ? `${unread} new` : 'What’s new'}>
       <Bell size={19} />{unread > 0 && <span className="absolute right-1 top-1 grid min-w-[18px] place-items-center rounded-full bg-bad px-1 text-[10px] font-bold leading-[18px] text-white">{unread > 9 ? '9+' : unread}</span>}
     </button>
     <Modal open={open} onClose={() => { setOpen(false); markSeen(); }} title="Notifications">

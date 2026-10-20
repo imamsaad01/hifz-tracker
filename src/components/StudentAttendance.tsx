@@ -47,7 +47,7 @@ export function CheckInCard({ student, classes, attendance, absences, onChanged 
             </div>
           </div>}
       </div>
-      <Button kind="secondary" className="min-h-[40px] px-3 text-sm" onClick={() => setAsk(true)}><CalendarX size={16} />I can’t come</Button>
+      <Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => setAsk(true)}><CalendarX size={16} />I can’t come</Button>
     </div>
     {ask && <AbsenceForm student={student} classes={classes} absences={absences} onClose={() => setAsk(false)} onSaved={onChanged} />}
   </Card>;
@@ -149,7 +149,7 @@ export function RulesCard({ text, ackAt, onAck, compact }: { text: string; ackAt
   if (!open) return <Card className={cx('flex flex-wrap items-center gap-3 p-4', onAck && !ackAt && 'ring-2 ring-brass-500/60')}>
     <ScrollText size={20} className="shrink-0 text-pine-700" />
     <span className="min-w-0 flex-1"><b className="block">Class expectations</b><span className="text-sm text-ink-soft">{onAck && !ackAt ? 'Please read them and tap “I have read and agree”.' : ackAt ? `You agreed on ${niceDate(ackAt.slice(0, 10))}.` : 'Attendance, revision and class rules.'}</span></span>
-    <Button kind={onAck && !ackAt ? 'primary' : 'secondary'} className="min-h-[40px]" onClick={() => setOpen(true)}>{onAck && !ackAt ? 'Read & agree' : 'Read'}</Button>
+    <Button kind={onAck && !ackAt ? 'primary' : 'secondary'} className="min-h-[44px]" onClick={() => setOpen(true)}>{onAck && !ackAt ? 'Read & agree' : 'Read'}</Button>
   </Card>;
   return <Card className="p-5">
     <h2 className="mb-2 flex items-center gap-2 text-lg font-bold"><ScrollText size={18} className="text-pine-700" /><span className="flex-1">Class expectations</span>{compact && <button type="button" onClick={() => setOpen(false)} className="text-sm font-bold text-ink-faint hover:text-ink">Hide</button>}</h2>

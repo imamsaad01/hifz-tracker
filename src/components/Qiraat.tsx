@@ -24,12 +24,12 @@ export function RiwayatPicker({ value, onChange }: { value: string[]; onChange: 
     const both = q.ruwat.every(r => set.has(r.code)); const some = q.ruwat.some(r => set.has(r.code));
     return <li key={q.key} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
       <button type="button" aria-pressed={both} onClick={() => toggle(q.ruwat.map(r => r.code), !both)}
-        className={cx('flex min-h-[40px] min-w-[150px] items-center gap-2 rounded-xl px-3 text-left text-sm font-bold ring-1 ring-inset', both ? 'bg-pine-700 text-white ring-pine-700' : some ? 'bg-pine-50 text-pine-800 ring-pine-600/30' : 'bg-white text-ink ring-line')}>
+        className={cx('flex min-h-[44px] min-w-[150px] items-center gap-2 rounded-xl px-3 text-left text-sm font-bold ring-1 ring-inset', both ? 'bg-pine-700 text-white ring-pine-700' : some ? 'bg-pine-50 text-pine-800 ring-pine-600/30' : 'bg-white text-ink ring-line')}>
         <span className={cx('grid h-5 w-5 shrink-0 place-items-center rounded-md ring-1 ring-inset', both ? 'bg-white text-pine-700 ring-white' : 'ring-current')}>{both && <Check size={14} />}</span>
         <span className="min-w-0 flex-1">{q.en}</span><span lang="ar" dir="rtl" className="font-quran text-base font-normal">{q.ar}</span>
       </button>
       <span className="flex flex-wrap gap-1.5">{q.ruwat.map(r => { const on = set.has(r.code); return <button key={r.code} type="button" aria-pressed={on} onClick={() => toggle([r.code], !on)}
-        className={cx('inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-brass-100 text-brass-700 ring-brass-500/50' : 'bg-white text-ink-soft ring-line')}>
+        className={cx('inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-brass-100 text-brass-700 ring-brass-500/50' : 'bg-white text-ink-soft ring-line')}>
         {on && <Check size={14} />}{r.en} <span lang="ar" dir="rtl" className="font-quran font-normal">{r.ar}</span></button>; })}</span>
     </li>;
   })}</ul>;
@@ -102,7 +102,7 @@ export function QiraatStudentCard({ student, data, onChanged, readOnly }: { stud
         <Bar value={ms.memorised} max={ms.matn.lines} tone="brass" />
         <p className="mt-1 text-sm text-ink-soft">{ms.memorised} of {ms.matn.lines} lines memorised{ms.recited ? ` · ${ms.recited} recited to your teacher` : ''}</p>
         {(ms.next || todayEntry) && <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-paper px-3 py-2"><span className="min-w-0 flex-1 text-[15px]"><b>Today:</b> lines {todayEntry ? `${todayEntry.lineFrom}–${todayEntry.lineTo}` : `${ms.next}–${ms.to}`}</span>
-          {!readOnly && (memorisedToday ? <Pill tone="green"><Check size={13} />Done today</Pill> : <Button className="min-h-[38px] px-3 text-sm" busy={busy} onClick={logLines}><Check size={15} />I memorised them</Button>)}</div>}
+          {!readOnly && (memorisedToday ? <Pill tone="green"><Check size={13} />Done today</Pill> : <Button className="min-h-[44px] px-3 text-sm" busy={busy} onClick={logLines}><Check size={15} />I memorised them</Button>)}</div>}
       </div>}
       {weak.length > 0 && <div><p className="mb-1.5 flex items-center gap-1.5 text-sm font-bold text-warn"><AlertTriangle size={15} />To revise</p>
         <ul className="flex flex-col gap-1.5">{weak.slice(0, 5).map(w => <li key={w.title} className="rounded-xl bg-amber-50 px-3 py-2"><b>{w.title}</b>{w.result === 'repeat' && <Pill tone="amber" className="ml-2">Repeat</Pill>}
@@ -131,7 +131,7 @@ export function QiraatTeacherPanel({ student, data, onChanged }: { student: Stud
   return <Card>
     <div className="px-5 pt-3"><Toggle on={on} onChange={flip} label="Qirāʾāt student" sub={on && p ? `${p.mode === 'jam' && p.riwayat.length > 1 ? 'Jamʿ' : 'Ifrād'} · ${riwayatSummary(p.riwayat)}` : 'Reads the qirāʾāt to you: riwāyāt, farsh and uṣūl tests, matn'} /></div>
     {on && p && <div className="flex flex-col gap-4 px-5 pb-5 pt-2">
-      <div className="flex flex-wrap items-center gap-2"><RiwayahChips codes={p.riwayat} />{classGoalOf(p.classGoal) && <Pill tone="pine">Each class: {classGoalOf(p.classGoal)!.label}</Pill>}<Button kind="quiet" className="min-h-[36px] px-2 text-sm" onClick={() => setEdit(true)}><Pencil size={14} />Change</Button></div>
+      <div className="flex flex-wrap items-center gap-2"><RiwayahChips codes={p.riwayat} />{classGoalOf(p.classGoal) && <Pill tone="pine">Each class: {classGoalOf(p.classGoal)!.label}</Pill>}<Button kind="quiet" className="min-h-[44px] px-2 text-sm" onClick={() => setEdit(true)}><Pencil size={14} />Change</Button></div>
       <Segmented label="Qira'at section" value={view} onChange={setView} options={[['tests', 'Farsh & uṣūl'], ['khatmah', 'Khatmah'], ['matn', 'Matn']]} />
       {view === 'tests' && <TestsList student={student} data={data} onOpen={setTest} onChanged={onChanged} />}
       {view === 'khatmah' && <KhatmahGrid student={student} profile={p} data={data} onChanged={onChanged} />}
@@ -163,8 +163,8 @@ function TestsList({ student, data, onOpen, onChanged }: { student: Student; dat
     {weak.length > 0 && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-warn"><b>Weak areas (60 days):</b> {weak.map(w => w.title).join(' · ')}</p>}
     {scheduled.length > 0 && <ul className="flex flex-col divide-y divide-line rounded-xl ring-1 ring-line">{scheduled.map(t => <li key={t.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
       <span className="min-w-0 basis-full sm:basis-0 sm:flex-1"><b>{t.title}</b><span className="block text-sm text-ink-soft">{t.scheduledOn ? niceDate(t.scheduledOn) : 'No date'} · {riwayatSummary(t.riwayat)}</span></span>
-      <Button className="min-h-[38px] px-3 text-sm" onClick={() => onOpen(t)}><Check size={15} />Mark</Button>
-      <Button kind="quiet" aria-label="Remove test" className="min-h-[38px] px-2" onClick={async () => { try { await api.removeQiraatTest(t.id); onChanged(); } catch (e) { toast(friendly(e), 'err'); } }}><Trash2 size={15} /></Button>
+      <Button className="min-h-[44px] px-3 text-sm" onClick={() => onOpen(t)}><Check size={15} />Mark</Button>
+      <Button kind="quiet" aria-label="Remove test" className="min-h-[44px] px-2" onClick={async () => { try { await api.removeQiraatTest(t.id); onChanged(); } catch (e) { toast(friendly(e), 'err'); } }}><Trash2 size={15} /></Button>
     </li>)}</ul>}
     {done.length > 0 && <ul className="flex flex-col divide-y divide-line rounded-xl ring-1 ring-line">{done.slice(0, 30).map(t => <li key={t.id}><button type="button" onClick={() => onOpen(t)} className="flex w-full flex-wrap items-center gap-2 px-3 py-2.5 text-left hover:bg-paper">
       <span className="min-w-0 flex-1"><b>{t.title}</b><span className="block text-sm text-ink-soft">{t.takenOn ? niceDate(t.takenOn) : ''} · {riwayatSummary(t.riwayat)}{t.mistakes.length ? ` · ${t.mistakes.length} mistake${t.mistakes.length > 1 ? 's' : ''}` : ''}</span></span>
@@ -202,7 +202,7 @@ function TestModal({ student, profile, test, onClose, onSaved }: { student: Stud
         : <Field label="Bāb">{id => <Select id={id} value={bab} onChange={setBab} options={USUL.map(b => [b.key, `${b.en} · ${b.ar}`] as [string, string])} />}</Field>}
       <div><p className="mb-1.5 text-[13px] font-bold text-ink-soft">In which riwāyāt</p>
         <div className="flex flex-wrap gap-1.5">{profile.riwayat.map(c => { const on = riw.includes(c); return <button key={c} type="button" aria-pressed={on} onClick={() => setRiw(on ? riw.filter(x => x !== c) : [...riw, c])}
-          className={cx('inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-brass-100 text-brass-700 ring-brass-500/50' : 'bg-white text-ink-soft ring-line')}>{on && <Check size={14} />}{riwayahLabel(c)}</button>; })}</div></div>
+          className={cx('inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-brass-100 text-brass-700 ring-brass-500/50' : 'bg-white text-ink-soft ring-line')}>{on && <Check size={14} />}{riwayahLabel(c)}</button>; })}</div></div>
       <Segmented label="When" value={when} onChange={setWhen} options={[['later', 'Schedule for a date'], ['now', 'Record the result now']]} />
       {when === 'later' ? <Field label="Test date">{id => <input id={id} type="date" className={inputCls} min={today} value={date} onChange={e => setDate(e.target.value)} />}</Field> : <>
         <Field label="Result">{id => <Select id={id} value={result} onChange={setResult} options={RESULTS.map(([k, l]) => [k, l] as [string, string])} />}</Field>
@@ -287,9 +287,9 @@ export function RiwayahPlayer({ riwayat, initialSurah = 1 }: { riwayat: string[]
   return <div className="flex flex-col gap-2 rounded-xl bg-paper p-3 ring-1 ring-line">
     <p className="flex items-center gap-2 text-sm font-bold text-pine-800"><Headphones size={16} />Listen in your riwāyah</p>
     {recs.length || riwayat.length > 1 ? <div className="grid gap-2 sm:grid-cols-3">
-      {riwayat.length > 1 && <Select aria-label="Riwayah" className="!min-h-[40px] text-sm" value={riw} onChange={v => { setRiw(v); setRi(0); }} options={riwayat.map(c => [c, riwayahLabel(c) + (RECORDINGS[c]?.length ? '' : ' (no recording yet)')] as [string, string])} />}
-      {recs.length > 1 && <Select aria-label="Reciter" className="!min-h-[40px] text-sm" value={ri} onChange={setRi} options={recs.map((x, i) => [i, x.name] as [number, string])} />}
-      {recs.length > 0 && <Select aria-label="Surah" className="!min-h-[40px] text-sm" value={cur} onChange={setSurah} options={surahs.map(n => [n, `${n}. ${surahNameEn(n)}`] as [number, string])} />}
+      {riwayat.length > 1 && <Select aria-label="Riwayah" className="!min-h-[44px] text-sm" value={riw} onChange={v => { setRiw(v); setRi(0); }} options={riwayat.map(c => [c, riwayahLabel(c) + (RECORDINGS[c]?.length ? '' : ' (no recording yet)')] as [string, string])} />}
+      {recs.length > 1 && <Select aria-label="Reciter" className="!min-h-[44px] text-sm" value={ri} onChange={setRi} options={recs.map((x, i) => [i, x.name] as [number, string])} />}
+      {recs.length > 0 && <Select aria-label="Surah" className="!min-h-[44px] text-sm" value={cur} onChange={setSurah} options={surahs.map(n => [n, `${n}. ${surahNameEn(n)}`] as [number, string])} />}
     </div> : null}
     {rec ? <audio key={recordingUrl(rec, cur)} controls preload="none" className="w-full" src={recordingUrl(rec, cur)}><track kind="captions" /></audio>
       : <p className="text-sm text-ink-faint">There is no recording of {riwayahLabel(riw)} online yet.</p>}
