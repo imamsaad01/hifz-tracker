@@ -5,7 +5,7 @@ import { weekSummary } from '../../lib/weekly';
 import { InfoTip } from '../../components/InfoTip';
 import type { GlossaryKey } from '../../lib/glossary';
 import { useMemo, useState } from 'react';
-import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, CalendarDays, Sparkles, CheckCircle2 } from 'lucide-react';
+import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, CalendarDays, Sparkles, CheckCircle2, Clock3, ChevronDown } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useStudentData } from '../../app/useStudentData';
@@ -98,16 +98,21 @@ export function StudentApp({ tab }: { tab: string }) {
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
       {ring.some(r => r.due) && ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />}
       {/* 2. today's reading */}
-      <h2 className="mb-3 text-lg font-bold">Today’s plan <span className="text-sm font-normal text-ink-faint">· what to read today</span></h2>
-      <div className="grid gap-4 lg:grid-cols-3" data-tour="today-plan">
-        <PlanTile tip="new" icon={<BookOpen size={20} />} title="New lesson" body={pendingNew ? formatRange(pendingNew.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'}
-          note={pendingNew ? 'Submitted. Waiting for your teacher to sign it off.' : 'Learn it, then tap “I memorised it”. It counts once your teacher signs it off.'}
-          action={ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /><AyahPlayer range={ins.nextNew} /></div> : pendingNew ? <RecallTestButton studentId={me.id} range={pendingNew.range} label="Test yourself before class" /> : null} />
-        <PlanTile tip="recent" icon={<Repeat size={20} />} title="Recent revision" body={recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week'} note={`Read today: every new lesson from the last ${org.settings.revision.recentDays} days.`} action={recent.length ? <div className="flex flex-col gap-2"><Button kind="secondary" onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} kind="quiet" range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /></div> : null} />
-        <PlanTile tip="old" icon={<RotateCcw size={20} />} title="Old revision" body={!ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today'}
-          note={!ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first.' : `${ins.revision.perDay} pages each revision day, in turn.`}
-          action={ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-col gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} kind="quiet" range={firstRun(ins.revision.today.map(r => r.page))} /></div> : null} />
-      </div>
+      <div data-tour="today-plan"><TodayPath steps={[
+        { key: 'new', tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
+          state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ins.nextNew ? 'todo' : 'none',
+          note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : 'Listen, learn it, test yourself, then tap “I memorised it”.',
+          action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /></div><AyahPlayer range={ins.nextNew} /></div>
+            : pendingNew ? <RecallTestButton studentId={me.id} range={pendingNew.range} label="Test yourself before class" /> : null },
+        { key: 'recent', tip: 'recent', icon: <Repeat size={18} />, title: 'Recent revision', body: recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week',
+          state: !recent.length ? 'none' : ring[1].done ? 'done' : 'todo',
+          note: `Every new lesson from the last ${org.settings.revision.recentDays} days, read once today.`,
+          action: recent.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /></div> : null },
+        { key: 'old', tip: 'old', icon: <RotateCcw size={18} />, title: 'Old revision', body: !ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today',
+          state: !ins.revision.isRevisionDay || !ins.revision.today.length ? 'none' : ring[2].done ? 'done' : 'todo',
+          note: !ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first. Read to your partner, then log it.' : `${ins.revision.perDay} pages each revision day, in turn. Read to your partner, then log it.`,
+          action: ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={firstRun(ins.revision.today.map(r => r.page))} /></div> : null },
+      ]} /></div>
       {/* 3. this week */}
       <div className="mt-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
       <div className="mt-5" data-tour="revision-log"><MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /></div>
@@ -185,9 +190,38 @@ function DoneToday({ name, streak }: { name: string; streak: number }) {
   </div>;
 }
 
-function PlanTile({ icon, title, body, note, action, tip }: { icon: React.ReactNode; title: string; body: string; note: string; action?: React.ReactNode; tip?: GlossaryKey }) {
-  return <Card className="flex flex-col gap-2 p-5"><div className="flex items-center gap-2 text-pine-700">{icon}<h3 className="text-lg font-bold text-ink">{title}</h3>{tip && <InfoTip k={tip} />}</div><p className="text-[17px] font-bold">{body}</p>{note && <p className="text-sm text-ink-faint">{note}</p>}{action && <div className="mt-auto pt-2">{action}</div>}</Card>;
+type Step = { key: string; tip?: GlossaryKey; icon: React.ReactNode; title: string; body: string; note: string; action: React.ReactNode; state: 'todo' | 'done' | 'waiting' | 'none' };
+/** Today as one short path: the next thing to do is open with its buttons; finished and later steps stay folded. */
+function TodayPath({ steps }: { steps: Step[] }) {
+  const due = steps.filter(s => s.state !== 'none'); const doneN = due.filter(s => s.state !== 'todo').length;
+  const current = steps.find(s => s.state === 'todo')?.key ?? null;
+  const [open, setOpen] = useState<string | null>(null);
+  const isOpen = (k: string) => (open ?? current) === k;
+  return <Card className="overflow-hidden">
+    <div className="flex items-center gap-3 px-5 pb-3 pt-4">
+      <h2 className="flex-1 text-lg font-bold">Today</h2>
+      {due.length > 0 && <span className="text-sm font-bold text-pine-700">{doneN} of {due.length} done</span>}
+    </div>
+    {due.length > 0 && <div className="mx-5 mb-2 h-1.5 overflow-hidden rounded-full bg-black/[.06]"><div className="h-full rounded-full bg-pine-600 transition-all duration-500" style={{ width: `${(doneN / due.length) * 100}%` }} /></div>}
+    <ol>{steps.map((st, k) => { const o = isOpen(st.key); const last = k === steps.length - 1;
+      return <li key={st.key} className="relative">
+        {!last && <span aria-hidden className={cx('absolute left-[37px] top-[46px] bottom-0 w-0.5', st.state === 'done' || st.state === 'waiting' ? 'bg-pine-600/40' : 'bg-line')} />}
+        <button type="button" onClick={() => setOpen(o ? '__none' : st.key)} aria-expanded={o} className="flex w-full items-center gap-3 px-5 py-3 text-left">
+          <span className={cx('relative z-[1] grid h-9 w-9 shrink-0 place-items-center rounded-full ring-2', st.state === 'done' ? 'bg-pine-600 text-white ring-pine-600' : st.state === 'waiting' ? 'bg-brass-100 text-brass-500 ring-brass-500/50' : st.key === current ? 'bg-white text-pine-700 ring-pine-600' : 'bg-white text-ink-faint ring-line')}>
+            {st.state === 'done' ? <CheckCircle2 size={18} /> : st.state === 'waiting' ? <Clock3 size={17} /> : st.icon}</span>
+          <span className="min-w-0 flex-1"><span className={cx('flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-wide', st.key === current ? 'text-pine-700' : 'text-ink-faint')}>{st.title}{st.key === current && <span className="rounded-full bg-pine-700 px-2 py-px text-[10px] text-white">Next</span>}{st.state === 'waiting' && <span className="normal-case tracking-normal">· waiting for sign-off</span>}</span>
+            <span className={cx('block truncate text-[16px] font-bold', st.state === 'none' ? 'text-ink-faint' : st.state === 'done' ? 'text-ink-soft' : 'text-ink')}>{st.body}</span></span>
+          <ChevronDown size={18} className={cx('shrink-0 text-ink-faint transition', o && 'rotate-180')} />
+        </button>
+        {o && <div className="flex flex-col gap-3 pb-4 pl-[68px] pr-5">
+          {st.note && <p className="flex items-start gap-1 text-sm text-ink-soft">{st.note}{st.tip && <InfoTip k={st.tip} />}</p>}
+          {st.state !== 'done' && st.action}
+          {st.state === 'done' && <p className="text-sm font-bold text-good">Logged today. Mā shāʾ Allāh.</p>}
+        </div>}
+      </li>; })}</ol>
+  </Card>;
 }
+
 function Onboarding({ create, onDone, name }: { create: (d: StudentDraft) => Promise<void>; onDone: () => Promise<void>; name: string }) {
   return <div className="mx-auto max-w-xl">
     <PageTitle title="Let’s set up your hifz" sub="A few quick questions. Your plan is made from your answers." />

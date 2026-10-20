@@ -16,7 +16,7 @@ const STUDENT: TourStep[] = [
   { target: 'week', title: 'This week’s revision', body: 'How many Old pages you revised this week against your target, day by day. If you haven’t logged today’s revision, the buttons here remind you. Tap the (i) buttons anywhere for what a word means.', optional: true },
   { target: 'qiraat', title: 'Your qirāʾāt', body: 'Your riwāyāt, upcoming farsh and uṣūl tests, today’s matn lines, the words to revise, a reciter in your riwāyah and your khatmah progress.', optional: true },
   { target: 'checkin', title: 'Check in at class', body: 'When class starts, tap Check in and type the 4-digit code your teacher shows. Can’t come? Tap “I can’t come” before class.', optional: true },
-  { target: 'today-plan', title: 'Today’s plan', body: 'New, Recent and Old for today. Tap “I memorised it” for your new lesson and “I revised this” for revision. Your teacher signs it off and notes any mistakes.', optional: true },
+  { target: 'today-plan', title: 'Today', body: 'Your day as three steps: New lesson, Recent revision, Old revision. The next one is open with its buttons. Tick them off as you go.', optional: true },
   { target: 'revision-log', title: 'Your lessons & revision', body: 'Everything you submitted this week, your teacher’s sign-off, mistakes and notes. Tap “Choose where to start” to pick the surah your Old revision starts from. It continues automatically after that.', optional: true },
   { target: 'notify', title: 'Phone reminders', body: 'Turn on notifications for class check-in, revision days, partner revision nights, tests and messages.', optional: true },
   { target: 'nav-progress', title: 'Progress', body: 'See how much you have memorised, your streak, badges and certificates.' },
