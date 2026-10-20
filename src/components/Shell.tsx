@@ -1,4 +1,5 @@
 // Page frame: sidebar on desktop, bottom navigation on phones, sync status always visible.
+import { AdminAssistantButton } from './AdminAssistant';
 import { sendPending } from '../app/outboxOps';
 import React, { useEffect, useState } from 'react';
 import { LogOut, CloudOff, RefreshCw, type LucideIcon } from 'lucide-react';
@@ -51,6 +52,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
         <div className="ml-auto flex items-center gap-2">
           {org && org.roles.length > 1 && <Select aria-label="View as" className="!w-auto !min-h-[44px] text-sm lg:hidden" value={org.role} onChange={switchRole} options={org.roles.map(r => [r, ROLE_NAME[r]] as [typeof r, string])} />}
           {org && (org.role === 'admin' || org.role === 'teacher') && <SearchButton />}
+          {org?.role === 'admin' && <AdminAssistantButton />}
           <InstallApp compact />
           <button type="button" onClick={() => openMushaf()} aria-label="Open the muṣḥaf" title="Muṣḥaf" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5"><BookOpen size={19} /></button>
           <InboxBell />

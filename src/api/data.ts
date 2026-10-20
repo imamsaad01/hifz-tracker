@@ -13,6 +13,7 @@ export interface Slot { day: number; start: string; end: string }
 export interface ClassRow { id: string; name: string; teacherUserId: string | null; schedule: string | null; startsOn: string | null; endsOn: string | null; notes: string | null; studentIds: string[];
   slots: Slot[]; location: 'mosque' | 'online' | 'both'; checkinOpenMin: number; lateAfterMin: number; requireCode: boolean }
 export interface AbsenceRequest { id: string; studentId: string; date: string; kind: 'free' | 'excuse'; reason: string | null; status: 'pending' | 'approved' | 'declined'; createdAt: string }
+export type AiBlock = { type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
 export interface JoinRequest { id: string; classId: string; studentId: string; status: 'pending' | 'approved' | 'declined' | 'cancelled'; note: string | null; createdAt: string; decidedAt: string | null }
 export interface QiraatProfile { studentId: string; active: boolean; riwayat: string[]; mode: 'ifrad' | 'jam'; matn: string | null; matnDailyLines: number; classGoal: string | null }
 export interface QiraatMistake { text: string; riwayah?: string | null }
@@ -331,6 +332,8 @@ export function api(be: Backend) {
     updateOrg: (orgId: string, patch: { name?: string; timezone?: string; settings?: OrgSettings }) => be.update('organizations', patch as Record<string, unknown>, [{ op: 'eq', col: 'id', value: orgId }]),
     setMemberRole: (orgId: string, userId: string, role: Role) => be.update('organization_members', { role }, [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'user_id', value: userId }]),
     removeMember: (orgId: string, userId: string) => be.remove('organization_members', [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'eq', col: 'user_id', value: userId }]),
+    /** admin assistant: returns Claude's reply blocks (text and proposed actions); preview has no assistant */
+    assistant: (body: Record<string, unknown>) => (be.invoke ? be.invoke('assistant', body) : Promise.reject(new Error('not_configured'))) as Promise<{ content: AiBlock[] }>,
     notify: (body: Record<string, unknown>) => (be.invoke ? be.invoke('notify', body) : Promise.resolve(null)),
   };
 }

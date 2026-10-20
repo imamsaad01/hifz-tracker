@@ -41,7 +41,7 @@ export function supabaseBackend(url: string, anonKey: string): Backend {
     async update(table, patch, where) { const r = await applyFilters(sb.from(table).update(patch, { count: 'exact' }), where); if (r.error) throw new ApiError(r.error.message, r.error.code); return r.count ?? 0; },
     async remove(table, where) { const r = await applyFilters(sb.from(table).delete({ count: 'exact' }), where); if (r.error) throw new ApiError(r.error.message, r.error.code); return r.count ?? 0; },
     async rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> { return check(await sb.rpc(fn, args)); },
-    async invoke(fn, body) { const r = await sb.functions.invoke(fn, { body }); if (r.error) throw new ApiError(r.error.message); return r.data; },
+    async invoke(fn, body) { const r = await sb.functions.invoke(fn, { body }); if (r.error) { let m = r.error.message; try { const j = await (r.error as { context?: Response }).context?.json(); if (j?.error) m = j.error; } catch { /* keep message */ } throw new ApiError(m); } return r.data; },
     subscribe(tables, cb) {
       let t: ReturnType<typeof setTimeout> | undefined;
       const go = () => { clearTimeout(t); t = setTimeout(cb, 500); };

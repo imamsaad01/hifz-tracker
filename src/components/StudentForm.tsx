@@ -11,7 +11,7 @@ import { Segmented } from './ui';
 
 export interface StudentDraft { name: string; ageGroup: string; direction: 'back' | 'forward'; dailyNewAyahs: number; goal: string; guardianName: string; guardianEmail: string; notify: boolean; memorized: Range[]; qiraat: QiraatDraft | null; newPages: number | null; hafidh: boolean; nextFromSurah: number | null; skippedSurahs: number[] }
 const AGES = ['Under 7', '7–9', '10–12', '13–15', '16–18', 'Adult'];
-const GOALS = ['Juz ʿAmma (Juz 30)', 'Juz 29 and 30', 'Juz 26–30', '5 juz', '10 juz', 'Half the Qurʾān', 'The whole Qurʾān'];
+export const GOALS = ['Juz ʿAmma (Juz 30)', 'Juz 29 and 30', 'Juz 26–30', '5 juz', '10 juz', 'Half the Qurʾān', 'The whole Qurʾān'];
 const DAILY = [1, 2, 3, 4, 5, 7, 10, 15, 20];
 const PAGES = [0.5, 1, 2, 3, 4, 5];
 const fromRangeSurah = (r: Range) => { for (let n = 1; n <= 114; n++) { if (surahRange(n).start === r.start) return n; } return 1; };

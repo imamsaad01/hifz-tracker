@@ -117,6 +117,6 @@ export async function pgliteBackend(): Promise<Backend> {
         return r.rows as T;
       });
     },
-    async invoke() { return { sent: 0, preview: true }; },
+    async invoke(fn: string) { if (fn === 'assistant') throw new Error('not_configured'); return { sent: 0, preview: true }; },
   };
 }
