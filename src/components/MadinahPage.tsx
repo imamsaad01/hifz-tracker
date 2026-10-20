@@ -96,8 +96,8 @@ export function MadinahPage({ page, marks, onTap, hidden, revealed, onReveal, on
       if (!ws) {
         if (!x) return center ? null : <div key={n} style={{ height: '1.85em' }} />;
         return x.kind === 'title'
-          ? <div key={n} className="flex items-center justify-center" style={{ height: '1.85em' }}><span className="flex h-[1.45em] w-full items-center justify-center rounded-lg border-2 border-double border-brass-500/70 bg-brass-100/40 font-quran text-[0.62em] dark:bg-brass-500/10">سُورَةُ {surahNameAr(x.surah)}</span></div>
-          : <div key={n} className="flex items-center justify-center font-quran text-[0.66em]" style={{ height: '1.85em' }}>بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ</div>;
+          ? <div key={n} className="flex items-center justify-center" style={{ height: '1.85em' }}><span className="flex h-[1.5em] w-full items-center justify-center rounded-lg border-[3px] border-double border-brass-500/70 bg-brass-100/40 font-quran text-[0.78em] leading-none dark:bg-brass-500/10">سُورَةُ {surahNameAr(x.surah)}</span></div>
+          : <div key={n} className="flex items-center justify-center font-quran text-[0.86em] leading-none" style={{ height: '1.85em' }}>بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ</div>;
       }
       return <div key={n} data-line className={cx('flex', center || ws.length < 3 ? 'justify-center gap-[0.15em]' : 'justify-between')} style={{ height: '1.85em', alignItems: 'center' }}>
         {ws.map((w, k) => { const m = marks?.get(w.id); const h = !w.e && hide(w.id);
