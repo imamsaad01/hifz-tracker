@@ -18,8 +18,9 @@ import { StudentPicker } from '../../components/StudentPicker';
 import { Leaderboard } from '../../components/Leaderboard';
 import { AnnouncementBoard, Composer as AnnounceModal } from '../../components/Announcements';
 import { NotifyToggle } from '../../components/Notifications';
-import { Select } from '../../components/ui';
+import { SubTabs } from '../../components/ui';
 import { PageTitle } from '../../components/Shell';
+import { Tile, Row } from '../../components/Rows';
 import { href, go } from '../../app/router';
 import { friendly } from '../../api/backend';
 
@@ -39,7 +40,6 @@ export function Today() {
   const present = data.attendance.filter(a => a.date === today && inCls(a.studentId) && (a.status === 'present' || a.status === 'late')).length;
   const sessionsToday = data.sessions.filter(s => s.date === today && inCls(s.studentId)).length;
   const attention = ins.filter(i => i.reasons.some(r => r.severity >= 2)).sort((a, b) => b.reasons[0].severity - a.reasons[0].severity);
-  const overdueStudents = ins.filter(i => i.revision.overdue.length > 0).length;
   const order = [...ins].sort((a, b) => Number(a.recordedToday) - Number(b.recordedToday) || (b.reasons[0]?.severity ?? 0) - (a.reasons[0]?.severity ?? 0) || a.student.name.localeCompare(b.student.name));
   const days = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13)).map(d => ({ date: d, value: data.sessions.filter(s => s.date === d && s.type === 'new').reduce((n, s) => n + s.range.end - s.range.start + 1, 0) }));
   const recentErrors = data.sessions.filter(s => s.date >= addDays(today, -6)).flatMap(s => s.errors.map(e => ({ s, e }))).slice(0, 8);
@@ -48,19 +48,24 @@ export function Today() {
   const markAbsent = async (sid: string) => { try { await api.saveAttendance(org.id, sid, today, 'absent', 'in_person'); toast('Marked absent.'); reload(); } catch (e) { toast(friendly(e), 'err'); } };
 
   return <>
-    <PageTitle title="Today" sub={<>{niceDate(today)} · {hijriDate(today)}</>} action={<div className="flex flex-wrap gap-2" data-tour="today-actions"><Button onClick={() => go('classes', 'live')}><Radio size={18} />Live class</Button><Button kind="secondary" onClick={() => setPick(true)}><Plus size={18} />Record</Button><Button kind="secondary" onClick={() => go('assignments', 'new')}><ClipboardList size={18} />Assign</Button><Button kind="secondary" onClick={() => go('students', 'new')}><UserPlus size={18} />Add student</Button><Button kind="secondary" onClick={() => setAnnounce(true)}><Megaphone size={18} />Announce</Button></div>} />
+    <PageTitle title="Today" sub={<>{niceDate(today)} · {hijriDate(today)}</>} action={<Button className="hidden min-h-[48px] sm:inline-flex" onClick={() => go('classes', 'live')}><Radio size={18} />Start live class</Button>} />
+    <div className="mb-5 flex flex-col gap-3" data-tour="today-actions">
+      <Button className="min-h-[52px] w-full text-[17px] sm:hidden" onClick={() => go('classes', 'live')}><Radio size={18} />Start live class</Button>
+      <div className="grid grid-cols-4 gap-2 sm:max-w-md">{([[Plus, 'Record', () => setPick(true)], [ClipboardList, 'Assign', () => go('assignments', 'new')], [UserPlus, 'Add student', () => go('students', 'new')], [Megaphone, 'Announce', () => setAnnounce(true)]] as const).map(([I, l, f]) =>
+        <button key={l} type="button" onClick={f} className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 text-[12px] font-bold text-ink-soft ring-1 ring-line hover:bg-pine-50"><I size={20} className="text-pine-700" />{l}</button>)}</div>
+    </div>
     {announce && <AnnounceModal classes={data.classes} onClose={() => setAnnounce(false)} onSaved={reload} />}
     <div className="mb-5 empty:hidden"><SetupCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="requests"><JoinRequestsCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="revision-check"><RevisionCheckCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="qiraat-due"><QiraatTestsDue data={data} onOpenStudent={id => go('students', id)} /></div>
-    {data.classes.length > 0 && <div className="mb-4 flex items-center gap-2"><span className="text-sm font-bold text-ink-soft">Halaqah</span><Select aria-label="Halaqah" className="!w-auto" value={activeCls} onChange={setCls} options={[['all', 'All students'], ...data.classes.map(c => [c.id, c.name] as [string, string])]} /></div>}
+    {data.classes.length > 1 && <SubTabs label="Halaqah" className="mb-3" active={activeCls} onChange={setCls} items={[{ key: 'all', label: 'All' }, ...data.classes.map(c => ({ key: c.id, label: c.name }))]} />}
     {!data.students.length ? <Card><Empty icon={<Users size={32} />} title="No students yet" action={<Button onClick={() => go('students', 'new')}><UserPlus size={18} />Add your first student</Button>}>Add students yourself, or share the class code <b className="font-mono">{org.joinCode}</b> so they can join and set themselves up.</Empty></Card> : <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap gap-2 text-sm" aria-label="Today in numbers">
-        <Pill tone="slate">Present {present}/{ins.length}</Pill>
-        <Pill tone="slate">{sessionsToday} session{sessionsToday === 1 ? '' : 's'} today</Pill>
-        {attention.length > 0 && <Pill tone="amber">{attention.length} need attention</Pill>}
-        {org.settings.revision.oldPlan === 'cycle' ? (ins.some(i => i.revision.weak.length) && <Pill tone="amber">{ins.filter(i => i.revision.weak.length).length} with weak pages</Pill>) : (overdueStudents > 0 && <Pill tone="amber">{overdueStudents} with overdue revision</Pill>)}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Today in numbers">
+        <Tile label="Here" value={`${present}`} unit={`of ${ins.length}`} />
+        <Tile label="Heard today" value={`${sessionsToday}`} />
+        <Tile label="Still to hear" value={`${order.filter(i => !i.recordedToday && i.attendanceToday !== 'absent').length}`} />
+        <Tile label="Need attention" value={`${attention.length}`} tone={attention.length ? 'warn' : 'good'} />
       </div>
       {attention.length > 0 && <Card>
         <CardHead title="Needs attention" />
@@ -89,19 +94,18 @@ export function Today() {
         </li>)}</ul>
         <button type="button" onClick={() => setAllStudents(v => !v)} className="w-full border-t border-line px-5 py-3 text-left text-sm font-bold text-pine-700">{allStudents ? 'Show only students still to hear' : `Show all ${order.length} students`}</button>
       </Card>
-      <details className="group rounded-2xl border border-line bg-white shadow-card">
-        <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: announcements, leaderboard, charts</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
-        <div className="flex flex-col gap-5 border-t border-line p-4">
-          <AnnouncementBoard items={data.announcements} classes={data.classes} onChanged={reload} limit={3} />
-          <Leaderboard limit={5} />
-          <Card className="pb-4"><CardHead title="New ayahs, last 14 days" sub="Whole class" /><div className="px-5 pt-3"><DailyBars days={days} label="ayahs a day" /></div></Card>
+      <Card className="divide-y divide-line overflow-hidden">
+        <Row title="Announcements" value={`${data.announcements.length}`}><AnnouncementBoard items={data.announcements} classes={data.classes} onChanged={reload} limit={3} /></Row>
+        <Row title="Leaderboard" value=""><Leaderboard limit={5} /></Row>
+        <Row title="New ayahs, last 14 days" value={`${days.reduce((n, d) => n + d.value, 0)}`}><Card className="pb-4"><div className="px-5 pt-4"><DailyBars days={days} label="ayahs a day" /></div></Card></Row>
+        <Row title="Recent mistakes" value={`${recentErrors.length}`} tone={recentErrors.length ? 'warn' : undefined}>
           <Card>
             <CardHead title="Recent errors" sub="Tagged in the last 7 days" />
             {recentErrors.length ? <ul className="mt-2 divide-y divide-line">{recentErrors.map(({ s, e }, k) => <li key={k} className="px-5 py-2.5 text-sm"><b>{nameOf(s.studentId)}</b> · {ERROR_LABEL[e.category]}{e.ayahId ? ` at ${fromAyahId(e.ayahId).surah}:${fromAyahId(e.ayahId).ayah}` : ''} <span className="text-ink-faint">· {niceDate(s.date)}</span></li>)}</ul>
               : <p className="px-5 py-4 text-sm text-ink-faint">No tagged errors this week.</p>}
           </Card>
-        </div>
-      </details>
+        </Row>
+      </Card>
     </div>}
     <StudentPicker open={pick} onClose={() => setPick(false)} insights={order} onPick={id => { setPick(false); setRec(id); }} />
     {recIns && <RecordSheet open={!!rec} onClose={() => setRec(null)} student={recIns.student} insight={recIns} sessions={data.sessions} onSaved={reload} />}
