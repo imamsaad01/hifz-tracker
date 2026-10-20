@@ -1,11 +1,11 @@
 // The student's own app: today's plan, progress and rewards, sessions, messages and their plan.
-import { PartnerRequestsCard, WeakAyahsCard } from '../../components/PartnerRevision';
+import { PartnerRequestsCard, WeakAyahsCard, weakAyahs } from '../../components/PartnerRevision';
 import { WeeklyRevisionCard } from '../../components/WeeklyRevision';
 import { weekSummary } from '../../lib/weekly';
 import { InfoTip } from '../../components/InfoTip';
 import type { GlossaryKey } from '../../lib/glossary';
 import { useMemo, useState } from 'react';
-import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, CalendarDays, Sparkles, CheckCircle2, Clock3, ChevronDown } from 'lucide-react';
+import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, Sparkles, CheckCircle2, Clock3, ChevronDown } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useStudentData } from '../../app/useStudentData';
@@ -27,7 +27,7 @@ import { Leaderboard } from '../../components/Leaderboard';
 import { StudentForm, type StudentDraft } from '../../components/StudentForm';
 import { PageTitle } from '../../components/Shell';
 import { PlanCard, ClassBadge } from '../../components/PlanCard';
-import { DailyRing, LevelBar, BadgeGrid } from '../../components/Motivation';
+import { LevelBar, BadgeGrid } from '../../components/Motivation';
 import { AyahPlayer } from '../../components/AyahPlayer';
 import { AnnouncementBoard } from '../../components/Announcements';
 import { HalaqahChooser } from '../../components/HalaqahJoin';
@@ -84,6 +84,7 @@ export function StudentApp({ tab }: { tab: string }) {
   const events = data.events.filter(e => (!e.classId || myClassIds.includes(e.classId)) && e.startsOn <= week && (e.endsOn ?? e.startsOn) >= today);
   const tests = data.exams.filter(x => x.studentId === me.id && x.status === 'scheduled' && x.scheduledOn >= today);
   const certs = certificatesFor(me, sd.milestones);
+  const weakCount = weakAyahs(sd.sessions, me.id, today).length;
   return <>
     {tab === 'home' && <>
       <PageTitle title={`Assalamu alaikum, ${me.name.split(' ')[0]}`} sub={<>{niceDate(today)} · {hijriDate(today)}</>} />
@@ -115,20 +116,22 @@ export function StudentApp({ tab }: { tab: string }) {
       ]} /></div>
       {/* 3. this week */}
       <div className="mt-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
-      <div className="mt-5" data-tour="revision-log"><MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /></div>
-      {startOpen && <RevisionStartModal student={me} onClose={() => setStartOpen(false)} onSaved={refresh} />}
-      <div className="mt-5 empty:hidden"><WeakAyahsCard sessions={sd.sessions} studentId={me.id} /></div>
       <div className="mt-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
-      {ins.openAssignments.length > 0 && <Card className="mt-5"><CardHead title="Assignments" sub="Mark them done; your teacher reviews them" /><AssignmentList items={ins.openAssignments} asStudent onChanged={reload} /></Card>}
-      <div className="mt-5 empty:hidden">{(events.length > 0 || tests.length > 0) && <Card className=""><CardHead title={<span className="inline-flex items-center gap-2"><CalendarDays size={18} className="text-pine-700" />Coming up</span>} />
-        <ul className="mt-2 divide-y divide-line">{tests.map(x => <li key={x.id} className="px-5 py-2.5"><b>{x.title}</b> <span className="text-ink-faint">· {niceDate(x.scheduledOn)}{x.examiner ? ` · with ${x.examiner}` : ''}</span></li>)}
-          {events.map(e => <li key={e.id} className="flex items-center gap-2 px-5 py-2.5"><i className={`h-2.5 w-2.5 rounded-full ${KIND[e.kind][1]}`} /><b>{e.title}</b><span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}</ul></Card>}</div>
+      {startOpen && <RevisionStartModal student={me} onClose={() => setStartOpen(false)} onSaved={refresh} />}
+      {/* 4. one notebook with tabs instead of a long scroll */}
+      <div className="mt-5" data-tour="revision-log"><Notebook initial={ins.openAssignments.length ? 'work' : 'log'} tabs={[
+        { key: 'log', label: 'My log', node: <MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /> },
+        { key: 'weak', label: `Weak ayahs${weakCount ? ` · ${weakCount}` : ''}`, node: weakCount ? <WeakAyahsCard sessions={sd.sessions} studentId={me.id} /> : <Card className="p-5 text-sm text-ink-faint">No mistakes marked in the last 60 days. Mā shāʾ Allāh.</Card> },
+        { key: 'soon', label: `Coming up${events.length + tests.length ? ` · ${events.length + tests.length}` : ''}`, node: <Card>{events.length + tests.length ? <ul className="divide-y divide-line">{tests.map(x => <li key={x.id} className="px-5 py-3"><b>{x.title}</b> <span className="text-ink-faint">· {niceDate(x.scheduledOn)}{x.examiner ? ` · with ${x.examiner}` : ''}</span></li>)}
+          {events.map(e => <li key={e.id} className="flex items-center gap-2 px-5 py-3"><i className={`h-2.5 w-2.5 rounded-full ${KIND[e.kind][1]}`} /><b>{e.title}</b><span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}</ul>
+          : <p className="p-5 text-sm text-ink-faint">Nothing in the next two weeks.</p>}</Card> },
+        ...(ins.openAssignments.length ? [{ key: 'work', label: `Assignments · ${ins.openAssignments.length}`, node: <Card><CardHead title="Assignments" sub="Mark them done; your teacher reviews them" /><AssignmentList items={ins.openAssignments} asStudent onChanged={reload} /></Card> }] : []),
+      ]} /></div>
       {/* 4. everything else, folded away */}
       <details className="group mt-5 rounded-2xl border border-line bg-white shadow-card">
         <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: streak, standing, partner form, leaderboard</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
         <div className="flex flex-col gap-5 border-t border-line p-4">
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Card className="p-5"><h2 className="mb-3 text-lg font-bold">Today</h2><DailyRing parts={ring} /></Card>
+          <div>
             <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
           </div>
           <StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
@@ -187,6 +190,18 @@ function DoneToday({ name, streak }: { name: string; streak: number }) {
     {fresh && <span aria-hidden className="done-burst" />}
     <p className="flex items-center gap-2 text-lg font-bold"><CheckCircle2 size={22} />All done for today, {name}!</p>
     <p className="text-sm text-white/85">New lesson and revision are logged. Mā shāʾ Allāh.{streak > 1 ? ` That is ${streak} days in a row.` : ''}</p>
+  </div>;
+}
+
+/** A row of tabs over one card: the extras live here instead of in a long scroll. Remembers the last tab. */
+function Notebook({ tabs, initial }: { tabs: Array<{ key: string; label: string; node: React.ReactNode }>; initial: string }) {
+  const [t, setT] = useState(() => { try { const v = localStorage.getItem('hifz-notebook'); return v && tabs.some(x => x.key === v) ? v : initial; } catch { return initial; } });
+  const cur = tabs.find(x => x.key === t) ?? tabs[0];
+  const pick = (k: string) => { setT(k); try { localStorage.setItem('hifz-notebook', k); } catch { /* */ } };
+  return <div>
+    <div role="tablist" aria-label="More for you" className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" data-no-pull>{tabs.map(x => <button key={x.key} type="button" role="tab" aria-selected={x.key === cur.key} onClick={() => pick(x.key)}
+      className={cx('min-h-[40px] shrink-0 whitespace-nowrap rounded-full px-4 text-sm font-bold ring-1 ring-inset transition', x.key === cur.key ? 'bg-ink text-paper ring-ink' : 'bg-white text-ink-soft ring-line hover:bg-pine-50')}>{x.label}</button>)}</div>
+    <div role="tabpanel">{cur.node}</div>
   </div>;
 }
 
