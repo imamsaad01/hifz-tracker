@@ -7,7 +7,7 @@ export type Filter =
   | { op: 'is'; col: string; value: null }
   | { op: 'not_is'; col: string; value: null };
 export interface Query { table: string; columns?: string; where?: Filter[]; order?: Array<[string, 'asc' | 'desc']>; limit?: number }
-export interface AuthUser { id: string; email: string | null; name: string | null }
+export interface AuthUser { id: string; email: string | null; name: string | null; /** guided tours already finished (kept on the account, so a new device doesn't repeat them) */ tours?: string[] }
 export interface DemoPersona { id: string; label: string; description: string }
 
 export interface Backend {
@@ -20,6 +20,7 @@ export interface Backend {
   signUpWithEmail?(email: string, password: string, name: string): Promise<boolean>;
   resetPassword?(email: string): Promise<void>;
   updatePassword?(password: string): Promise<void>;
+  markTour?(key: string, all: string[]): Promise<void>;
   personas?: DemoPersona[];
   signInAs?(personaId: string): Promise<void>;
   resetPreview?(): Promise<void>;

@@ -63,7 +63,7 @@ function findTarget(name: string): HTMLElement | null {
 }
 
 export function Tour() {
-  const { org, user } = useApp();
+  const { org, user, backend } = useApp();
   const role = org?.role; const uid = user?.id;
   const steps = role ? STEPS[role] : [];
   const k = role && uid ? key(role, uid) : '';
@@ -73,13 +73,13 @@ export function Tour() {
 
   // auto-start once the home screen has rendered (not during sign-up)
   useEffect(() => {
-    if (!k || seen(k)) return;
+    if (!k || seen(k) || user?.tours?.includes(k)) return;
     const t = setInterval(() => { if (document.querySelector('main [data-tour]')) { clearInterval(t); setI(0); setOpen(true); } }, 1200);
     return () => clearInterval(t);
   }, [k]);
   useEffect(() => { const l = () => { setI(0); setOpen(true); }; listeners.add(l); return () => { listeners.delete(l); }; }, []);
 
-  const close = useCallback(() => { setOpen(false); if (k) markDone(k); }, [k]);
+  const close = useCallback(() => { setOpen(false); if (k) { markDone(k); if (!user?.tours?.includes(k)) backend.markTour?.(k, user?.tours ?? []).catch(() => undefined); } }, [k, user, backend]);
   const step = steps[i];
   // go to the step's page, find its target (skip optional steps whose target isn't on screen)
   useLayoutEffect(() => {

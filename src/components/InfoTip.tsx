@@ -21,7 +21,7 @@ export function InfoTip({ k, text, title, className }: { k?: GlossaryKey; text?:
   return <span ref={ref} className={cx('relative inline-flex align-middle', className)} onMouseEnter={() => show(true)} onMouseLeave={() => show(false)}>
     <button type="button" aria-label={`What is “${head}”?`} aria-describedby={open ? id : undefined} aria-expanded={open}
       onClick={e => { e.stopPropagation(); show(!open); }}
-      className="grid h-6 w-6 place-items-center rounded-full text-ink-faint hover:bg-black/5 hover:text-pine-700 focus-visible:text-pine-700"><Info size={15} /></button>
+      className="relative grid h-6 w-6 place-items-center rounded-full text-ink-faint after:absolute after:-inset-2.5 after:content-[''] hover:bg-black/5 hover:text-pine-700 focus-visible:text-pine-700"><Info size={15} /></button>
     {open && pos && <span role="tooltip" id={id} style={{ top: pos.top, left: pos.left }} className="fixed z-[70] w-[min(280px,80vw)] rounded-xl bg-[#16201E] px-3 py-2.5 text-left text-[13px] ring-1 ring-white/10 font-normal leading-snug text-white shadow-xl">
       {head && <b className="mb-0.5 block text-[13px]">{head}</b>}{body}
     </span>}

@@ -11,7 +11,7 @@ function applyFilters(b: any, where: Filter[] = []): any {
   }
   return b;
 }
-const toUser = (u: any): AuthUser | null => (u ? { id: u.id, email: u.email ?? null, name: u.user_metadata?.full_name || u.user_metadata?.name || null } : null);
+const toUser = (u: any): AuthUser | null => (u ? { id: u.id, email: u.email ?? null, name: u.user_metadata?.full_name || u.user_metadata?.name || null, tours: Array.isArray(u.user_metadata?.tours) ? u.user_metadata.tours : [] } : null);
 
 export function supabaseBackend(url: string, anonKey: string): Backend {
   const sb = createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true } });
@@ -28,6 +28,7 @@ export function supabaseBackend(url: string, anonKey: string): Backend {
       return !r.data.session;
     },
     async resetPassword(email) { const r = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname }); if (r.error) throw new ApiError(r.error.message); },
+    async markTour(key, all) { await sb.auth.updateUser({ data: { tours: [...new Set([...all, key])].slice(-20) } }); },
     async updatePassword(password) { const r = await sb.auth.updateUser({ password }); if (r.error) throw new ApiError(r.error.message); },
     async signOut() { await sb.auth.signOut(); },
     async select<T>(q: Query): Promise<T[]> {
