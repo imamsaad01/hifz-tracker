@@ -20,3 +20,16 @@ describe('weekly revision', () => {
     expect(w.todayNeedsOld).toBe(true);
   });
 });
+
+describe('revision at their own time (3 a week, any days)', () => {
+  it('targets 3 revisions, any day counts, and only flags what can no longer fit', () => {
+    const tue = weekSummary([ses('2026-10-20', 'old', 582, 584)], '2026-10-20', { perWeek: 3 }, 3, false);
+    expect(tue.target).toBe(9); expect(tue.oldDays).toBe(1); expect(tue.missedDays).toBe(0); expect(tue.todayNeedsOld).toBe(false);
+    const sat = weekSummary([ses('2026-10-20', 'old', 582, 584)], '2026-10-24', { perWeek: 3 }, 3, false);
+    expect(sat.missedDays).toBe(0); expect(sat.todayNeedsOld).toBe(true);       // Sat + Sun still fit the last 2
+    const sun = weekSummary([ses('2026-10-20', 'old', 582, 584)], '2026-10-25', { perWeek: 3 }, 3, false);
+    expect(sun.missedDays).toBe(1);
+    const done = weekSummary(['2026-10-19', '2026-10-21', '2026-10-23'].map((d, i) => ses(d, 'old', 582 + i, 582 + i)), '2026-10-24', { perWeek: 3 }, 3, false);
+    expect(done.oldDays).toBe(3); expect(done.todayNeedsOld).toBe(false);
+  });
+});

@@ -1,6 +1,6 @@
 import { WeakAyahsCard, RevisionReadOnly, weakAyahs } from '../../components/PartnerRevision';
 import { WeeklyRevisionCard } from '../../components/WeeklyRevision';
-import { weekSummary } from '../../lib/weekly';
+import { weekSummary, revSchedule } from '../../lib/weekly';
 import { sizeValue, parseSize, SIZE_OPTIONS } from '../../components/StudentForm';
 import { QiraatTeacherPanel } from '../../components/Qiraat';
 import { MemorisedModal } from '../../components/MemorisedPicker';
@@ -85,7 +85,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
       <div className="empty:hidden"><RevisionCheckCard data={data} onChanged={reload} studentId={st.id} /></div>
       {/* 3. everything else, one tap away */}
       <Card className="divide-y divide-line overflow-hidden">
-        {(() => { const w = weekSummary(sd.sessions.filter(s => s.studentId === st.id), today, org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6], ins.revision.perDay, false);
+        {(() => { const w = weekSummary(sd.sessions.filter(s => s.studentId === st.id), today, revSchedule(org.settings.revision), ins.revision.perDay, false);
           return <Row title="Revision this week" value={w.target ? `${w.oldPages}/${w.target} Old pages` : `${w.oldPages} pages`} tone={w.target && w.percent >= 1 ? 'good' : w.missedDays ? 'warn' : undefined}>
             <WeeklyRevisionCard w={w} you={false} /><Card className="p-5"><h3 className="mb-2 font-bold">Confirmed by partners</h3><RevisionReadOnly sessions={sd.sessions} studentId={st.id} names={id => (data.students.find(x => x.id === id)?.name ?? 'partner').split(' ')[0]} /></Card></Row>; })()}
         {(() => { const n = weakAyahs(sd.sessions, st.id, today).length; return <Row title="Weak ayahs" value={n ? `${n}` : 'None'} tone={n ? 'warn' : 'good'}>{n ? <WeakAyahsCard sessions={sd.sessions} studentId={st.id} you={false} /> : <p className="text-sm text-ink-faint">No mistakes marked in the last 60 days.</p>}</Row>; })()}

@@ -6,7 +6,7 @@ import { MushafLink, rangeMarks, type Mark } from '../../components/Mushaf';
 import { Play, CheckCircle2, UserX, ChevronRight, ChevronDown, ClipboardCheck, GripVertical, Clock3 } from 'lucide-react';
 import { RevisionReadOnly, weakAyahs } from '../../components/PartnerRevision';
 import { SignOffModal } from '../../components/RevisionSelf';
-import { weekSummary } from '../../lib/weekly';
+import { weekSummary, revSchedule } from '../../lib/weekly';
 import { addDays } from '../../lib/dates';
 import { useOrg } from '../../app/context';
 import type { OrgData } from '../../app/useOrgData';
@@ -39,7 +39,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
   const pendingNew = (sid: string) => data.sessions.find(x => x.studentId === sid && x.type === 'new' && x.selfLogged && !x.checkStatus) ?? null;
   const [signOff, setSignOff] = useState<Session | null>(null);
   const nameOf = (id: string | null | undefined) => (data.students.find(x => x.id === id)?.name ?? 'partner').split(' ')[0];
-  const days = org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6];
+  const days = revSchedule(org.settings.revision);
   const away = (i: typeof ins[number]) => i.attendanceToday === 'absent' || i.attendanceToday === 'excused';
   // The teacher's own order for today (swipe to skip, drag to reorder), kept on this device for the day.
   const okey = `hifz-live-order:${cls}:${today}`;

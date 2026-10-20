@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql', 'migrations/0018_partner_reports.sql', 'migrations/0019_setup_status.sql', 'migrations/0020_my_notifications.sql', 'migrations/0021_recall_tests.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql', 'migrations/0018_partner_reports.sql', 'migrations/0019_setup_status.sql', 'migrations/0020_my_notifications.sql', 'migrations/0021_recall_tests.sql', 'migrations/0022_revision_per_week.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -524,5 +524,25 @@ describe('test yourself results', () => {
     const r = await one<{ peeked: number[]; total: number }>(U.teacher, `select peeked, total from public.recall_tests where student_id = $1 order by created_at desc limit 1`, [studentS]);
     expect(r!.total).toBe(10); expect(r!.peeked.map(Number).sort()).toEqual([5675, 5680]);
     expect(await as(U.otherAdmin, `select * from public.recall_tests where student_id = $1`, [studentS])).toHaveLength(0);
+  });
+});
+
+describe('revision at their own time (perWeek)', () => {
+  it('reads the weekly count, flags a week at risk, and counts consistency against perWeek', async () => {
+    expect((await one<{ n: number | null }>(null, `select public.rev_per_week('{"revision":{"perWeek":3}}'::jsonb) as n`))!.n).toBe(3);
+    expect((await one<{ n: number | null }>(null, `select public.rev_per_week('{"revision":{}}'::jsonb) as n`))!.n).toBeNull();
+    // a Sunday with nothing done this week: at risk; a Monday with nothing done: not at risk unless it is the Monday nudge
+    const sun = (await one<{ d: string }>(null, `select (public.week_start(current_date) + 6)::text as d`))!.d;
+    const mon = (await one<{ d: string }>(null, `select (public.week_start(current_date) + 7 * 52)::text as d`))!.d;
+    expect((await one<{ r: boolean }>(null, `select public.revision_at_risk($1, $2::date + 7 * 52, 3, false) as r`, [studentS, sun]))!.r).toBe(true);
+    expect((await one<{ r: boolean }>(null, `select public.revision_at_risk($1, $2::date, 3, false) as r`, [studentS, mon]))!.r).toBe(false);
+    expect((await one<{ r: boolean }>(null, `select public.revision_at_risk($1, $2::date, 3, true) as r`, [studentS, mon]))!.r).toBe(true);
+    await as(null, `update public.organizations set settings = jsonb_set(settings, '{revision,perWeek}', '3') where id = $1`, [orgA]);
+    const rows = await as<{ student_id: string; days_due: number; days_done: number }>(U.teacher, `select * from public.revision_consistency($1, 2)`, [orgA]);
+    expect(rows.find(r => r.student_id === studentS)!.days_due).toBe(6);
+    expect(rows.every(r => r.days_done <= r.days_due)).toBe(true);
+    await db.exec('reset role');
+    expect(await db.query('select public.scheduled_reminders(), public.revision_log_reminders(), public.weekly_reports()')).toBeTruthy();
+    await as(null, `update public.organizations set settings = settings #- '{revision,perWeek}' where id = $1`, [orgA]);
   });
 });

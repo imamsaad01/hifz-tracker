@@ -1,7 +1,7 @@
 // The student's own app: today's plan, progress and rewards, sessions, messages and their plan.
 import { PartnerRequestsCard, WeakAyahsCard, weakAyahs } from '../../components/PartnerRevision';
 import { WeeklyRevisionCard } from '../../components/WeeklyRevision';
-import { weekSummary } from '../../lib/weekly';
+import { weekSummary, revSchedule } from '../../lib/weekly';
 import { InfoTip } from '../../components/InfoTip';
 import type { GlossaryKey } from '../../lib/glossary';
 import { useMemo, useState } from 'react';
@@ -11,7 +11,7 @@ import { useOrgData } from '../../app/useOrgData';
 import { useStudentData } from '../../app/useStudentData';
 import { href } from '../../app/router';
 import { insight, recentRanges } from '../../lib/insights';
-import { groupPages } from '../../lib/revision';
+import { groupPages, nextRevisionDay } from '../../lib/revision';
 import { niceDate, hijriDate, addDays } from '../../lib/dates';
 import { formatRange, pageRange } from '../../quran';
 import { RecallTestButton } from '../../components/RecallTest';
@@ -74,14 +74,19 @@ export function StudentApp({ tab }: { tab: string }) {
   const cl = classLabel(me.id, data.classes, data.members, org.name);
   const myClassIds = data.classes.filter(c => c.studentIds.includes(me.id)).map(c => c.id);
   const plan = studentPlan(me, org.settings, today);
-  const weekRev = weekSummary(sd.sessions.filter(s => s.studentId === me.id), today, org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6], ins.revision.perDay, recent.length > 0);
+  const weekRev = weekSummary(sd.sessions.filter(s => s.studentId === me.id), today, revSchedule(org.settings.revision), ins.revision.perDay, recent.length > 0);
   const beh = data.behaviour.filter(b => b.studentId === me.id);
   const pts = points(sd.sessions, beh); const lvl = level(pts.total);
   const sk = streakDetail(sd.sessions.map(s => s.date), today, org.settings.motivation.freezePerWeek);
   const todays = sd.sessions.filter(s => s.date === today);
   const pendingNew = sd.sessions.find(s => s.type === 'new' && (s.selfLogged || s.recordedBy === 'student') && !s.checkStatus) ?? null;
+  // New lessons are heard in class: due on the halaqah's own day(s). Old revision follows the program's rule (fixed days, or N times a week at their own time).
+  const lessonDays = [...new Set(data.classes.filter(c => myClassIds.includes(c.id)).flatMap(c => c.slots.map(sl => sl.day)))];
+  const isLessonDay = !lessonDays.length || lessonDays.includes(new Date(`${today}T12:00:00Z`).getUTCDay());
+  const nextLesson = lessonDays.length ? nextRevisionDay(lessonDays, today, false) : null;
+  const perWeek = org.settings.revision.perWeek ?? null;
   const ring = [
-    { label: 'New lesson', due: !!ins.nextNew && ins.revision.isRevisionDay, done: todays.some(s => s.type === 'new' && (!s.selfLogged || s.checkStatus === 'ok')), color: '#047857' },
+    { label: 'New lesson', due: !!ins.nextNew && isLessonDay, done: todays.some(s => s.type === 'new' && (!s.selfLogged || s.checkStatus === 'ok')), color: '#047857' },
     { label: 'Recent revision', due: recent.length > 0, done: todays.some(s => s.type === 'recent'), color: '#B8893B' },
     { label: 'Old revision', due: ins.revision.isRevisionDay && ins.revision.today.length > 0, done: todays.some(s => s.type === 'old' || s.type === 'juz_revision'), color: '#0369A1' },
   ];
@@ -108,16 +113,16 @@ export function StudentApp({ tab }: { tab: string }) {
       <div data-tour="today-plan"><TodayPath steps={[
         { key: 'new', tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
           state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ring[0].due ? 'todo' : 'none',
-          note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : !ring[0].due && ins.nextNew ? `Not a lesson day.${ins.revision.nextRevisionDay ? ` Next lesson day: ${niceDate(ins.revision.nextRevisionDay)}.` : ''} You can still get ahead.` : 'Listen, learn it, test yourself, then tap “I memorised it”.',
+          note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : !ring[0].due && ins.nextNew ? `New lessons are heard in your halaqah${nextLesson ? `, next on ${niceDate(nextLesson)}` : ''}. Learn it before then and submit it when it’s ready.` : 'Listen, learn it, test yourself, then tap “I memorised it”.',
           action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /><MushafLink range={ins.nextNew} title="New lesson" marks={[...rangeMarks(ins.nextNew, 'lesson'), ...weakMarks]} /></div><AyahPlayer range={ins.nextNew} /></div>
             : pendingNew ? <RecallTestButton studentId={me.id} range={pendingNew.range} label="Test yourself before class" /> : null },
         { key: 'recent', tip: 'recent', icon: <Repeat size={18} />, title: 'Recent revision', body: recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week',
           state: !recent.length ? 'none' : ring[1].done ? 'done' : 'todo',
           note: `Every new lesson from the last ${org.settings.revision.recentDays} days, read once today.`,
           action: recent.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /><MushafLink range={recent[0]} title="Recent revision" marks={[...recent.flatMap(r => rangeMarks(r, 'revision')), ...weakMarks]} /></div> : null },
-        { key: 'old', tip: 'old', icon: <RotateCcw size={18} />, title: 'Old revision', body: !ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today',
+        { key: 'old', tip: 'old', icon: <RotateCcw size={18} />, title: 'Old revision', body: !ins.revision.isRevisionDay ? (perWeek ? `All ${perWeek} done this week` : 'Rest day') : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today',
           state: !ins.revision.isRevisionDay || !ins.revision.today.length ? 'none' : ring[2].done ? 'done' : 'todo',
-          note: !ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first. Read to your partner, then log it.' : `${ins.revision.perDay} pages each revision day, in turn. Read to your partner, then log it.`,
+          note: perWeek ? (ins.revision.isRevisionDay ? `Revision ${Math.min(weekRev.oldDays, perWeek)} of ${perWeek} this week, on any day you like. ${ins.revision.weak.length ? 'Weak pages come first. ' : ''}Read to your partner, then log it.` : `Mā shāʾ Allāh. The next week starts on Monday.${ins.revision.soon.length ? ` Next pages: ${pages(ins.revision.soon.map(r => r.page))}.` : ''}`) : !ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first. Read to your partner, then log it.' : `${ins.revision.perDay} pages each revision day, in turn. Read to your partner, then log it.`,
           action: ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={firstRun(ins.revision.today.map(r => r.page))} /><MushafLink range={firstRun(ins.revision.today.map(r => r.page))} title="Old revision" marks={[...ins.revision.today.flatMap(r => rangeMarks(pageRange(r.page), 'revision')), ...weakMarks]} /></div> : null },
       ]} /></div>
       <div className="mt-5 empty:hidden" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>

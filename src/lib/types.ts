@@ -19,6 +19,7 @@ export interface OrgSettings {
   revision: { recentDays: number; maxIntervalDays: number; weakThreshold: number; failThreshold: number; dailyOldPages: number | null; maxOverdueBeforeNew: number | null;
     /** 'cycle': go through all memorised pages in turn on revision days; 'spaced': each page returns on its own schedule */
     oldPlan: 'cycle' | 'spaced'; days: number[];
+    /** revision at the student's own time: this many times a week, any days (null = the fixed days above) */ perWeek?: number | null;
     /** phone reminder on revision days */ remind?: boolean; reminderTime?: string;
     /** evening nudge to log revision if nothing logged */ logRemind?: boolean; logReminderTime?: string;
     /** how the teacher hears about revision: a daily summary, each confirmed revision, or not at all */ teacherNotify?: 'daily' | 'each' | 'off' };

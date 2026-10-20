@@ -26,7 +26,7 @@ export async function seedPreview(db: PGlite) {
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2) on conflict do nothing', [T1, X1]);
   await as(T1);
   const org = await val<string>(`select public.create_organization('Al-Noor Hifz Program', 'America/New_York', 'Ustadh Bilal') as v`);
-  await db.query(`update public.organizations set settings = settings || '{"leaderboard":{"enabled":true,"fullNames":false},"revision":{"oldPlan":"cycle","days":[1,3,5]},"fees":{"monthly":40,"currency":"USD"}}'::jsonb where id = $1`, [org]);
+  await db.query(`update public.organizations set settings = settings || '{"leaderboard":{"enabled":true,"fullNames":false},"revision":{"oldPlan":"cycle","days":[1,3,5],"perWeek":3},"fees":{"monthly":40,"currency":"USD"}}'::jsonb where id = $1`, [org]);
   const codes = (await db.query<{ join_code: string; teacher_code: string }>('select join_code, teacher_code from public.organizations where id = $1', [org])).rows[0];
   await as(T2); await db.query('select public.join_organization($1, $2)', [codes.teacher_code, 'Ustadha Khadija']);
   await as(S1); await db.query('select public.join_organization($1, $2)', [codes.join_code, 'Amina Siddiqui']);

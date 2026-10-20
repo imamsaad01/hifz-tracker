@@ -41,12 +41,16 @@ export function nextRevisionDay(days: number[], today: string, includeToday = fa
 
 /** Where the student chose to start their Old revision: pages not revised since `on` go in page order from `page`, wrapping round. */
 export interface CycleStart { page: number; on: string }
-export function plan(items: RevisionItem[], settings: OrgSettings['revision'], today: string, memorisedPages = items.length, studentOverride?: number | null, start?: CycleStart | null): Plan {
+/** Revision at their own time: how many days this week (Mon–Sun) already had Old revision, and whether today did. */
+export interface Flex { doneDays: number; doneToday: boolean }
+export function plan(items: RevisionItem[], settings: OrgSettings['revision'], today: string, memorisedPages = items.length, studentOverride?: number | null, start?: CycleStart | null, flex?: Flex): Plan {
   const days = settings.days?.length ? settings.days : [0, 1, 2, 3, 4, 5, 6];
-  const isDay = days.includes(weekday(today));
+  const perWeek = settings.perWeek ?? null;
+  // own time: any day counts until this week's revisions are done; then the next one is Monday
+  const isDay = perWeek ? (!!flex?.doneToday || (flex?.doneDays ?? 0) < perWeek) : days.includes(weekday(today));
   const perDay = pagesPerDay(settings, memorisedPages, studentOverride);
   const weak = items.filter(i => i.lapses >= 2).sort((a, b) => b.lapses - a.lapses || a.page - b.page);
-  const next = nextRevisionDay(days, today, false);
+  const next = perWeek ? (isDay ? today : nextRevisionDay([1], today, false)) : nextRevisionDay(days, today, false);
 
   if (settings.oldPlan === 'cycle') {
     // revised today already? those pages count toward today's set

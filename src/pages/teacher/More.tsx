@@ -22,7 +22,7 @@ import { pagesInRange, SOURCE } from '../../quran';
 import { sessionRows } from '../../components/StudentReport';
 import type { OrgSettings, Role } from '../../lib/types';
 import type { AuditRow, Notice } from '../../api/data';
-import { Button, Card, CardHead, Field, Select, Toggle, inputCls, Spinner, ErrorBox, Pill, Stat, Empty, Confirm, useToast, cx, SubTabs } from '../../components/ui';
+import { Button, Card, CardHead, Field, Select, Toggle, inputCls, Spinner, ErrorBox, Pill, Stat, Empty, Confirm, useToast, cx, SubTabs, Segmented } from '../../components/ui';
 import { DailyBars } from '../../components/quran';
 import { PageTitle } from '../../components/Shell';
 import { friendly } from '../../api/backend';
@@ -138,9 +138,13 @@ function SettingsForm() {
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Revision plan</h2>
       <Field label="How Old revision works">{id => <Select id={id} value={r.oldPlan} onChange={v => setR({ oldPlan: v as 'cycle' | 'spaced' })} options={[['cycle', 'In turn: a few pages each revision day, weak pages first'], ['spaced', 'Spaced: each page comes back on its own schedule']]} />}</Field>
-      <fieldset><legend className="mb-2 text-sm font-bold">Revision and lesson days</legend>
-        <div className="flex flex-wrap gap-1.5">{[1, 2, 3, 4, 5, 6, 0].map(d => { const on = r.days.includes(d); return <button key={d} type="button" aria-pressed={on} onClick={() => setR({ days: on ? r.days.filter(x => x !== d) : [...r.days, d] })} className={cx('min-h-[44px] min-w-[52px] rounded-xl px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{DAY_NAMES[d]}</button>; })}</div>
-        <p className="mt-1 text-sm text-ink-faint">Old revision is given on these days only. New lessons are estimated on these days too.</p></fieldset>
+      <fieldset><legend className="mb-2 text-sm font-bold">When students do Old revision</legend>
+        <Segmented label="When" value={r.perWeek ? 'own' : 'fixed'} onChange={v => setR({ perWeek: v === 'own' ? (r.perWeek || 3) : null })} options={[['own', 'Own time, times a week'], ['fixed', 'Fixed days']]} />
+        {r.perWeek ? <div className="mt-3"><p className="mb-1.5 text-sm font-bold text-ink-soft">Times a week</p><div className="flex flex-wrap gap-1.5">{[2, 3, 4, 5, 6, 7].map(n => <button key={n} type="button" aria-pressed={r.perWeek === n} onClick={() => setR({ perWeek: n })} className={cx('min-h-[44px] min-w-[52px] rounded-xl px-3 text-sm font-bold ring-1 ring-inset', r.perWeek === n ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{n}×</button>)}</div>
+          <p className="mt-1 text-sm text-ink-faint">Students choose the days. Each week (Monday to Sunday) they aim for {r.perWeek} Old revisions.</p></div>
+        : <div className="mt-3"><div className="flex flex-wrap gap-1.5">{[1, 2, 3, 4, 5, 6, 0].map(d => { const on = r.days.includes(d); return <button key={d} type="button" aria-pressed={on} onClick={() => setR({ days: on ? r.days.filter(x => x !== d) : [...r.days, d] })} className={cx('min-h-[44px] min-w-[52px] rounded-xl px-3 text-sm font-bold ring-1 ring-inset', on ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{DAY_NAMES[d]}</button>; })}</div>
+        <p className="mt-1 text-sm text-ink-faint">Old revision is given on these days only.</p></div>}
+        <p className="mt-2 text-sm text-ink-faint">New lessons are due on each student’s halaqah day (see Halaqah → Halaqahs for class times).</p></fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Old pages per revision day">{id => <Select id={id} value={r.dailyOldPages ?? 0} onChange={v => setR({ dailyOldPages: Number(v) || null })} options={[[0, r.oldPlan === 'cycle' ? 'Automatic: 3 pages up to 5 juz, 4 above' : 'Automatic (by pages memorised)'], ...[2, 3, 4, 5, 6, 8, 10, 15, 20, 30].map(d => [d, `${d} pages for everyone`] as [number, string])]} />}</Field>
         <Field label="Recent revision covers">{id => <Select id={id} value={r.recentDays} onChange={v => setR({ recentDays: Number(v) })} options={[3, 5, 7, 10, 14, 21, 30].map(d => [d, `the last ${d} days of New`])} />}</Field>

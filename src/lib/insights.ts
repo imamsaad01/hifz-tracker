@@ -20,7 +20,9 @@ export function insight(st: Student, sessions: Session[], items: RevisionItem[],
   const progress = summary(st.memorized);
   const last = mine[0] ?? null;
   const dates = mine.map(x => x.date);
-  const rev = plan(items, s.revision, today, progress.pages, st.oldPages, st.revisionStartPage && st.revisionStartOn ? { page: st.revisionStartPage, on: st.revisionStartOn } : null);
+  const wkStart = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const oldDays = new Set(mine.filter(x => (x.type === 'old' || x.type === 'juz_revision') && x.date >= wkStart && x.date <= today && x.checkStatus !== 'redo').map(x => x.date));
+  const rev = plan(items, s.revision, today, progress.pages, st.oldPages, st.revisionStartPage && st.revisionStartOn ? { page: st.revisionStartPage, on: st.revisionStartOn } : null, { doneDays: oldDays.size, doneToday: oldDays.has(today) });
   const open = assignments.filter(a => a.studentId === st.id && (a.status === 'assigned' || a.status === 'started'));
   const overdueA = open.filter(a => a.dueOn < today);
   const since30 = addDays(today, -30), since7 = addDays(today, -6);
