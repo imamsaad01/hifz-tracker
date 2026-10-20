@@ -26,8 +26,8 @@ export function InstallApp({ compact, className }: { compact?: boolean; classNam
     else setHelp(h => !h);
   };
   return <div className={cx('flex flex-col gap-2', className)}>
-    <button type="button" onClick={click} className={cx('inline-flex items-center justify-center gap-2 rounded-xl font-bold', compact ? 'min-h-[44px] whitespace-nowrap px-3 text-sm text-pine-800 ring-1 ring-pine-600/30 bg-pine-50' : 'min-h-[48px] w-full bg-pine-50 px-4 text-[15px] text-pine-800 ring-1 ring-pine-600/30')}>
-      <Download size={compact ? 14 : 18} />{compact ? 'Install' : 'Install the app on this phone'}
+    <button type="button" onClick={click} aria-label={compact ? 'Install the app' : undefined} className={cx('inline-flex items-center justify-center gap-2 rounded-xl font-bold', compact ? 'min-h-[44px] whitespace-nowrap px-3 text-sm text-pine-800 ring-1 ring-pine-600/30 bg-pine-50' : 'min-h-[48px] w-full bg-pine-50 px-4 text-[15px] text-pine-800 ring-1 ring-pine-600/30')}>
+      <Download size={compact ? 14 : 18} />{compact ? <span className="hidden min-[400px]:inline">Install</span> : 'Install the app on this phone'}
     </button>
     {help && <div className="relative rounded-xl bg-white p-3 text-sm text-ink shadow-card ring-1 ring-line">
       <button type="button" aria-label="Close" onClick={() => setHelp(false)} className="absolute right-2 top-2 text-ink-faint"><X size={16} /></button>

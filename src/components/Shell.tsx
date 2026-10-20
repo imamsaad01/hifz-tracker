@@ -5,6 +5,7 @@ import { LogOut, CloudOff, RefreshCw, type LucideIcon } from 'lucide-react';
 import { useApp } from '../app/context';
 import { outbox, useOutboxCount } from '../app/outbox';
 import { Brand } from './Brand';
+import { SearchButton } from './Search';
 import { InstallApp } from './InstallApp';
 import { InboxBell } from './Inbox';
 import { PullToRefresh, AutoRefresh } from './PullToRefresh';
@@ -41,6 +42,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
         <p className="hidden min-w-0 truncate text-sm font-bold text-ink-soft lg:block">{org?.name}</p>
         <div className="ml-auto flex items-center gap-2">
           {org && org.roles.length > 1 && <Select aria-label="View as" className="!w-auto !min-h-[44px] text-sm lg:hidden" value={org.role} onChange={switchRole} options={org.roles.map(r => [r, ROLE_NAME[r]] as [typeof r, string])} />}
+          {org && (org.role === 'admin' || org.role === 'teacher') && <SearchButton />}
           <InstallApp compact />
           <InboxBell />
           {(!online || pending > 0) && <button type="button" onClick={flush} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-amber-50 px-3 text-xs font-bold text-warn ring-1 ring-warn/30">{online ? <RefreshCw size={14} /> : <CloudOff size={14} />}{online ? `${pending} waiting · send now` : `Offline${pending ? ` · ${pending} waiting` : ''}`}</button>}
