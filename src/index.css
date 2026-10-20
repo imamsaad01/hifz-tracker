@@ -56,3 +56,28 @@ html.text-xl body { zoom: 1.22; }
 @keyframes juz-grow { from { transform: scale(.6); opacity: 0 } to { transform: none; opacity: 1 } }
 .juz-grow { animation: juz-grow .45s cubic-bezier(.34,1.56,.64,1) both }
 @media (prefers-reduced-motion: reduce) { .bead, .ripple, .fly-in, .shake, .pop, .juz-grow { animation: none !important; transition: none !important } }
+
+/* ---- motion pack 2: logo home button, page transitions, nav slider, counters, bars, rings ---- */
+.brand-link .brand-icon svg { transition: transform .35s cubic-bezier(.34,1.56,.64,1); }
+@media (hover: hover) { .brand-link:hover .brand-icon svg { transform: rotate(-8deg) scale(1.06); } }
+.brand-link:active .brand-icon svg { transform: scale(.9); }
+.brand-go .brand-icon svg { animation: brand-flip .8s cubic-bezier(.34,1.56,.64,1); }
+@keyframes brand-flip { 0% { transform: perspective(200px) rotateY(0) scale(1) } 45% { transform: perspective(200px) rotateY(200deg) scale(.85) } 100% { transform: perspective(200px) rotateY(360deg) scale(1) } }
+.brand-go .brand-ring { animation: brand-ring .8s ease-out; }
+@keyframes brand-ring { 0% { box-shadow: 0 0 0 0 rgb(184 137 59 / .55) } 100% { box-shadow: 0 0 0 16px rgb(184 137 59 / 0) } }
+.brand-spark { opacity: 0; animation: brand-spark .7s ease-out forwards; }
+@keyframes brand-spark { 0% { opacity: 1; transform: translate(-50%,-50%) rotate(var(--a)) translateX(4px) scale(1) } 100% { opacity: 0; transform: translate(-50%,-50%) rotate(var(--a)) translateX(28px) scale(.3) } }
+.brand-name { background: linear-gradient(100deg, rgb(var(--ink)) 40%, #D4AF6A 50%, rgb(var(--ink)) 60%) 100% 0 / 300% 100% no-repeat; -webkit-background-clip: text; background-clip: text; }
+.brand-go .brand-name { color: transparent; animation: brand-shine .9s ease-out; }
+@keyframes brand-shine { from { background-position: 100% 0 } to { background-position: 0 0 } }
+.page-in { animation: page-in .32s cubic-bezier(.2,.8,.2,1) backwards; }  /* backwards: no transform left behind, so pop-ups inside stay fixed to the screen */
+@keyframes page-in { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+.nav-slider { transition: left .35s cubic-bezier(.34,1.3,.64,1); }
+.nav-pop { animation: nav-pop .4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes nav-pop { 0% { transform: scale(.7) } 60% { transform: scale(1.18) translateY(-2px) } 100% { transform: none } }
+.bar-fill { transform-origin: left; animation: bar-fill .9s cubic-bezier(.2,.8,.2,1) both; }
+[dir=rtl] .bar-fill { transform-origin: right; }
+@keyframes bar-fill { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+.ring-draw { stroke-dashoffset: 0; animation: ring-draw 1.1s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes ring-draw { from { stroke-dashoffset: var(--len) } to { stroke-dashoffset: 0 } }
+@media (prefers-reduced-motion: reduce) { .brand-go .brand-name { color: inherit } .brand-spark { display: none } }

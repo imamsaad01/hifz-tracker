@@ -1,4 +1,5 @@
 // Summary tiles and tap-to-open rows, shared by the profile and progress screens.
+import { CountUp } from './Motion';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cx } from './ui';
 
@@ -6,7 +7,7 @@ const TONE = { good: 'text-good', warn: 'text-warn', bad: 'text-bad' } as const;
 export function Tile({ label, value, unit, sub, tone }: { label: string; value: string; unit?: string; sub?: string; tone?: keyof typeof TONE }) {
   return <div className="rounded-xl bg-paper px-3 py-3 ring-1 ring-line">
     <p className="text-xs font-bold uppercase tracking-wide text-ink-faint">{label}</p>
-    <p className={cx('mt-0.5 text-2xl font-bold tabular-nums', tone ? TONE[tone] : 'text-ink')}>{value}{unit && <span className="ml-1 text-sm font-bold text-ink-faint">{unit}</span>}</p>
+    <p className={cx('mt-0.5 text-2xl font-bold tabular-nums', tone ? TONE[tone] : 'text-ink')}><CountUp value={value} />{unit && <span className="ml-1 text-sm font-bold text-ink-faint">{unit}</span>}</p>
     {sub && <p className="text-xs text-ink-faint">{sub}</p>}
   </div>;
 }

@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { LogOut, CloudOff, RefreshCw, type LucideIcon } from 'lucide-react';
 import { useApp } from '../app/context';
 import { outbox, useOutboxCount } from '../app/outbox';
-import { Brand } from './Brand';
+import { BrandLink } from './Brand';
 import { SearchButton } from './Search';
 import { MushafHost, openMushaf } from './Mushaf';
 import { BookOpen } from 'lucide-react';
@@ -32,11 +32,11 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
     <MushafHost />
     {/* tablets: a slim rail of icons with labels */}
     <nav aria-label="Main" className="no-print sticky top-0 hidden h-[100dvh] w-[88px] shrink-0 flex-col items-center gap-1 border-r border-line bg-white py-4 md:flex lg:hidden">
-      <div className="mb-3"><Brand small iconOnly /></div>
+      <div className="mb-3"><BrandLink home={nav[0]?.href ?? '#/'} small iconOnly /></div>
       {nav.map(n => <a key={n.key} href={n.href} aria-current={active === n.key ? 'page' : undefined} className={cx('flex min-h-[60px] w-[76px] flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold', active === n.key ? 'bg-pine-50 text-pine-800' : 'text-ink-faint hover:bg-paper')}><n.icon size={21} />{n.label}</a>)}
     </nav>
     <aside className="no-print hidden w-64 shrink-0 flex-col gap-6 border-r border-line bg-white p-5 lg:flex">
-      <Brand small />
+      <BrandLink home={nav[0]?.href ?? '#/'} small />
       <nav aria-label="Main" className="flex flex-col gap-1">{nav.map(n => <a key={n.key} href={n.href} data-tour={`nav-${n.key}`} aria-current={active === n.key ? 'page' : undefined} className={cx('flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] font-bold', active === n.key ? 'bg-pine-50 text-pine-800' : 'text-ink-soft hover:bg-paper')}><n.icon size={18} />{n.label}</a>)}</nav>
       <div className="mt-auto flex flex-col gap-2 text-sm">
         {memberships.length > 1 && <Select aria-label="Program" value={org?.id ?? ''} onChange={switchOrg} options={memberships.map(m => [m.orgId, m.orgId === org?.id ? org.name : `Program (${m.role})`])} />}
@@ -47,7 +47,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
     </aside>
     <div className="flex min-w-0 flex-1 flex-col">
       <header className="no-print sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-paper/95 px-4 py-2.5 backdrop-blur lg:px-8">
-        <div className="md:hidden"><Brand small /></div>
+        <div className="md:hidden"><BrandLink home={nav[0]?.href ?? '#/'} small /></div>
         <p className="hidden min-w-0 truncate text-sm font-bold text-ink-soft md:block">{org?.name}</p>
         <div className="ml-auto flex items-center gap-2">
           {org && org.roles.length > 1 && <Select aria-label="View as" className="!w-auto !min-h-[44px] text-sm lg:hidden" value={org.role} onChange={switchRole} options={org.roles.map(r => [r, ROLE_NAME[r]] as [typeof r, string])} />}
@@ -59,10 +59,11 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
           {(!online || pending > 0) && <button type="button" onClick={flush} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-amber-50 px-3 text-xs font-bold text-warn ring-1 ring-warn/30">{online ? <RefreshCw size={14} /> : <CloudOff size={14} />}{online ? `${pending} waiting · send now` : `Offline${pending ? ` · ${pending} waiting` : ''}`}</button>}
         </div>
       </header>
-      <main id="main" tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-5 md:px-6 md:pb-10 lg:px-8">{children}</main>
+      <main id="main" tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-5 md:px-6 md:pb-10 lg:px-8"><div key={active} className="page-in">{children}</div></main>
     </div>
     <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-white pb-[env(safe-area-inset-bottom)] md:hidden" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
-      {nav.map(n => <a key={n.key} href={n.href} data-tour={`nav-${n.key}`} aria-current={active === n.key ? 'page' : undefined} className={cx('flex min-h-[58px] flex-col items-center justify-center gap-0.5 text-[11px] font-bold', active === n.key ? 'text-pine-800' : 'text-ink-faint')}><n.icon size={20} />{n.label}</a>)}
+      {nav.findIndex(n => n.key === active) >= 0 && <span aria-hidden className="nav-slider pointer-events-none absolute top-0 h-[3px] rounded-b-full bg-pine-700" style={{ width: `calc(${100 / nav.length}% - 32px)`, left: `calc(${(nav.findIndex(n => n.key === active) * 100) / nav.length}% + 16px)` }} />}
+      {nav.map(n => <a key={n.key} href={n.href} data-tour={`nav-${n.key}`} aria-current={active === n.key ? 'page' : undefined} className={cx('flex min-h-[58px] flex-col items-center justify-center gap-0.5 text-[11px] font-bold', active === n.key ? 'text-pine-800' : 'text-ink-faint')}><n.icon size={20} className={active === n.key ? 'nav-pop' : undefined} />{n.label}</a>)}
     </nav>
   </div>;
 }

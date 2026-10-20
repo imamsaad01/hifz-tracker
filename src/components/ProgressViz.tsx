@@ -13,7 +13,7 @@ export function Rings({ parts }: { parts: RingPart[] }) {
         return <g key={p.label}>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color} strokeOpacity={0.16} strokeWidth={stroke} />
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={p.color} strokeWidth={stroke} strokeLinecap="round"
-            strokeDasharray={`${c * v} ${c}`} className="transition-[stroke-dasharray] duration-700" />
+            strokeDasharray={`${c * v} ${c}`} style={{ ['--len' as string]: c * v }} className="ring-draw transition-[stroke-dasharray] duration-700" />
         </g>;
       })}
     </svg>

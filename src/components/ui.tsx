@@ -82,7 +82,7 @@ export function Pill({ tone = 'slate', children, className }: { tone?: 'green' |
 }
 export function Progress({ value, className, label }: { value: number; className?: string; label?: string }) {
   const v = Math.max(0, Math.min(1, value));
-  return <div className={cx('h-2 w-full overflow-hidden rounded-full bg-black/[.06]', className)} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)}><div className="h-full rounded-full bg-pine-600" style={{ width: `${(v * 100).toFixed(1)}%` }} /></div>;
+  return <div className={cx('h-2 w-full overflow-hidden rounded-full bg-black/[.06]', className)} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)}><div className="bar-fill h-full rounded-full bg-pine-600" style={{ width: `${(v * 100).toFixed(1)}%` }} /></div>;
 }
 export function Stat({ label, value, sub, tone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; tone?: 'warn' | 'bad' }) {
   return <Card className="p-4"><p className="text-xs font-bold uppercase tracking-wider text-ink-faint">{label}</p>
