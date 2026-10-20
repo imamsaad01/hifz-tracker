@@ -379,7 +379,7 @@ describe('halaqah join requests', () => {
 
 describe('revision day reminder', () => {
   it('reminds students with accounts at the set time on revision days', async () => {
-    await as(null, `update public.organizations set settings = settings || jsonb_build_object('revision', jsonb_build_object('days', '[0,1,2,3,4,5,6]'::jsonb, 'reminderTime', to_char(public.org_local_now(id), 'HH24:MI'))) where id = $1`, [orgA]);
+    await as(null, `update public.organizations set settings = settings || jsonb_build_object('revision', jsonb_build_object('days', '[0,1,2,3,4,5,6]'::jsonb, 'reminderTime', to_char(least(public.org_local_now(id)::time, time '23:44'), 'HH24:MI'))) where id = $1`, [orgA]);
     await as(null, `select public.scheduled_reminders()`);
     expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title = 'Revision day today'`, [U.student])).toHaveLength(1);
     await as(null, `select public.scheduled_reminders()`);
@@ -412,7 +412,7 @@ describe("qira'at", () => {
     await as(U.student, `insert into public.qiraat_matn_log (org_id, student_id, matn, line_from, line_to) values ($1, $2, 'shatibiyyah', 1, 10)`, [orgA, studentS]);
     await rejects(U.student, `insert into public.qiraat_matn_log (org_id, student_id, matn, line_from, line_to, kind) values ($1, $2, 'shatibiyyah', 1, 10, 'recited')`, [orgA, studentS]);
     await rejects(U.student, `insert into public.qiraat_matn_log (org_id, student_id, matn, line_from, line_to) values ($1, $2, 'durrah', 1, 999)`, [orgA, studentS]);
-    await as(null, `update public.organizations set settings = settings || jsonb_build_object('qiraat', jsonb_build_object('matnTime', to_char(public.org_local_now(id), 'HH24:MI'), 'weakTime', to_char(public.org_local_now(id), 'HH24:MI'), 'weakDay', extract(dow from public.org_local_now(id))::int)) where id = $1`, [orgA]);
+    await as(null, `update public.organizations set settings = settings || jsonb_build_object('qiraat', jsonb_build_object('matnTime', to_char(least(public.org_local_now(id)::time, time '23:44'), 'HH24:MI'), 'weakTime', to_char(least(public.org_local_now(id)::time, time '23:44'), 'HH24:MI'), 'weakDay', extract(dow from public.org_local_now(id))::int)) where id = $1`, [orgA]);
     await as(null, `select public.qiraat_reminders()`);
     expect((await one<{ body: string }>(null, `select body from public.notification_queue where user_id = $1 and title = 'Today''s matn lines'`, [U.student]))!.body).toContain('lines 11–13');
     expect((await one<{ body: string }>(null, `select body from public.notification_queue where user_id = $1 and title = 'Revise your weak areas'`, [U.student]))!.body).toContain('Farsh: Al-Baqarah');
@@ -471,7 +471,7 @@ describe('lesson sign-off', () => {
 
 describe('revision log reminder', () => {
   it('nudges students who have not logged Old revision today', async () => {
-    await as(null, `update public.organizations set settings = settings || jsonb_build_object('revision', (settings->'revision') || jsonb_build_object('days', '[0,1,2,3,4,5,6]'::jsonb, 'logReminderTime', to_char(public.org_local_now(id), 'HH24:MI'))) where id = $1`, [orgA]);
+    await as(null, `update public.organizations set settings = settings || jsonb_build_object('revision', (settings->'revision') || jsonb_build_object('days', '[0,1,2,3,4,5,6]'::jsonb, 'logReminderTime', to_char(least(public.org_local_now(id)::time, time '23:44'), 'HH24:MI'))) where id = $1`, [orgA]);
     await as(null, `update public.sessions set deleted_at = now() where student_id = $1 and date = (public.org_local_now($2))::date and type in ('old','juz_revision')`, [studentS, orgA]);
     await as(null, `select public.revision_log_reminders()`);
     expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title like 'Did you do today%'`, [U.student])).toHaveLength(1);
