@@ -25,6 +25,7 @@ const More = lazy(() => load.more().then(m => ({ default: m.More })));
 const StudentApp = lazy(() => load.student().then(m => ({ default: m.StudentApp })));
 const ParentApp = lazy(() => load.parent().then(m => ({ default: m.ParentApp })));
 const Certificate = lazy(() => load.certificate().then(m => ({ default: m.Certificate })));
+const MushafReaderPage = lazy(() => import('./components/Mushaf').then(m => ({ default: m.MushafReaderPage })));
 const Apply = lazy(() => load.apply().then(m => ({ default: m.Apply })));
 const idle = (f: () => void) => { const w = window as unknown as { requestIdleCallback?: (cb: () => void) => void }; if (w.requestIdleCallback) w.requestIdleCallback(f); else setTimeout(f, 1500); };
 function usePreload(role: string | undefined) {
@@ -52,6 +53,7 @@ function Main() {
   usePreload(org?.role);
   const [page = '', sub, third] = route;
   if (page === 'apply' && sub) return <Apply orgId={sub} />;
+  if (page === 'mushaf') return <MushafReaderPage page={sub ? Number(sub) || undefined : undefined} />;
   if (loading) return <Spinner />;
   if (!user) return <SignIn />;
   if (!org) return <Welcome />;

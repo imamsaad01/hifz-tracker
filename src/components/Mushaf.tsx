@@ -81,6 +81,8 @@ export function MushafHost() {
   return o ? <Reader opts={o} onClose={() => setO(null)} /> : null;
 }
 
+/** The muṣḥaf as its own page (#/mushaf/562): open to anyone, no sign-in needed. */
+export function MushafReaderPage({ page }: { page?: number }) { return <Reader opts={{ page }} onClose={() => { window.location.hash = '/'; }} />; }
 function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
   const start = opts.page ?? (opts.ayah ? pageOf(opts.ayah) : opts.marks?.length ? pageOf(opts.marks[0][0]) : Number((() => { try { return localStorage.getItem(LAST); } catch { return null; } })() ?? 1));
   const [page, setPage] = useState(Math.min(TOTAL_PAGES, Math.max(1, start)));

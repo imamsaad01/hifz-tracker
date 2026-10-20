@@ -52,21 +52,31 @@ export function MadinahPage({ page, marks, onTap, hidden, revealed, onReveal, on
   const [lay, setLay] = useState<PageLayout | null>(null);
   const box = useRef<HTMLDivElement>(null); const [fs, setFs] = useState(0);
   useEffect(() => {
-    let live = true; setLay(null); setFs(0);
+    let live = true; setLay(null); setFs(0); setRatio(0);
     Promise.all([loadLayout(page), loadFont(page)]).then(([l]) => { if (live) { setLay(l); prefetch(page); } }).catch(() => live && onFail());
     return () => { live = false; };
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
-  // fit the widest line to the width available (the glyphs are drawn for a fixed page width)
+  // Fit the widest line to the width available. The widest line is measured once per page at a fixed size
+  // (off-screen), then only the container width matters, so the text never jumps or "shakes" while settling.
+  const [ratio, setRatio] = useState(0);     // widest line width ÷ font size
   useLayoutEffect(() => {
-    const el = box.current; if (!el || !lay) return;
-    const fit = () => {
-      const probe = el.querySelectorAll<HTMLElement>('[data-line]'); let widest = 0;
-      probe.forEach(n => { n.style.justifyContent = 'flex-start'; const w = Array.from(n.children).reduce((s, c) => s + (c as HTMLElement).offsetWidth, 0); widest = Math.max(widest, w); n.style.justifyContent = ''; });
-      const cur = parseFloat(getComputedStyle(el).fontSize) || 30; const avail = el.clientWidth;
-      if (widest > 0) setFs(Math.min(size === 'sm' ? 30 : 40, Math.max(14, (cur * avail * 0.97) / widest)));
-    };
-    fit(); const ro = new ResizeObserver(() => fit()); ro.observe(el); return () => ro.disconnect();
-  }, [lay, size]);
+    if (!lay) return;
+    const m = document.createElement('div');
+    m.style.cssText = `position:absolute;visibility:hidden;left:-9999px;top:0;white-space:nowrap;font-size:100px;font-family:qpc-v2-p${page}`;
+    const byLine = new Map<number, string[]>(); lay.words.forEach(w => byLine.set(w.l, [...(byLine.get(w.l) ?? []), w.c]));
+    let widest = 0;
+    byLine.forEach(ws => { const sp = document.createElement('span'); sp.textContent = ws.join(' '); m.appendChild(sp); });
+    document.body.appendChild(m);
+    m.querySelectorAll('span').forEach(sp => { widest = Math.max(widest, (sp as HTMLElement).getBoundingClientRect().width); });
+    m.remove();
+    setRatio(widest / 100);
+  }, [lay, page]);
+  useLayoutEffect(() => {
+    const el = box.current; if (!el || !ratio) return;
+    let last = -1;
+    const fit = () => { const w = el.clientWidth; if (Math.abs(w - last) < 2) return; last = w; setFs(Math.round(Math.min(size === 'sm' ? 30 : 40, Math.max(14, (w * 0.98) / ratio)) * 10) / 10); };
+    fit(); const ro = new ResizeObserver(fit); ro.observe(el); return () => ro.disconnect();
+  }, [ratio, size]);
   if (!lay) return <div className="py-20 text-center text-sm text-ink-faint">Loading page {page}…</div>;
   const lines = new Map<number, Word[]>(); lay.words.forEach(w => lines.set(w.l, [...(lines.get(w.l) ?? []), w]));
   // surah title and basmalah sit on the empty lines just before a surah's first line
