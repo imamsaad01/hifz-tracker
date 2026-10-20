@@ -189,3 +189,10 @@ Bottom bar on phones and tablets (under 1024px), sidebar on desktop. Never more 
 - **Progress** · **History** · **Messages** · **My plan** (profile, display, tour)
 
 Rules: one primary button per card; sections always use the same pill tabs (`SubNav` for addresses, `SubTabs` inside a screen, arrow keys work); every tap target is at least 44px; utility actions (search, bell, install, sign out) stay in the header; teachers can search any student or page (button, Ctrl/⌘ K or "/"); each role downloads only its own screens and preloads the rest when the phone is idle; "Skip to content" for keyboard users.
+
+## Muṣḥaf, reports, revision rules (Oct 2026)
+- **Muṣḥaf**: all 604 pages (`public/mushaf/{page}.json`, Uthmani text from QuranEnc via quran-json 3.1.2, CC BY-SA 4.0; loaded one page at a time and cached). Open from the book icon in the header, from Today's plan (lesson and revision highlighted, weak ayahs marked), Weak ayahs, the Live class card and search ("page 562", "mulk"). "Hide words" turns a page into a recall test. Mistakes can be tapped on the page instead of the list.
+- **Lookalike ayahs**: `public/lookalike.json` is worked out from the Qurʾān text itself (word-pair overlap between every two ayahs), so it is our own data. The lesson and Live class card warn about them and "Compare" highlights the words that differ.
+- **Lessons and revision**: new lessons are due on each student's halaqah day(s). Old revision is either fixed days or, with `settings.revision.perWeek` (this program: 3), any days the student chooses; reminders go on Monday and only when the week's revisions are at risk (migration 0022).
+- **Reports**: More → Reports has a weekly or monthly class report (by halaqah, step back through earlier periods, print / PDF, CSV). Each student has a weekly or monthly report (teacher: Students → student → Reports; student: Progress → My weekly and monthly report) plus the term report card.
+- **Also**: admin "Set up your program" checklist on Today; Students list with status dots and "who needs me first"; finish-date what-if; More is a grouped list; tablets get a slim icon rail.

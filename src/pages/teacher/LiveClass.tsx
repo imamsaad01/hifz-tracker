@@ -13,7 +13,7 @@ import { useOrg } from '../../app/context';
 import type { OrgData } from '../../app/useOrgData';
 import { insight } from '../../lib/insights';
 import { formatRange, fromAyahId, surahNameEn } from '../../quran';
-import { Button, Card, Field, Select, Pill, Empty, useToast, cx } from '../../components/ui';
+import { Button, Card, Pill, SubTabs, Empty, useToast, cx } from '../../components/ui';
 import { RecordSheet } from '../../components/RecordSheet';
 import { AdabTaps } from '../../components/Adab';
 import { friendly } from '../../api/backend';
@@ -65,7 +65,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
   const absentNow = async (sid: string) => { try { await api.saveAttendance(org.id, sid, today, 'absent', 'in_person'); reload(); } catch (e) { toast(friendly(e), 'err'); } };
   return <div className="flex flex-col gap-5">
     <div className="flex flex-wrap items-end gap-3">
-      <Field label="Halaqah" className="min-w-[220px]">{id => <Select id={id} value={cls} onChange={setCls} options={[['all', 'All students'], ...data.classes.map(c => [c.id, c.name] as [string, string])]} />}</Field>
+      <SubTabs label="Halaqah" className="mb-0" active={cls} onChange={setCls} items={[{ key: 'all', label: 'All' }, ...data.classes.map(c => ({ key: c.id, label: c.name }))]} />
       {data.classes.find(c => c.id === cls)?.slots.some(sl => sl.day === nowIn(org.timezone).dow) && data.classes.find(c => c.id === cls)?.requireCode && <CheckinCode classId={cls} />}
       <p className="text-sm text-ink-soft"><b>{done.length}</b> done · <b>{waiting.length}</b> waiting · <b>{absent.length}</b> absent</p>
     </div>

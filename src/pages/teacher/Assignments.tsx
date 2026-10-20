@@ -4,7 +4,7 @@ import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useRoute, go } from '../../app/router';
 import { insight } from '../../lib/insights';
-import { Button, Card, Spinner, ErrorBox, Field, Select, SubNav } from '../../components/ui';
+import { Button, Card, Spinner, ErrorBox, SubNav, SubTabs } from '../../components/ui';
 import { AssignmentForm } from '../../components/AssignmentForm';
 import { AssignmentList } from '../../components/AssignmentList';
 import { PageTitle } from '../../components/Shell';
@@ -33,9 +33,9 @@ export function Assignments() {
     <PageTitle title="Assignments" sub={toReview ? `${toReview} waiting for your review` : 'Set work, then review it when students mark it done'} action={<Button onClick={() => go('assignments', 'new')} disabled={!data.students.length}><Plus size={18} />New assignment</Button>} />
     {tabs}
     <Card>
-      <div className="grid gap-3 border-b border-line px-5 py-4 sm:grid-cols-2">
-        <Field label="Show">{id => <Select id={id} value={show} onChange={setShow} options={[['open', 'Open'], ['overdue', 'Overdue'], ['review', 'Done — waiting for review'], ['done', 'Reviewed'], ['all', 'Everything']]} />}</Field>
-        <Field label="Student">{id => <Select id={id} value={sid} onChange={setSid} options={[['all', 'All students'], ...data.students.map(s => [s.id, s.name] as [string, string])]} />}</Field>
+      <div className="flex flex-col gap-2 border-b border-line px-4 py-3 sm:px-5">
+        <SubTabs label="Show" className="mb-0" active={show} onChange={setShow} items={[{ key: 'open', label: 'Open' }, { key: 'overdue', label: 'Overdue' }, { key: 'review', label: 'To review' }, { key: 'done', label: 'Reviewed' }, { key: 'all', label: 'All' }]} />
+        <select aria-label="Student" value={sid} onChange={e => setSid(e.target.value)} className="h-11 self-start rounded-full bg-white px-4 text-sm font-bold text-ink-soft ring-1 ring-line"><option value="all">All students</option>{data.students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
       </div>
       <AssignmentList items={list} nameOf={nameOf} onChanged={reload} />
     </Card>

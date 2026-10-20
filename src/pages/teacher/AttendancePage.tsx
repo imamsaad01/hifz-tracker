@@ -7,7 +7,7 @@ import type { Standing } from '../../api/data';
 import { classToday, nowIn, fmtTime, scheduleText } from '../../lib/schedule';
 import { niceDate } from '../../lib/dates';
 import { downloadCsv } from '../../lib/csv';
-import { Button, Card, CardHead, Empty, Field, Pill, Select, cx, useToast } from '../../components/ui';
+import { Button, Card, CardHead, Empty, Field, Pill, Select, cx, useToast, SubTabs } from '../../components/ui';
 import { friendly } from '../../api/backend';
 
 export function CheckinCode({ classId }: { classId: string }) {
@@ -36,7 +36,7 @@ export function AttendancePage({ data, reload, onRegister }: { data: OrgData; re
   const rows = useMemo(() => data.students.map(s => ({ s, st: standing.get(s.id) })).sort((a, b) => ((b.st?.over ?? 0) + (b.st?.unnotified ?? 0)) - ((a.st?.over ?? 0) + (a.st?.unnotified ?? 0)) || a.s.name.localeCompare(b.s.name)), [data.students, standing]);
   return <div className="flex flex-col gap-5">
     <div className="flex flex-wrap items-end gap-3">
-      {data.classes.length > 1 && <Field label="Halaqah" className="min-w-[200px]">{id => <Select id={id} value={cls} onChange={setCls} options={data.classes.map(x => [x.id, x.name] as [string, string])} />}</Field>}
+      {data.classes.length > 1 && <SubTabs label="Halaqah" className="mb-0" active={cls} onChange={setCls} items={data.classes.map(x => ({ key: x.id, label: x.name }))} />}
       <Button kind="secondary" onClick={onRegister}><CalendarCheck size={16} />Take or fix attendance</Button>
     </div>
     {!c ? <Card><Empty title="No halaqahs yet">Create a halaqah with its class times first.</Empty></Card> : <Card className="p-5">
