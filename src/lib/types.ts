@@ -31,6 +31,8 @@ export interface OrgSettings {
   attendance: { semesterStart: string | null; semesterEnd: string | null; freeAbsences: number; excusedAbsences: number };
   revisionForm: { slots: Array<{ key: string; label: string; day: number | null }>; allowedMisses: number };
   rulesText: string;
+  /** false: a program with no parents — hides parent codes, parent fields and the parent step at sign-up */
+  parentsEnabled: boolean;
   /** qira'at reminders: test eve/morning, daily matn lines, weekly weak-areas review */
   /** weekly summaries */ reports: { parentWeekly: boolean; teacherWeekly: boolean };
   qiraat: { testEveTime: string; testMorningTime: string; matnTime: string; weakDay: number; weakTime: string };
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   attendance: { semesterStart: null, semesterEnd: null, freeAbsences: 1, excusedAbsences: 2 },
   revisionForm: { slots: [{ key: 'after_lesson', label: 'After the lesson at the mosque', day: null }, { key: 'wed', label: 'Wednesday night', day: 3 }, { key: 'fri', label: 'Friday night', day: 5 }], allowedMisses: 1 },
   rulesText: DEFAULT_RULES,
+  parentsEnabled: true,
   reports: { parentWeekly: true, teacherWeekly: true },
   qiraat: { testEveTime: '18:00', testMorningTime: '08:00', matnTime: '07:30', weakDay: 5, weakTime: '17:00' },
 };

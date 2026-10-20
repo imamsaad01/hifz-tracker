@@ -50,6 +50,7 @@ export function mergeSettings(s: Row | null | undefined): OrgSettings {
     rulesText: typeof x.rulesText === 'string' ? x.rulesText : DEFAULT_SETTINGS.rulesText,
     qiraat: { ...DEFAULT_SETTINGS.qiraat, ...(x.qiraat ?? {}) },
     reports: { ...DEFAULT_SETTINGS.reports, ...(x.reports ?? {}) },
+    parentsEnabled: x.parentsEnabled !== false,
   };
 }
 const toStudent = (r: Row, ranges: Range[] = []): Student => ({

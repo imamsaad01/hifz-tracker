@@ -91,8 +91,10 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
         : <TermReport student={st} ins={ins} sessions={sd.sessions} attendance={data.attendance} behaviour={data.behaviour} exams={data.exams} today={today} settings={org.settings} orgName={org.name} teacher={cl.teacher} />}
     </div>}
     {tab === 'overview' && <Card className="no-print mt-5 flex flex-wrap items-center gap-3 px-5 py-4">
+      {org.settings.parentsEnabled ? <>
       <KeyRound size={18} className="text-ink-faint" /><span className="min-w-0 flex-1 text-sm"><b>Parent code:</b> <span className="font-mono tracking-widest">{st.parentCode}</span><br /><span className="text-ink-faint">A parent creates an account and enters this code to see {st.name.split(' ')[0]}’s progress (read-only).</span></span>
       <Button kind="quiet" onClick={async () => { try { await api.updateStudent(st.id, { parent_code: Array.from(crypto.getRandomValues(new Uint8Array(5)), b => b.toString(16).padStart(2, '0')).join('').toUpperCase() }); toast('New parent code made. The old one no longer works.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }}><RefreshCw size={15} />New code</Button>
+      </> : <span className="flex-1" />}
       <Button kind="quiet" onClick={() => setArchive(true)}><Archive size={15} />Archive student</Button>
     </Card>}
     <RecordSheet open={rec} onClose={() => setRec(false)} student={st} insight={ins} sessions={sd.sessions} onSaved={refresh} />
@@ -143,9 +145,11 @@ export function EditStudent({ st, onClose, onSaved, asStudent, classes = [] }: {
       {!asStudent && <Field label="Old revision per revision day" hint="Automatic follows the program setting and how much is memorised.">{id => <Select id={id} value={oldPages} onChange={v => setOldPages(Number(v))} options={[[0, 'Automatic'], ...[1, 2, 3, 4, 5, 6, 8, 10, 15, 20].map(n => [n, `${n} page${n > 1 ? 's' : ''}`] as [number, string])]} />}</Field>}
       <Field label="Order">{id => <Select id={id} value={dir} onChange={v => setDir(v as 'back' | 'forward')} options={[['back', 'From An-Nās backwards (Juz 30 first)'], ['forward', 'From Al-Fātiḥah forwards']]} />}</Field>
       <Field label="Goal">{id => <input id={id} className={inputCls} value={goal} maxLength={80} onChange={e => setGoal(e.target.value)} />}</Field>
+      {org.settings.parentsEnabled && <>
       <Field label="Parent name">{id => <input id={id} className={inputCls} value={gName} maxLength={80} onChange={e => setGName(e.target.value)} />}</Field>
       <Field label="Parent email" error={gEmail && !ok ? 'Check the email address' : null}>{id => <input id={id} type="email" className={inputCls} value={gEmail} onChange={e => setGEmail(e.target.value)} />}</Field>
       <Toggle on={notify} onChange={setNotify} label="Email the parent after each session" sub="Needs a parent email" />
+      </>}
     </div>
   </Modal>;
 }

@@ -136,7 +136,8 @@ function SettingsForm() {
         {r.logRemind !== false && <Field label="Evening reminder time">{id => <Select id={id} value={r.logReminderTime ?? '20:30'} onChange={v => setR({ logReminderTime: v })} options={['18:00', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map(t => [t, fmtTime(t)] as [string, string])} />}</Field>}
 </div>
       <Field label="Tell me about students’ revision" hint="Revision is confirmed by partners; you only see it.">{id => <Select id={id} value={r.teacherNotify ?? 'daily'} onChange={v => setR({ teacherNotify: v as 'daily' | 'each' | 'off' })} options={[['daily', 'One summary each revision evening'], ['each', 'Every time a partner confirms'], ['off', 'Don’t notify me']]} />}</Field>
-      <Toggle on={s.reports.parentWeekly} onChange={v => setS({ ...s, reports: { ...s.reports, parentWeekly: v } })} label="Weekly report to parents" sub="Sunday 6 pm: revision pages, new lessons, attendance and your latest note" />
+      <Toggle on={s.parentsEnabled} onChange={v => setS({ ...s, parentsEnabled: v })} label="This program has parents" sub="Off hides parent codes, parent fields and the parent step at sign-up" />
+      {s.parentsEnabled && <Toggle on={s.reports.parentWeekly} onChange={v => setS({ ...s, reports: { ...s.reports, parentWeekly: v } })} label="Weekly report to parents" sub="Sunday 6 pm: revision pages, new lessons, attendance and your latest note" />}
       <Toggle on={s.reports.teacherWeekly} onChange={v => setS({ ...s, reports: { ...s.reports, teacherWeekly: v } })} label="Weekly summary for me" sub="Monday 8 am: who missed revision days, lessons waiting to sign off, partner checks pending" />
       <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
     </Card>
@@ -306,7 +307,7 @@ function TagEditor({ label, items, onChange }: { label: string; items: string[];
 }
 
 function ExtraRoles({ orgId, m, onChanged }: { orgId: string; m: { userId: string; role: Role; extraRoles: Role[] }; onChanged: () => void }) {
-  const { api } = useOrg(); const toast = useToast();
+  const { api, org } = useOrg(); const parentsOn = org.settings.parentsEnabled; const toast = useToast();
   const toggle = async (r: Role) => { const next = m.extraRoles.includes(r) ? m.extraRoles.filter(x => x !== r) : [...m.extraRoles, r]; try { await api.setExtraRoles(orgId, m.userId, next); toast('Roles updated. They can switch with “View as”.'); onChanged(); } catch (e) { toast(friendly(e), 'err'); } };
-  return <span className="flex flex-wrap items-center gap-1"><span className="text-xs text-ink-faint">Also:</span>{(['admin', 'teacher', 'parent', 'student'] as Role[]).filter(r => r !== m.role).map(r => <button key={r} type="button" aria-pressed={m.extraRoles.includes(r)} onClick={() => toggle(r)} className={cx('min-h-[32px] rounded-full px-2.5 text-xs font-bold ring-1 ring-inset', m.extraRoles.includes(r) ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{ROLE_LABEL[r]}</button>)}</span>;
+  return <span className="flex flex-wrap items-center gap-1"><span className="text-xs text-ink-faint">Also:</span>{(['admin', 'teacher', 'parent', 'student'] as Role[]).filter(r => r !== m.role && (r !== 'parent' || parentsOn)).map(r => <button key={r} type="button" aria-pressed={m.extraRoles.includes(r)} onClick={() => toggle(r)} className={cx('min-h-[32px] rounded-full px-2.5 text-xs font-bold ring-1 ring-inset', m.extraRoles.includes(r) ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}>{ROLE_LABEL[r]}</button>)}</span>;
 }

@@ -1,4 +1,5 @@
 // Student setup: four short steps of dropdowns. Used by a student on first sign-in, and by a teacher adding a child.
+import { useApp } from '../app/context';
 import { useState } from 'react';
 import { ChevronRight, Check } from 'lucide-react';
 import { Button, Card, Field, Select, Toggle, inputCls, ErrorBox, cx } from './ui';
@@ -43,7 +44,8 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
   const memorized = hafidh ? [{ start: 1, end: TOTAL_AYAHS }] : memMode === 'pick' ? toRanges(mv) : [...whole, ...(partAyah > 0 ? [{ start: ayahId(partSurah, 1), end: ayahId(partSurah, partAyah) }] : [])];
   const emailOk = !gEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gEmail);
   // a ḥāfiẓ skips the lesson-plan questions and goes straight to qirāʾāt
-  const keys = hafidh ? ['about', 'mem', 'qiraat', 'parent'] as const : ['about', 'mem', 'plan', 'qiraat', 'parent'] as const;
+  const parents = useApp().org?.settings.parentsEnabled !== false;
+  const keys = ([...(hafidh ? ['about', 'mem', 'qiraat'] : ['about', 'mem', 'plan', 'qiraat']), ...(parents ? ['parent'] : [])] as Array<'about' | 'mem' | 'plan' | 'qiraat' | 'parent'>);
   const LABEL = { about: 'About', mem: 'Memorised', plan: 'Plan', qiraat: 'Qirāʾāt', parent: 'Parent' } as const;
   const steps = keys.map(k => LABEL[k]);
   const key = keys[Math.min(step, keys.length - 1)];
