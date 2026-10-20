@@ -13,7 +13,8 @@ import { href } from '../../app/router';
 import { insight, recentRanges } from '../../lib/insights';
 import { groupPages } from '../../lib/revision';
 import { niceDate, hijriDate, addDays } from '../../lib/dates';
-import { formatRange, surahNameEn } from '../../quran';
+import { formatRange, surahNameEn, pageRange } from '../../quran';
+import { RecallTestButton } from '../../components/RecallTest';
 import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
@@ -101,11 +102,11 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="grid gap-4 lg:grid-cols-3" data-tour="today-plan">
         <PlanTile tip="new" icon={<BookOpen size={20} />} title="New lesson" body={pendingNew ? formatRange(pendingNew.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'}
           note={pendingNew ? 'Submitted. Waiting for your teacher to sign it off.' : 'Learn it, then tap “I memorised it”. It counts once your teacher signs it off.'}
-          action={ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><AyahPlayer range={ins.nextNew} /></div> : null} />
-        <PlanTile tip="recent" icon={<Repeat size={20} />} title="Recent revision" body={recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week'} note={`Read today: every new lesson from the last ${org.settings.revision.recentDays} days.`} action={recent.length ? <Button kind="secondary" onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button> : null} />
+          action={ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton range={ins.nextNew} /><AyahPlayer range={ins.nextNew} /></div> : pendingNew ? <RecallTestButton range={pendingNew.range} label="Test yourself before class" /> : null} />
+        <PlanTile tip="recent" icon={<Repeat size={20} />} title="Recent revision" body={recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week'} note={`Read today: every new lesson from the last ${org.settings.revision.recentDays} days.`} action={recent.length ? <div className="flex flex-col gap-2"><Button kind="secondary" onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton kind="quiet" range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /></div> : null} />
         <PlanTile tip="old" icon={<RotateCcw size={20} />} title="Old revision" body={!ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today'}
           note={!ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first.' : `${ins.revision.perDay} pages each revision day, in turn.`}
-          action={ins.revision.isRevisionDay && ins.revision.today.length ? <Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button> : null} />
+          action={ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-col gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton kind="quiet" range={firstRun(ins.revision.today.map(r => r.page))} /></div> : null} />
       </div>
       {/* 3. this week */}
       <div className="mt-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
@@ -170,6 +171,9 @@ export function StudentApp({ tab }: { tab: string }) {
     {rec && <RecordSheet open onClose={() => { setRec(null); setRecDate(undefined); }} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} initialDate={recDate} onSaved={refresh} />}
   </>;
 }
+/** The first run of back-to-back pages, as a range (today's Old revision may jump around) */
+const firstRun = (pages: number[]) => { const p = [...new Set(pages)].sort((a, b) => a - b); let e = 0; while (e + 1 < p.length && p[e + 1] === p[e] + 1) e++; return { start: pageRange(p[0]).start, end: pageRange(p[e]).end }; };
+
 /** Shown once every part of today's reading is logged. The burst plays the first time each day. */
 function DoneToday({ name, streak }: { name: string; streak: number }) {
   const { today } = useOrg();
