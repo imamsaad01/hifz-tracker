@@ -198,8 +198,8 @@ Rules: one primary button per card; sections always use the same pill tabs (`Sub
 - **Also**: admin "Set up your program" checklist on Today; Students list with status dots and "who needs me first"; finish-date what-if; More is a grouped list; tablets get a slim icon rail.
 
 ## Admin assistant
-Admins see a ✨ button in the header. Type a quick fix in plain English ("move Yusuf to the Thursday halaqah", "Amina does 2 pages a lesson now", "post: no class Friday"). The `assistant` edge function (admins only) asks Claude for a plan; each change appears as a card and runs only when you tap **Do it**, through the normal app calls and permissions. It can update a student, move a student, set Old revision times a week, post announcements, approve or decline join requests, mark attendance and open pages.
-To switch it on, add the secret `ANTHROPIC_API_KEY` in Supabase → Edge Functions → Secrets (optional `ASSISTANT_MODEL`, default `claude-haiku-5-5`).
+Admins see a ✨ button in the header. Common fixes are understood free, in the app itself (src/lib/quickCommand.ts, no AI, no cost; type **help**). Type a quick fix in plain English ("move Yusuf to the Thursday halaqah", "Amina does 2 pages a lesson now", "post: no class Friday"). The `assistant` edge function (admins only) asks Claude for a plan; each change appears as a card and runs only when you tap **Do it**, through the normal app calls and permissions. It can update a student, move a student, set Old revision times a week, post announcements, approve or decline join requests, mark attendance and open pages.
+Anything it doesn't recognise goes to the AI only if switched on. To switch the AI on, add the secret `ANTHROPIC_API_KEY` in Supabase → Edge Functions → Secrets (optional `ASSISTANT_MODEL`, default `claude-haiku-5-5`).
 
 ## Speed
 Migration 0023 replaced per-row permission checks with two cached lists (`my_staff_orgs()`, `my_visible_students()`), cutting typical requests from 4–10 s to about 0.2 s.

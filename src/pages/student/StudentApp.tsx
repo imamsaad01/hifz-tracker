@@ -112,7 +112,8 @@ export function StudentApp({ tab }: { tab: string }) {
       {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
       <div className="mb-5 empty:hidden" data-tour="partner"><PartnerRequestsCard /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
-      {ring.some(r => r.due) && ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />}
+      {ring.some(r => r.due) ? ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />
+        : <div role="status" className="mb-5 rounded-2xl bg-pine-50 px-5 py-4 text-pine-900 ring-1 ring-pine-600/20 dark:text-pine-100"><p className="flex items-center gap-2 font-bold"><CheckCircle2 size={20} />Nothing is due today</p><p className="text-sm opacity-85">A free day. You can get ahead with Old revision or practise your last lesson below.</p></div>}
       {/* 2. today's reading */}
       <div data-tour="today-plan"><TodayPath steps={[
         { key: 'new', practice: pendingNew?.range ?? (ring[0].done ? todays.find(x => x.type === 'new')?.range : ins.nextNew) ?? null, tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',

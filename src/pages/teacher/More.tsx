@@ -108,7 +108,7 @@ function Reports() {
       <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
         <thead><tr className="border-b border-line text-left text-xs uppercase text-ink-faint"><th className="px-5 py-2">Name</th><th className="px-2">Memorised</th><th className="px-2">Juz</th><th className="px-2">Accuracy</th><th className="px-2">Attendance</th><th className="px-2">Overdue pages</th><th className="px-5">Streak</th></tr></thead>
         <tbody>{[...ins].sort((a, b) => b.progress.ayahs - a.progress.ayahs).map(i => <tr key={i.student.id} className="border-b border-line last:border-0">
-          <td className="px-5 py-2.5"><a className="font-bold underline-offset-2 hover:underline" href={href('students', i.student.id)}>{i.student.name}</a></td>
+          <td className="px-5 py-0.5"><a className="flex min-h-[44px] items-center font-bold underline-offset-2 hover:underline" href={href('students', i.student.id)}>{i.student.name}</a></td>
           <td className="px-2 tabular-nums">{(i.progress.percent * 100).toFixed(1)}%</td><td className="px-2 tabular-nums">{i.progress.juz}</td>
           <td className="px-2 tabular-nums">{i.avgAccuracy30 ?? '—'}{i.avgAccuracy30 !== null && '%'}</td><td className="px-2 tabular-nums">{i.attendanceRate30 === null ? '—' : `${Math.round(i.attendanceRate30 * 100)}%`}</td>
           <td className={cx('px-2 tabular-nums', i.revision.overdue.length ? 'font-bold text-warn' : '')}>{i.revision.overdue.length}</td><td className="px-5 tabular-nums">{i.streak}</td></tr>)}</tbody>

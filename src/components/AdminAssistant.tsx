@@ -9,13 +9,14 @@ import { href } from '../app/router';
 import type { AiBlock } from '../api/data';
 import { friendly } from '../api/backend';
 import { GOALS } from './StudentForm';
+import { quickCommand, HELP } from '../lib/quickCommand';
 import { Button, cx } from './ui';
 
 type Msg = { role: 'user' | 'assistant'; content: string | Array<AiBlock | { type: 'tool_result'; tool_use_id: string; content: string }> };
 type Card = { id: string; name: string; input: Record<string, unknown>; state: 'ask' | 'busy' | 'done' | 'skipped' | 'error'; note?: string };
 type Line = { who: 'me' | 'ai'; text?: string; cards?: Card[] };
 const PAGES: Record<string, string> = { today: href('today'), students: href('students'), live: href('classes', 'live'), attendance: href('classes', 'attendance'), halaqahs: href('classes', 'halaqahs'), calendar: href('classes', 'calendar'), tasks: href('assignments'), reports: href('more', 'reports'), settings: href('more', 'settings') };
-const EXAMPLES = ['Who has not been placed in a halaqah?', 'Change Ahmad to 1 page a lesson', 'Post a reminder: no class next Friday'];
+const EXAMPLES = ['Who is not in a halaqah?', 'Revision 3 times a week', 'Post: No class next Friday', 'help'];
 
 export function AdminAssistantButton() {
   const { org } = useOrg();
@@ -95,7 +96,7 @@ function Panel({ onClose }: { onClose: () => void }) {
     }
   };
   const setCard = (id: string, patch: Partial<Card>) => setLines(ls => ls.map(l => l.cards ? { ...l, cards: l.cards.map(c => c.id === id ? { ...c, ...patch } : c) } : l));
-  const result = (id: string, content: string) => setResults(r => [...r, { type: 'tool_result', tool_use_id: id, content }]);
+  const result = (id: string, content: string) => { if (!id.startsWith('local_')) setResults(r => [...r, { type: 'tool_result', tool_use_id: id, content }]); };
   const decide = async (c: Card, yes: boolean) => {
     if (!yes) { setCard(c.id, { state: 'skipped' }); result(c.id, 'The admin chose not to do this.'); return; }
     setCard(c.id, { state: 'busy' });
@@ -106,7 +107,15 @@ function Panel({ onClose }: { onClose: () => void }) {
   const send = async (q: string) => {
     q = q.trim(); if (!q || busy) return;
     // answer any cards that were left untouched, so the conversation stays valid
-    const open = lines.flatMap(l => l.cards ?? []).filter(c => c.state === 'ask' || c.state === 'busy');
+    const open = lines.flatMap(l => l.cards ?? []).filter(c => (c.state === 'ask' || c.state === 'busy') && !c.id.startsWith('local_'));
+    // 1) free: common quick fixes are understood right here, with no AI and no cost
+    const local = data && quickCommand(q, { students: data.students, classes: data.classes, joins: data.joinRequests, goals: GOALS, today });
+    if (local) {
+      setText(''); const cards: Card[] = [];
+      for (const a of local.actions) { if (a.name === 'open_page') { const p = String(a.input.page); const to = p.startsWith('student:') ? href('students', p.slice(8)) : PAGES[p]; if (to) location.hash = to; } else cards.push({ ...a, state: 'ask' }); }
+      setLines(l => [...l, { who: 'me', text: q }, { who: 'ai', text: local.reply, cards }]); return;
+    }
+    if (setup) { setText(''); setLines(l => [...l, { who: 'me', text: q }, { who: 'ai', text: `I didn't catch that. ${HELP}` }]); return; }
     const pending = [...results, ...open.map(c => ({ type: 'tool_result' as const, tool_use_id: c.id, content: 'Not done; the admin moved on.' }))];
     open.forEach(c => setCard(c.id, { state: 'skipped' }));
     const next: Msg[] = [...msgs, { role: 'user', content: pending.length ? [...pending, { type: 'text' as const, text: q }] : q } as Msg].slice(-20);
@@ -128,7 +137,7 @@ function Panel({ onClose }: { onClose: () => void }) {
       setLines(l => [...l, { who: 'ai', text: say || (cards.length ? 'Here is what I would do:' : uses.length ? 'Opened it for you.' : 'Done.'), cards }]);
     } catch (e) {
       const m = friendly(e);
-      if (/not_configured/.test(m)) setSetup(true);
+      if (/not_configured/.test(m)) { setSetup(true); setLines(l => [...l, { who: 'ai', text: `I didn't catch that. ${HELP}` }]); }
       else setLines(l => [...l, { who: 'ai', text: `Sorry, that did not work: ${m}` }]);
       setMsgs(m2 => m2.slice(0, -1));
     } finally { setBusy(false); }
@@ -141,11 +150,8 @@ function Panel({ onClose }: { onClose: () => void }) {
         <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 place-items-center rounded-xl hover:bg-black/5"><X size={18} /></button>
       </header>
       <div className="flex-1 overflow-y-auto px-4 py-4" aria-live="polite">
-        {setup ? <div className="rounded-xl bg-amber-50 p-4 text-sm text-ink ring-1 ring-warn/30 dark:bg-amber-400/10">
-          <p className="font-bold">The assistant is not switched on yet.</p>
-          <p className="mt-1">It needs an Anthropic API key, added once in Supabase: Project → Edge Functions → Secrets → add <code>ANTHROPIC_API_KEY</code>. Each question costs a fraction of a cent.</p>
-        </div> : !lines.length && <div className="text-sm text-ink-soft">
-          <p>Ask for a quick fix in plain English. I will show each change first; nothing happens until you tap <b>Do it</b>.</p>
+        {!lines.length && <div className="text-sm text-ink-soft">
+          <p>Ask for a quick fix in plain English. I will show each change first; nothing happens until you tap <b>Do it</b>. Common fixes are free; type <b>help</b> to see them.</p>
           <div className="mt-3 flex flex-col gap-2">{EXAMPLES.map(x => <button key={x} type="button" disabled={!data} onClick={() => send(x)} className="min-h-[44px] rounded-xl bg-paper px-3 text-left font-bold text-pine-800 ring-1 ring-line hover:bg-pine-50 disabled:opacity-50">{x}</button>)}</div>
         </div>}
         <div className="flex flex-col gap-3">
@@ -162,8 +168,8 @@ function Panel({ onClose }: { onClose: () => void }) {
         </div>
       </div>
       <form className="flex gap-2 border-t border-line p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" onSubmit={e => { e.preventDefault(); send(text); }}>
-        <input value={text} onChange={e => setText(e.target.value)} placeholder={data ? 'e.g. Move Yusuf to the Thursday halaqah' : 'Loading your program…'} aria-label="Message the assistant" disabled={!data || setup} className="min-h-[48px] flex-1 rounded-xl bg-paper px-3 text-[16px] ring-1 ring-line focus:outline-none focus:ring-2 focus:ring-pine-600" />
-        <button type="submit" aria-label="Send" disabled={!text.trim() || busy || setup} className="grid h-12 w-12 place-items-center rounded-xl bg-pine-700 text-white disabled:opacity-40"><Send size={18} /></button>
+        <input value={text} onChange={e => setText(e.target.value)} placeholder={data ? 'e.g. Move Yusuf to the Thursday halaqah' : 'Loading your program…'} aria-label="Message the assistant" disabled={!data} className="min-h-[48px] flex-1 rounded-xl bg-paper px-3 text-[16px] ring-1 ring-line focus:outline-none focus:ring-2 focus:ring-pine-600" />
+        <button type="submit" aria-label="Send" disabled={!text.trim() || busy} className="grid h-12 w-12 place-items-center rounded-xl bg-pine-700 text-white disabled:opacity-40"><Send size={18} /></button>
       </form>
     </section>
   </div>;

@@ -61,6 +61,16 @@ function PeriodBar({ kind, setKind, back, setBack, p }: { kind: Kind; setKind: (
 }
 const printBtn = () => window.self === window.top && <Button kind="secondary" onClick={() => window.print()}><Printer size={16} /><span className="hidden sm:inline">Print or save as</span> PDF</Button>;
 
+/** A starting comment written from the numbers (free, no AI); the teacher edits it. */
+export function draftComment(name: string, kind: Kind, n: { newLessons: number; newAyahs: number; oldDays: number; oldTarget: number; mistakes: number; accuracy: number | null; present: number; classes: number }): string {
+  const span = kind === 'week' ? 'this week' : 'this month'; const out: string[] = [];
+  if (n.newLessons) out.push(`${name} completed ${n.newLessons} new lesson${n.newLessons > 1 ? 's' : ''} (${n.newAyahs} ayahs) ${span}.`); else out.push(`${name} had no new lesson signed off ${span}.`);
+  if (n.oldTarget) out.push(n.oldDays >= n.oldTarget ? `Old revision was done every time it was due (${n.oldDays} of ${n.oldTarget}), mā shāʾ Allāh.` : n.oldDays ? `Old revision was done ${n.oldDays} of ${n.oldTarget} times; aim for all ${n.oldTarget} next ${kind}.` : `Old revision was missed ${span}; please make it a priority.`);
+  if (n.accuracy !== null) out.push(n.accuracy >= 90 ? `Recitation was strong (${n.accuracy}% accuracy).` : n.accuracy >= 75 ? `Accuracy was ${n.accuracy}%; slow, careful repetition of the weak places will help.` : `Accuracy was ${n.accuracy}%; the lesson needs more repetition before it is recited.`);
+  if (n.classes) out.push(n.present >= n.classes ? 'Attendance was perfect.' : `Attended ${n.present} of ${n.classes} classes.`);
+  return out.join(' ');
+}
+
 /** One student's weekly or monthly report */
 export function StudentPeriodReport({ student, ins, sessions, attendance, settings, orgName, today, you, initialKind = 'week' }: {
   student: Student; ins: StudentInsight; sessions: Session[]; attendance: Attendance[]; settings: OrgSettings; orgName: string; today: string; you?: boolean; initialKind?: Kind;
@@ -85,7 +95,8 @@ export function StudentPeriodReport({ student, ins, sessions, attendance, settin
       </div>
       <p className="mt-4 text-[15px]"><b>Memorised so far:</b> {(ins.progress.percent * 100).toFixed(1)}% ({ins.progress.pages} pages, {ins.progress.juz} juz){ins.nextNew ? <> · <b>Next lesson:</b> {formatRange(ins.nextNew)}</> : null}</p>
       <div className="mt-5">{n.list.length ? <Timeline sessions={n.list} /> : <p className="text-sm text-ink-faint">Nothing logged in this {kind}.</p>}</div>
-      {!you && <div className="mt-5"><label className="mb-1 block text-sm font-bold" htmlFor="rep-comment">Teacher’s comment <span className="font-normal text-ink-faint">(printed, not saved)</span></label>
+      {!you && <div className="mt-5"><div className="mb-1 flex items-center justify-between gap-2"><label className="block text-sm font-bold" htmlFor="rep-comment">Teacher’s comment <span className="font-normal text-ink-faint">(printed, not saved)</span></label>
+        <button type="button" className="no-print min-h-[44px] rounded-lg px-2 text-sm font-bold text-pine-700 hover:bg-pine-50" onClick={() => setComment(draftComment(student.name.split(' ')[0], kind, n))}>Suggest a comment</button></div>
         <textarea id="rep-comment" rows={3} className={cx(inputCls, 'print:border-0 print:p-0')} value={comment} onChange={e => setComment(e.target.value)} placeholder="Mā shāʾ Allāh, steady revision this week…" /></div>}
     </Card>
   </div>;
