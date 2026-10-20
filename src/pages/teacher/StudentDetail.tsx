@@ -8,6 +8,7 @@ import { formatRange, surahNameEn } from '../../quran';
 import { RevisionCheckCard, RevisionStartModal, startLabel } from '../../components/RevisionSelf';
 import { useMemo, useState } from 'react';
 import { Tile, Row } from '../../components/Rows';
+import { StudentPeriodReport } from '../../components/Reports';
 import { ArrowLeft, Plus, ClipboardList, Target, Pencil, Archive, KeyRound, RefreshCw, Award } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
@@ -16,7 +17,7 @@ import { href, go } from '../../app/router';
 import { insight } from '../../lib/insights';
 import { METRIC_LABEL } from '../../lib/goals';
 import { Button, Card, CardHead, Spinner, ErrorBox, Segmented, SubTabs, Modal, Field, Select, inputCls, Toggle, Confirm, useToast } from '../../components/ui';
-import { Overview, History, MonthReport, TermReport } from '../../components/StudentReport';
+import { Overview, History, TermReport } from '../../components/StudentReport';
 import { PlanCard, ClassBadge } from '../../components/PlanCard';
 import { AdabTaps, AdabSummary } from '../../components/Adab';
 import { LevelBar, BadgeGrid } from '../../components/Motivation';
@@ -41,7 +42,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
   const sd = useStudentData(id);
   const toast = useToast();
   const [tab, setTab] = useState<Tab>((['overview', 'history', 'work', 'messages', 'report'].includes(initialTab ?? '') ? initialTab : 'overview') as Tab);
-  const [reportKind, setReportKind] = useState<'month' | 'term'>('month');
+  const [reportKind, setReportKind] = useState<'period' | 'term'>('period');
   const [rec, setRec] = useState(false); const [assign, setAssign] = useState(false); const [goal, setGoal] = useState(false); const [edit, setEdit] = useState(false); const [startOpen, setStartOpen] = useState(false); const [memOpen, setMemOpen] = useState(false);
   const [archive, setArchive] = useState(false); const [del, setDel] = useState<Session | null>(null);
   const allIns = useMemo(() => data ? data.students.map(s => insight(s, data.sessions, data.revision.get(s.id) ?? [], data.assignments, data.attendance, org.settings, today)) : [], [data, org.settings, today]);
@@ -104,8 +105,8 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
     {tab === 'work' && <div className="flex flex-col gap-5"><Card><CardHead title="Assignments" /><AssignmentList items={assignments} onChanged={reload} /></Card><div><h2 className="mb-2 font-bold">Juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={st.id} onChanged={reload} /></div></div>}
     {tab === 'messages' && <MessageThread studentId={st.id} studentName={st.name} members={data.members} />}
     {tab === 'report' && <div className="flex flex-col gap-4">
-      <div className="no-print"><Segmented label="Report" value={reportKind} onChange={setReportKind} options={[['month', 'Monthly report'], ['term', 'Term report card']]} /></div>
-      {reportKind === 'month' ? <MonthReport student={st} ins={ins} sessions={sd.sessions} today={today} settings={org.settings} orgName={org.name} />
+      <div className="no-print"><Segmented label="Report" value={reportKind} onChange={setReportKind} options={[['period', 'Weekly or monthly'], ['term', 'Term report card']]} /></div>
+      {reportKind === 'period' ? <StudentPeriodReport student={st} ins={ins} sessions={sd.sessions} attendance={data.attendance} today={today} settings={org.settings} orgName={org.name} />
         : <TermReport student={st} ins={ins} sessions={sd.sessions} attendance={data.attendance} behaviour={data.behaviour} exams={data.exams} today={today} settings={org.settings} orgName={org.name} teacher={cl.teacher} />}
     </div>}
     {tab === 'overview' && <Card className="no-print mt-5 flex flex-wrap items-center gap-3 px-5 py-4">

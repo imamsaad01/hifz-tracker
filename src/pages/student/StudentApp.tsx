@@ -23,6 +23,7 @@ import type { SessionType } from '../../lib/types';
 import { Button, Card, CardHead, Spinner, ErrorBox, Pill, cx, SubTabs } from '../../components/ui';
 import { Overview, History } from '../../components/StudentReport';
 import { Rings, StreakCalendar } from '../../components/ProgressViz';
+import { StudentPeriodReport } from '../../components/Reports';
 import { Row, LinkRow, Group } from '../../components/Rows';
 import { getTheme, getTextSize } from '../../lib/display';
 import { JuzMap } from '../../components/quran';
@@ -181,6 +182,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, me.memorized)} />
       <Card className="divide-y divide-line overflow-hidden">
         {certs.length > 0 && <Row title="My certificates" value={`${certs.length}`}><div className="flex flex-wrap gap-2">{certs.map(c => <a key={c.code} href={href('certificate', me.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Row>}
+        <Row title="My weekly and monthly report" value=""><StudentPeriodReport you student={me} ins={ins} sessions={sd.sessions} attendance={data.attendance} today={today} settings={org.settings} orgName={org.name} /></Row>
         <Row title="Leaderboard" value=""><Leaderboard /></Row>
         {myTests > 0 && <Row title="My juz tests" value={`${myTests}`}><ExamList exams={data.exams} students={data.students} fixedStudent={me.id} onChanged={reload} /></Row>}
         <Row title="Adab from your teacher" value={`${beh.filter(b => b.value > 0).length} good marks`}><AdabSummary points={beh} title="Adab & effort from your teacher" /></Row>

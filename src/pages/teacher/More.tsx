@@ -27,6 +27,7 @@ import { DailyBars } from '../../components/quran';
 import { PageTitle } from '../../components/Shell';
 import { friendly } from '../../api/backend';
 import { Group, LinkRow } from '../../components/Rows';
+import { ClassPeriodReport } from '../../components/Reports';
 import { ChevronRight, ArrowLeft, Sparkles, LogOut } from 'lucide-react';
 
 // More: a short list grouped like a phone's settings; each item opens its own page with a way back.
@@ -88,6 +89,8 @@ function Reports() {
     catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); }
   };
   return <div className="flex flex-col gap-5">
+    <ClassPeriodReport students={data.students} ins={ins} sessions={data.sessions} attendance={data.attendance} classes={data.classes} settings={org.settings} orgName={org.name} today={today} />
+    <details className="no-print group rounded-2xl border border-line bg-white shadow-card"><summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-2 px-5 font-bold"><span className="flex-1">Totals, charts and downloads</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary><div className="flex flex-col gap-5 border-t border-line p-4">
     <div className="flex flex-wrap items-end gap-3">
       <Field label="Period" className="min-w-[180px]">{id => <Select id={id} value={days} onChange={setDays} options={[['7', 'Last 7 days'], ['30', 'Last 30 days'], ['90', 'Last 90 days']]} />}</Field>
       <Button kind="secondary" disabled={!list.length} onClick={() => downloadCsv(`${org.name} sessions ${since} to ${today}.csv`, list.flatMap(s => sessionRows([s], nameOf(s.studentId), org.settings)))}><Download size={16} />Sessions CSV</Button>
@@ -111,7 +114,8 @@ function Reports() {
           <td className={cx('px-2 tabular-nums', i.revision.overdue.length ? 'font-bold text-warn' : '')}>{i.revision.overdue.length}</td><td className="px-5 tabular-nums">{i.streak}</td></tr>)}</tbody>
       </table></div>
     </Card>
-    <p className="text-xs text-ink-faint">For a printable monthly report for one student, open the student and choose Report.</p>
+    <p className="text-xs text-ink-faint">For one student’s weekly or monthly report, open the student and choose Reports.</p>
+    </div></details>
   </div>;
 }
 
