@@ -8,7 +8,7 @@ export function Brand({ small, light, iconOnly }: { small?: boolean; light?: boo
 }
 
 /** The logo as the home button: the book flips open, a glow ring pulses, a shine sweeps the name and a few sparks fly. */
-export function BrandLink({ home, small, iconOnly }: { home: string; small?: boolean; iconOnly?: boolean }) {
+export function BrandLink({ home, small, iconOnly, compact }: { home: string; small?: boolean; iconOnly?: boolean; compact?: boolean }) {
   const [n, setN] = useState(0); const [play, setPlay] = useState(false);
   useEffect(() => { if (!play) return; const t = setTimeout(() => setPlay(false), 950); return () => clearTimeout(t); }, [play, n]);
   const go = (e: React.MouseEvent) => {
@@ -22,6 +22,6 @@ export function BrandLink({ home, small, iconOnly }: { home: string; small?: boo
       <span aria-hidden className="brand-ring pointer-events-none absolute inset-0 rounded-[10px]" />
       {play && [0, 1, 2, 3, 4, 5].map(k => <span key={k} aria-hidden className="brand-spark pointer-events-none absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full bg-brass-500" style={{ ['--a' as string]: `${k * 60 + 15}deg` }} />)}
     </span>
-    {!iconOnly && <span className={cx('brand-name ml-2.5 whitespace-nowrap font-bold text-ink', small ? 'text-[17px]' : 'text-xl')}>Hifz Tracker</span>}
+    {!iconOnly && <span className={cx('brand-name ml-2.5 whitespace-nowrap font-bold text-ink', small ? 'text-[17px]' : 'text-xl', compact && 'hidden min-[430px]:inline')}>Hifz Tracker</span>}
   </a>;
 }

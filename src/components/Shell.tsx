@@ -46,15 +46,15 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
       </div>
     </aside>
     <div className="flex min-w-0 flex-1 flex-col">
-      <header className="no-print sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-paper/95 px-4 py-2.5 backdrop-blur lg:px-8">
-        <div className="md:hidden"><BrandLink home={nav[0]?.href ?? '#/'} small /></div>
+      <header className="no-print sticky top-0 z-20 flex items-center gap-2 border-b border-line bg-paper/95 pb-2 pl-[max(12px,env(safe-area-inset-left))] pr-[max(8px,env(safe-area-inset-right))] pt-[max(8px,env(safe-area-inset-top))] backdrop-blur sm:gap-3 sm:px-4 md:py-2.5 lg:px-8">
+        <div className="min-w-0 md:hidden"><BrandLink home={nav[0]?.href ?? '#/'} small compact={org?.role === 'admin' || org?.role === 'teacher' || (org?.roles.length ?? 0) > 1} /></div>
         <p className="hidden min-w-0 truncate text-sm font-bold text-ink-soft md:block">{org?.name}</p>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-2">
           {org && org.roles.length > 1 && <Select aria-label="View as" className="!w-auto !min-h-[44px] text-sm lg:hidden" value={org.role} onChange={switchRole} options={org.roles.map(r => [r, ROLE_NAME[r]] as [typeof r, string])} />}
           {org && (org.role === 'admin' || org.role === 'teacher') && <SearchButton />}
           {org?.role === 'admin' && <AdminAssistantButton />}
           <InstallApp compact />
-          <button type="button" onClick={() => openMushaf()} aria-label="Open the muṣḥaf" title="Muṣḥaf" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5"><BookOpen size={19} /></button>
+          <button type="button" onClick={() => openMushaf()} aria-label="Open the muṣḥaf" title="Muṣḥaf" className="grid h-11 w-10 sm:w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5"><BookOpen size={19} /></button>
           <InboxBell />
           {(!online || pending > 0) && <button type="button" onClick={flush} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-amber-50 px-3 text-xs font-bold text-warn ring-1 ring-warn/30">{online ? <RefreshCw size={14} /> : <CloudOff size={14} />}{online ? `${pending} waiting · send now` : `Offline${pending ? ` · ${pending} waiting` : ''}`}</button>}
         </div>

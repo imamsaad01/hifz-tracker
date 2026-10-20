@@ -23,7 +23,7 @@ export function AdminAssistantButton() {
   const [open, setOpen] = useState(false);
   if (org.role !== 'admin') return null;
   return <>
-    <button type="button" onClick={() => setOpen(true)} aria-label="Ask the assistant" title="Assistant" className="grid h-11 w-11 place-items-center rounded-xl text-pine-700 hover:bg-black/5"><Sparkles size={19} /></button>
+    <button type="button" onClick={() => setOpen(true)} aria-label="Ask the assistant" title="Assistant" className="grid h-11 w-10 sm:w-11 place-items-center rounded-xl text-pine-700 hover:bg-black/5"><Sparkles size={19} /></button>
     {open && <Panel onClose={() => setOpen(false)} />}
   </>;
 }
@@ -145,7 +145,7 @@ function Panel({ onClose }: { onClose: () => void }) {
 
   return <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={onClose}>
     <section role="dialog" aria-modal="true" aria-label="Assistant" onClick={e => e.stopPropagation()} className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl dark:bg-[rgb(var(--paper))]">
-      <header className="flex items-center gap-2 border-b border-line px-4 py-3">
+      <header className="flex items-center gap-2 border-b border-line px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
         <Sparkles size={18} className="text-pine-700" /><h2 className="flex-1 font-bold">Assistant</h2>
         <button type="button" onClick={onClose} aria-label="Close" className="grid h-11 w-11 place-items-center rounded-xl hover:bg-black/5"><X size={18} /></button>
       </header>

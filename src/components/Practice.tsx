@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Gamepad2, RotateCcw, Check } from 'lucide-react';
 import { fromAyahId, surahNameEn, pageOf, pageRange, type Range } from '../quran';
 import { loadPage } from './Mushaf';
+import { Recite } from './Recite';
 import { Button, Modal, SubTabs, cx } from './ui';
 
 export function PracticeButton({ range, label = 'Practise' }: { range: Range; label?: string }) {
@@ -15,24 +16,26 @@ export function PracticeButton({ range, label = 'Practise' }: { range: Range; la
 }
 
 function Practice({ range, onClose }: { range: Range; onClose: () => void }) {
-  const [tab, setTab] = useState<'repeat' | 'order'>('repeat');
+  const [tab, setTab] = useState<'repeat' | 'order' | 'recite'>('repeat');
   const ids = useMemo(() => Array.from({ length: Math.min(range.end - range.start + 1, 60) }, (_, i) => range.start + i), [range]);
   const [i, setI] = useState(0); const id = ids[i]; const a = fromAyahId(id);
   return <Modal open onClose={onClose} title="Practise">
     <div className="flex flex-col gap-4">
-      <SubTabs label="Game" className="mb-0" active={tab} onChange={setTab} items={[{ key: 'repeat', label: 'Repeat' }, { key: 'order', label: 'Word order' }]} />
+      <SubTabs label="Game" className="mb-0" active={tab} onChange={setTab} items={[{ key: 'repeat', label: 'Repeat' }, { key: 'recite', label: 'Recite' }, { key: 'order', label: 'Word order' }]} />
       <div className="flex items-center justify-between rounded-xl bg-paper px-3 py-2 ring-1 ring-line">
         <button type="button" disabled={i === 0} onClick={() => setI(i - 1)} className="h-11 min-w-[44px] rounded-lg px-2 text-sm font-bold text-pine-700 disabled:opacity-30">‹ Prev</button>
         <b>{surahNameEn(a.surah)} {a.ayah}</b>
         <button type="button" disabled={i >= ids.length - 1} onClick={() => setI(i + 1)} className="h-11 min-w-[44px] rounded-lg px-2 text-sm font-bold text-pine-700 disabled:opacity-30">Next ›</button>
       </div>
-      {tab === 'repeat' ? <Beads key={`r${id}`} id={id} /> : <WordOrder key={`o${id}`} id={id} onNext={i < ids.length - 1 ? () => setI(i + 1) : undefined} />}
+      {tab === 'repeat' ? <Beads key={`r${id}`} id={id} /> : tab === 'recite' ? <ReciteAyah key={`c${id}`} id={id} onNext={i < ids.length - 1 ? () => setI(i + 1) : undefined} /> : <WordOrder key={`o${id}`} id={id} onNext={i < ids.length - 1 ? () => setI(i + 1) : undefined} />}
     </div>
   </Modal>;
 }
 
 async function ayahText(id: number) { const p = pageOf(id); const t = await loadPage(p); return t[id - pageRange(p).start]; }
 function useAyah(id: number) { const [t, setT] = useState<string | null>(null); useEffect(() => { let live = true; ayahText(id).then(x => live && setT(x)).catch(() => live && setT('')); return () => { live = false; }; }, [id]); return t; }
+
+function ReciteAyah({ id, onNext }: { id: number; onNext?: () => void }) { const text = useAyah(id); return <Recite text={text} onNext={onNext} />; }
 
 /** Tap once per recitation. 10 beads; each tap slides one bead across with a spring and a ripple. */
 function Beads({ id }: { id: number }) {

@@ -286,7 +286,7 @@ function TodayPath({ steps }: { steps: Step[] }) {
           {st.note && <p className="flex items-start gap-1 text-sm text-ink-soft">{st.note}{st.tip && <InfoTip k={st.tip} />}</p>}
           {st.state !== 'done' && st.action}
           {st.state === 'done' && <p className="text-sm font-bold text-good">Logged today. Mā shāʾ Allāh.</p>}
-          {st.practice && <div><PracticeButton range={st.practice} label="Practise: repeat & word order" /></div>}
+          {st.practice && <div><PracticeButton range={st.practice} label="Practise: recite, repeat and word order" /></div>}
         </div>}
       </li>; })}</ol>
   </Card>;

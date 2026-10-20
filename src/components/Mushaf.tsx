@@ -89,8 +89,9 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
   const [page, setPage] = useState(Math.min(TOTAL_PAGES, Math.max(1, start)));
   const [hidden, setHidden] = useState(false); const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [listen, setListen] = useState(false);
+  const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [drag, setDrag] = useState(0); const [turn, setTurn] = useState<'l' | 'r' | null>(null);
-  const marks = useMemo(() => new Map(opts.marks ?? []), [opts.marks]);
+  const marks = useMemo(() => { const m = new Map(opts.marks ?? []); if (playingAyah) m.set(playingAyah, 'lesson'); return m; }, [opts.marks, playingAyah]);
   const go = useCallback((p: number) => { const n = Math.min(TOTAL_PAGES, Math.max(1, p)); setPage(n); setRevealed(new Set()); setListen(false); try { localStorage.setItem(LAST, String(n)); } catch { /* */ } }, []);
   const x0 = useRef<{ x: number; y: number } | null>(null); const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -127,7 +128,7 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
         </div>
         {kinds.length > 0 && <p className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-ink-soft">{kinds.map(k => <span key={k} className="inline-flex items-center gap-1.5"><i className={cx('h-3 w-5 rounded', MARK_CLS[k])} />{MARK_LABEL[k]}</span>)}
           {onPageMarks.length === 0 && <span className="text-ink-faint">· none on this page</span>}</p>}
-        <div className="mt-4">{listen ? <AyahPlayer range={r} compact /> : <button type="button" onClick={() => setListen(true)} className="mx-auto flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold text-pine-700 hover:bg-pine-50"><BookOpen size={16} />Listen to this page</button>}</div>
+        <div className="mt-4">{listen ? <AyahPlayer range={r} compact onAyah={setPlayingAyah} /> : <button type="button" onClick={() => setListen(true)} className="mx-auto flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold text-pine-700 hover:bg-pine-50"><BookOpen size={16} />Listen to this page</button>}</div>
       </div>
     </div>
     <footer className="flex items-center gap-2 border-t border-line bg-white px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))]">

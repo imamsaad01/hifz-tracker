@@ -57,6 +57,16 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
   // drag a row in Next by its handle
   const listRef = useRef<HTMLOListElement>(null); const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
   const rowAt = (y: number) => { const rows = [...(listRef.current?.children ?? [])] as HTMLElement[]; let t = rows.length - 1; for (let k = 0; k < rows.length; k++) { const b = rows[k].getBoundingClientRect(); if (y < b.top + b.height / 2) { t = k; break; } } return t; };
+  // who just checked in: a pulse on their row and a short "just arrived" banner (not on first load)
+  const hereIds = ins.filter(i => i.attendanceToday === 'present' || i.attendanceToday === 'late').map(i => i.student.id);
+  const prevHere = useRef<Set<string> | null>(null); const [arrived, setArrived] = useState<string[]>([]);
+  useEffect(() => {
+    const now = new Set(hereIds); const before = prevHere.current; prevHere.current = now;
+    if (!before) return;
+    const fresh = hereIds.filter(id => !before.has(id)); if (!fresh.length) return;
+    setArrived(a => [...a, ...fresh]); try { navigator.vibrate?.(15); } catch { /* */ }
+    const t = setTimeout(() => setArrived(a => a.filter(x => !fresh.includes(x))), 5000); return () => clearTimeout(t);
+  }, [hereIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const done = ins.filter(i => finished(i));
   const absent = ins.filter(i => !finished(i) && away(i));
   const current = waiting[0];
@@ -112,7 +122,8 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
       <details className="group mt-3"><summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-sm font-bold text-ink-soft">Note manners (adab)<ChevronDown size={15} className="transition group-open:rotate-180" /></summary>
         <div className="-mx-1 pt-1"><AdabTaps studentId={current.student.id} points={data.behaviour} onChanged={reload} compact /></div></details>
     </Card></div></div> : <Card><Empty icon={<CheckCircle2 size={30} />} title={ins.length ? 'Everyone is done for today' : 'No students in this halaqah'}>{ins.length ? 'Mā shāʾ Allāh. Check Today for anything that needs attention.' : 'Add students to the halaqah under Classes.'}</Empty></Card>}
-    {waiting.length > 1 && <Card><h3 className="flex items-baseline gap-2 px-5 pt-4 font-bold">Next <span className="text-xs font-normal text-ink-faint">Drag ⋮⋮ to change the order</span></h3><ol ref={listRef} className="mt-2 divide-y divide-line">{waiting.slice(1).map((i, k) => <li key={i.student.id} className={cx('flex items-center gap-3 py-2.5 pl-2 pr-5 transition-colors', drag?.from === k && 'bg-pine-50', drag && drag.to === k && drag.from !== k && 'bg-brass-100/60')}>
+    {arrived.length > 0 && <div role="status" className="arrive-banner flex items-center gap-2.5 rounded-2xl bg-pine-700 px-4 py-3 font-bold text-white shadow-card"><span className="relative flex h-3 w-3"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" /><span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-300" /></span>{arrived.map(nameOf).join(', ')} just checked in</div>}
+    {waiting.length > 1 && <Card><h3 className="flex items-baseline gap-2 px-5 pt-4 font-bold">Next <span className="text-xs font-normal text-ink-faint">Drag ⋮⋮ to change the order</span></h3><ol ref={listRef} className="mt-2 divide-y divide-line">{waiting.slice(1).map((i, k) => <li key={i.student.id} className={cx('flex items-center gap-3 py-2.5 pl-2 pr-5 transition-colors', arrived.includes(i.student.id) && 'arrive-row', drag?.from === k && 'bg-pine-50', drag && drag.to === k && drag.from !== k && 'bg-brass-100/60')}>
       <span role="button" tabIndex={0} aria-label={`Move ${i.student.name}. Use arrow keys.`} className="grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-ink-faint hover:bg-black/5 active:cursor-grabbing"
         onPointerDown={e => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); setDrag({ from: k, to: k }); }}
         onPointerMove={e => { if (drag) setDrag({ ...drag, to: rowAt(e.clientY) }); }}
@@ -121,7 +132,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
         onKeyDown={e => { if (e.key === 'ArrowUp') { e.preventDefault(); move(k + 1, Math.max(0, k)); } if (e.key === 'ArrowDown') { e.preventDefault(); move(k + 1, Math.min(ids.length - 1, k + 2)); } }}><GripVertical size={18} /></span>
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black/[.05] text-xs font-bold">{k + 2}</span><span className="min-w-0 flex-1"><b>{i.student.name}</b><span className="block text-sm text-ink-faint">{i.nextNew ? formatRange(i.nextNew) : ''}{(() => { const t = lastTest(i.student.id); return t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''; })()}</span></span>
       <Button kind="quiet" className="min-h-[44px] px-2 text-sm" onClick={() => setRec(i.student.id)}>Record<ChevronRight size={14} /></Button></li>)}</ol></Card>}
-    {(done.length > 0 || absent.length > 0) && <div className="flex flex-wrap gap-1.5">{done.map(i => { const t = lastTest(i.student.id); return <Pill key={i.student.id} tone="green"><CheckCircle2 size={12} />{i.student.name}{t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''}</Pill>; })}{absent.map(i => <Pill key={i.student.id} tone="amber">{i.student.name} · absent</Pill>)}</div>}
+    {(done.length > 0 || absent.length > 0) && <div className="flex flex-wrap gap-1.5">{done.map(i => { const t = lastTest(i.student.id); return <Pill key={i.student.id} tone="green" className="pop"><CheckCircle2 size={12} />{i.student.name}{t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''}</Pill>; })}{absent.map(i => <Pill key={i.student.id} tone="amber">{i.student.name} · absent</Pill>)}</div>}
     {signOff && <SignOffModal s={signOff} who={data.students.find(x => x.id === signOff.studentId)?.name ?? ''} onClose={() => setSignOff(null)} onSaved={reload} />}
     {recIns && <RecordSheet key={recIns.student.id + firstType(recIns.student.id)} open onClose={() => setRec(null)} student={recIns.student} insight={recIns} sessions={data.sessions} initialType={firstType(recIns.student.id)} onSaved={reload} />}
   </div>;

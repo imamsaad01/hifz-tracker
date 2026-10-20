@@ -203,3 +203,8 @@ Anything it doesn't recognise goes to the AI only if switched on. To switch the 
 
 ## Speed
 Migration 0023 replaced per-row permission checks with two cached lists (`my_staff_orgs()`, `my_visible_students()`), cutting typical requests from 4–10 s to about 0.2 s.
+
+## Tarteel-style memorisation tools
+- **Recite** (Practise → Recite): the ayah starts hidden; the browser's free speech recognition listens and each word appears as it is said (green), skipped words show amber, with a Hint button. Matching lives in `src/lib/reciteMatch.ts` (tested). A practice aid only; the teacher still hears the lesson.
+- **Memorisation loop** in the muṣḥaf's Listen player: repeat each ayah ×N, the range ×M, at 0.75–1.5× speed, with the playing ayah highlighted on the page.
+- **Weak ayahs map**: past mistakes marked on the real muṣḥaf page (student Progress → Weak ayahs).
