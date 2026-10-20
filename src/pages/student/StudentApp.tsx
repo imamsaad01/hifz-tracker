@@ -16,6 +16,7 @@ import { niceDate, hijriDate, addDays } from '../../lib/dates';
 import { formatRange, pageRange } from '../../quran';
 import { RecallTestButton } from '../../components/RecallTest';
 import { MushafLink, rangeMarks, type Mark } from '../../components/Mushaf';
+import { LookalikeNote } from '../../components/Lookalike';
 import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel, goalPct } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
@@ -24,6 +25,7 @@ import { Button, Card, CardHead, Spinner, ErrorBox, Pill, cx, SubTabs } from '..
 import { Overview, History } from '../../components/StudentReport';
 import { Rings, StreakCalendar } from '../../components/ProgressViz';
 import { StudentPeriodReport } from '../../components/Reports';
+import { WhatIf } from '../../components/WhatIf';
 import { Row, LinkRow, Group } from '../../components/Rows';
 import { getTheme, getTextSize } from '../../lib/display';
 import { JuzMap } from '../../components/quran';
@@ -74,7 +76,7 @@ export function StudentApp({ tab }: { tab: string }) {
   const goals = data.goals.filter(g => g.studentId === me.id);
   const cl = classLabel(me.id, data.classes, data.members, org.name);
   const myClassIds = data.classes.filter(c => c.studentIds.includes(me.id)).map(c => c.id);
-  const plan = studentPlan(me, org.settings, today);
+  const plan = studentPlan(me, org.settings, today, [...new Set(data.classes.filter(c => c.studentIds.includes(me.id)).flatMap(c => c.slots.map(x => x.day)))]);
   const weekRev = weekSummary(sd.sessions.filter(s => s.studentId === me.id), today, revSchedule(org.settings.revision), ins.revision.perDay, recent.length > 0);
   const beh = data.behaviour.filter(b => b.studentId === me.id);
   const pts = points(sd.sessions, beh); const lvl = level(pts.total);
@@ -115,7 +117,7 @@ export function StudentApp({ tab }: { tab: string }) {
         { key: 'new', tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
           state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ring[0].due ? 'todo' : 'none',
           note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : !ring[0].due && ins.nextNew ? `New lessons are heard in your halaqah${nextLesson ? `, next on ${niceDate(nextLesson)}` : ''}. Learn it before then and submit it when it’s ready.` : 'Listen, learn it, test yourself, then tap “I memorised it”.',
-          action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /><MushafLink range={ins.nextNew} title="New lesson" marks={[...rangeMarks(ins.nextNew, 'lesson'), ...weakMarks]} /></div><AyahPlayer range={ins.nextNew} /></div>
+          action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /><MushafLink range={ins.nextNew} title="New lesson" marks={[...rangeMarks(ins.nextNew, 'lesson'), ...weakMarks]} /></div><LookalikeNote range={ins.nextNew} /><AyahPlayer range={ins.nextNew} /></div>
             : pendingNew ? <RecallTestButton studentId={me.id} range={pendingNew.range} label="Test yourself before class" /> : null },
         { key: 'recent', tip: 'recent', icon: <Repeat size={18} />, title: 'Recent revision', body: recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week',
           state: !recent.length ? 'none' : ring[1].done ? 'done' : 'todo',
@@ -182,6 +184,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, me.memorized)} />
       <Card className="divide-y divide-line overflow-hidden">
         {certs.length > 0 && <Row title="My certificates" value={`${certs.length}`}><div className="flex flex-wrap gap-2">{certs.map(c => <a key={c.code} href={href('certificate', me.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Row>}
+        {plan.goal && !plan.goal.done && <Row title="When will I finish?" value={plan.goal.eta ? new Date(plan.goal.eta).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : ''}><WhatIf student={me} remaining={plan.goal.remaining} baseWeeks={plan.goal.weeks} lessonsPerWeek={Math.max(1, lessonDays.length)} today={today} /></Row>}
         <Row title="My weekly and monthly report" value=""><StudentPeriodReport you student={me} ins={ins} sessions={sd.sessions} attendance={data.attendance} today={today} settings={org.settings} orgName={org.name} /></Row>
         <Row title="Leaderboard" value=""><Leaderboard /></Row>
         {myTests > 0 && <Row title="My juz tests" value={`${myTests}`}><ExamList exams={data.exams} students={data.students} fixedStudent={me.id} onChanged={reload} /></Row>}

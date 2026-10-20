@@ -14,7 +14,7 @@ export function PlanCard({ plan, you = true }: { plan: StudentPlan; you?: boolea
   const rows = [
     { icon: <BookOpen size={18} />, title: 'New lesson', tip: 'new' as const, text: `${plan.newText} each lesson`, sub: `Lesson days: ${days}` },
     { icon: <Repeat size={18} />, title: 'Recent revision', tip: 'recent' as const, text: `Everything learned in the last ${plan.recentDays} days`, sub: 'Read it every day so new lessons settle' },
-    { icon: <RotateCcw size={18} />, title: 'Old revision', tip: 'old' as const, text: plan.oldPerDay ? `${plan.oldPerDay} page${plan.oldPerDay > 1 ? 's' : ''} on ${days}` : 'Starts once a full page is memorised', sub: plan.cycleWeeks ? `${you ? 'You go' : 'Goes'} through everything memorised about every ${plan.cycleWeeks} week${plan.cycleWeeks > 1 ? 's' : ''}` : 'Weak pages come back sooner' },
+    { icon: <RotateCcw size={18} />, title: 'Old revision', tip: 'old' as const, text: plan.oldPerDay ? `${plan.oldPerDay} page${plan.oldPerDay > 1 ? 's' : ''}, ${plan.revWhen}` : 'Starts once a full page is memorised', sub: plan.cycleWeeks ? `${you ? 'You go' : 'Goes'} through everything memorised about every ${plan.cycleWeeks} week${plan.cycleWeeks > 1 ? 's' : ''}` : 'Weak pages come back sooner' },
   ];
   return <Card className="p-5">
     <h2 className="text-lg font-bold">{you ? 'Your plan' : 'Plan'}</h2>

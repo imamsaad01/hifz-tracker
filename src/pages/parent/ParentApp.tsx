@@ -80,7 +80,7 @@ export function ParentApp() {
       <details className="group rounded-2xl border border-line bg-white shadow-card">
         <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: plan, progress charts, badges, tests</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
         <div className="flex flex-col gap-5 border-t border-line p-4">
-      <PlanCard plan={studentPlan(child, org.settings, today)} you={false} />
+      <PlanCard plan={studentPlan(child, org.settings, today, [...new Set(data.classes.filter(c => c.studentIds.includes(child.id)).flatMap(c => c.slots.map(x => x.day)))])} you={false} />
       <div className="grid gap-5 xl:grid-cols-2"><Card className="p-5"><LevelBar total={pts.total} lvl={level(pts.total)} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card><AdabSummary points={beh} /></div>
       <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={data.goals.filter(g => g.studentId === child.id)} today={today} />
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, child.memorized)} />

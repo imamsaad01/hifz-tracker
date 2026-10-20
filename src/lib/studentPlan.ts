@@ -2,7 +2,7 @@
 import { lessonSize } from './suggest';
 import type { OrgSettings, Student } from './types';
 import type { ClassRow, Member } from '../api/data';
-import { juzRange, TOTAL_AYAHS, type Range } from '../quran';
+import { juzRange, TOTAL_AYAHS, type Range, pagesInRange } from '../quran';
 import { overlap, summary } from './progress';
 import { DAY_NAMES, pagesPerDay } from './revision';
 import { addDays } from './dates';
@@ -24,23 +24,27 @@ export function goalTarget(goal: string | null, direction: 'back' | 'forward'): 
 
 export interface StudentPlan {
   newPerDay: number; newText: string; classDays: string[]; recentDays: number; oldPerDay: number; oldPlan: 'cycle' | 'spaced';
-  cycleWeeks: number | null; goal: { label: string; remaining: number; weeks: number | null; eta: string | null; done: boolean } | null;
+  cycleWeeks: number | null; /** when Old revision happens, in words */ revWhen: string; goal: { label: string; remaining: number; weeks: number | null; eta: string | null; done: boolean } | null;
 }
-export function studentPlan(st: Student, s: OrgSettings, today: string): StudentPlan {
-  const days = s.revision.days?.length ? s.revision.days : [0, 1, 2, 3, 4, 5, 6];
+/** lessonDays: the student's halaqah day(s); new lessons are heard then. Without it, the revision days are used. */
+export function studentPlan(st: Student, s: OrgSettings, today: string, lessonDays?: number[]): StudentPlan {
+  const revDays = s.revision.days?.length ? s.revision.days : [0, 1, 2, 3, 4, 5, 6];
+  const days = lessonDays?.length ? lessonDays : revDays;
+  const revPerWeek = s.revision.perWeek ?? revDays.length;
   const mem = summary(st.memorized);
   const oldPerDay = pagesPerDay(s.revision, mem.pages, st.oldPages);
-  const cycleWeeks = s.revision.oldPlan === 'cycle' && oldPerDay ? Math.max(1, Math.ceil(mem.pages / oldPerDay / days.length)) : null;
+  const cycleWeeks = s.revision.oldPlan === 'cycle' && oldPerDay ? Math.max(1, Math.ceil(mem.pages / oldPerDay / revPerWeek)) : null;
   const gt = goalTarget(st.goal, st.direction);
   let goal: StudentPlan['goal'] = null;
   if (gt) {
     const total = gt.target.end - gt.target.start + 1;
     const remaining = Math.max(0, total - overlap(st.memorized, gt.target));
-    const perWeek = (st.newPages ? st.newPages * (6236 / 604) : st.dailyNewAyahs) * days.length; // a page holds ~10 ayahs on average
+    const perPage = total / Math.max(1, pagesInRange(gt.target).length);          // ayahs a page in this goal (short surahs have more)
+    const perWeek = (st.newPages ? st.newPages * perPage : st.dailyNewAyahs) * days.length;
     const weeks = remaining && perWeek ? Math.ceil(remaining / perWeek) : remaining ? null : 0;
     goal = { label: gt.label, remaining, weeks, eta: weeks ? addDays(today, weeks * 7) : null, done: remaining === 0 };
   }
-  return { newPerDay: st.dailyNewAyahs, newText: lessonSize(st), classDays: [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => DAY_NAMES[d]), recentDays: s.revision.recentDays, oldPerDay, oldPlan: s.revision.oldPlan, cycleWeeks, goal };
+  return { newPerDay: st.dailyNewAyahs, newText: lessonSize(st), classDays: [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => DAY_NAMES[d]), recentDays: s.revision.recentDays, revWhen: s.revision.perWeek ? `${s.revision.perWeek} times a week, any days` : revDays.length === 7 ? 'every day' : [...revDays].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => DAY_NAMES[d]).join(', '), oldPerDay, oldPlan: s.revision.oldPlan, cycleWeeks, goal };
 }
 
 /** "Weekday Hifz · Sh Saad" — the student's halaqah(s) and teacher; falls back to the program and its admin */

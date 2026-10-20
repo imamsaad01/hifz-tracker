@@ -21,6 +21,7 @@ import { NotifyToggle } from '../../components/Notifications';
 import { SubTabs } from '../../components/ui';
 import { PageTitle } from '../../components/Shell';
 import { Tile, Row } from '../../components/Rows';
+import { SetupChecklist } from '../../components/SetupChecklist';
 import { href, go } from '../../app/router';
 import { friendly } from '../../api/backend';
 
@@ -55,6 +56,7 @@ export function Today() {
         <button key={l} type="button" onClick={f} className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl bg-white px-1 text-[12px] font-bold text-ink-soft ring-1 ring-line hover:bg-pine-50"><I size={20} className="text-pine-700" />{l}</button>)}</div>
     </div>
     {announce && <AnnounceModal classes={data.classes} onClose={() => setAnnounce(false)} onSaved={reload} />}
+    <div className="mb-5 empty:hidden"><SetupChecklist data={data} /></div>
     <div className="mb-5 empty:hidden"><SetupCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="requests"><JoinRequestsCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="revision-check"><RevisionCheckCard data={data} onChanged={reload} /></div>

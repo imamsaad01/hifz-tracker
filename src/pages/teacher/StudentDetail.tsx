@@ -9,6 +9,7 @@ import { RevisionCheckCard, RevisionStartModal, startLabel } from '../../compone
 import { useMemo, useState } from 'react';
 import { Tile, Row } from '../../components/Rows';
 import { StudentPeriodReport } from '../../components/Reports';
+import { WhatIf } from '../../components/WhatIf';
 import { ArrowLeft, Plus, ClipboardList, Target, Pencil, Archive, KeyRound, RefreshCw, Award } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
@@ -56,7 +57,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
   const assignments = data.assignments.filter(a => a.studentId === id).sort((a, b) => b.dueOn.localeCompare(a.dueOn));
   const beh = data.behaviour.filter(b => b.studentId === id);
   const cl = classLabel(st.id, data.classes, data.members, org.name);
-  const plan = studentPlan(st, org.settings, today);
+  const plan = studentPlan(st, org.settings, today, [...new Set(data.classes.filter(c => c.studentIds.includes(st.id)).flatMap(c => c.slots.map(x => x.day)))]);
   const pts = points(sd.sessions, beh); const lvl = level(pts.total);
   const certs = certificatesFor(st, sd.milestones);
   return <>
@@ -90,6 +91,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
           return <Row title="Revision this week" value={w.target ? `${w.oldPages}/${w.target} Old pages` : `${w.oldPages} pages`} tone={w.target && w.percent >= 1 ? 'good' : w.missedDays ? 'warn' : undefined}>
             <WeeklyRevisionCard w={w} you={false} /><Card className="p-5"><h3 className="mb-2 font-bold">Confirmed by partners</h3><RevisionReadOnly sessions={sd.sessions} studentId={st.id} names={id => (data.students.find(x => x.id === id)?.name ?? 'partner').split(' ')[0]} /></Card></Row>; })()}
         {(() => { const n = weakAyahs(sd.sessions, st.id, today).length; return <Row title="Weak ayahs" value={n ? `${n}` : 'None'} tone={n ? 'warn' : 'good'}>{n ? <WeakAyahsCard sessions={sd.sessions} studentId={st.id} you={false} /> : <p className="text-sm text-ink-faint">No mistakes marked in the last 60 days.</p>}</Row>; })()}
+        {plan.goal && !plan.goal.done && <Row title="Finish date: what if" value={plan.goal.eta ? new Date(plan.goal.eta).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : ''}><WhatIf you={false} student={st} remaining={plan.goal.remaining} baseWeeks={plan.goal.weeks} lessonsPerWeek={Math.max(1, new Set(data.classes.filter(c => c.studentIds.includes(st.id)).flatMap(c => c.slots.map(x => x.day))).size)} today={today} /></Row>}
         <Row title="Plan, juz map and charts" value={`${ins.progress.juz} juz`}><PlanCard plan={plan} you={false} /><Overview noStats ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={goals} today={today} settings={org.settings} onDeleteGoal={async g => { try { await api.deleteGoal(g.id); toast('Goal removed.'); reload(); } catch (e) { toast(friendly(e), 'err'); } }} /></Row>
         <Row title="Qirāʾāt" value=""><QiraatTeacherPanel student={st} data={data} onChanged={reload} /></Row>
         <Row title="Attendance and revision forms" value={ins.attendanceRate30 === null ? '' : `${Math.round(ins.attendanceRate30 * 100)}%`}><StandingCard studentId={st.id} you={false} revisionMissed={missedLastWeek(st.id, data.revisionForms, org.settings.revisionForm.slots, today)} /><RevisionFormCard student={st} forms={data.revisionForms} readOnly onChanged={reload} /></Row>
