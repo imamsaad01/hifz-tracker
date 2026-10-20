@@ -22,8 +22,8 @@ export const MILESTONE_LABEL: Record<string, string> = {
 };
 const pagesText = (items: RevisionItem[]) => (items.length === 1 ? 'page ' : 'pages ') + groupPages(items.map(i => i.page).sort((a, b) => a - b)).map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`)).join(', ');
 
-export function Overview({ ins, sessions, milestones, goals, today, onDeleteGoal }: {
-  ins: StudentInsight; sessions: Session[]; milestones: Milestone[]; goals: Goal[]; today: string; settings?: OrgSettings; onDeleteGoal?: (g: Goal) => void;
+export function Overview({ ins, sessions, milestones, goals, today, onDeleteGoal, noStats }: {
+  ins: StudentInsight; sessions: Session[]; milestones: Milestone[]; goals: Goal[]; today: string; settings?: OrgSettings; onDeleteGoal?: (g: Goal) => void; noStats?: boolean;
 }) {
   const st = ins.student;
   const juzDone = juzProgress(st.memorized).filter(x => x >= 1).length;
@@ -31,12 +31,12 @@ export function Overview({ ins, sessions, milestones, goals, today, onDeleteGoal
   const cats = useMemo(() => { const m = new Map<string, number>(); sessions.filter(s => s.date >= addDays(today, -30)).forEach(s => s.errors.forEach(e => m.set(e.category, (m.get(e.category) ?? 0) + 1))); return [...m.entries()].sort((a, b) => b[1] - a[1]); }, [sessions, today]);
   const catMax = Math.max(1, ...cats.map(c => c[1]));
   return <div className="flex flex-col gap-5">
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    {!noStats && <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <Stat label="Memorised" value={`${(ins.progress.percent * 100).toFixed(1)}%`} sub={`${ins.progress.pages} pages · ${ins.progress.juz} juz`} />
       <Stat label="Streak" value={`${ins.streak} day${ins.streak === 1 ? '' : 's'}`} sub={`Best: ${ins.longest}`} />
       <Stat label="Accuracy (30 days)" value={ins.avgAccuracy30 === null ? '—' : `${ins.avgAccuracy30}%`} sub="from errors per page" />
       <Stat label="Attendance (30 days)" value={ins.attendanceRate30 === null ? '—' : `${Math.round(ins.attendanceRate30 * 100)}%`} sub={`${ins.newAyahs7} new ayahs this week`} />
-    </div>
+    </div>}
     <div className="grid gap-5 xl:grid-cols-2">
       <Card><CardHead title="Revision today" sub={`${ins.revision.perDay} page${ins.revision.perDay === 1 ? '' : 's'} per revision day · ${ins.revision.cycleDays ? 'weak pages first, then in turn' : 'most overdue first'}`} />
         <div className="flex flex-col gap-3 px-5 py-4 text-[15px]">
