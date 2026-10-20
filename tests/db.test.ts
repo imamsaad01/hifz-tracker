@@ -273,7 +273,8 @@ describe('check-in, absences and standing', () => {
     await as(U.teacher, 'insert into public.class_students (class_id, student_id, org_id) values ($1, $2, $3), ($1, $4, $3)', [cls, studentS, orgA, child]);
     // a slot that is happening right now (org time), so the test does not depend on the clock
     await as(null, `update public.classes set schedule_slots = jsonb_build_array(jsonb_build_object('day', extract(dow from public.org_local_now(org_id))::int,
-      'start', to_char(public.org_local_now(org_id)::time - interval '30 minutes', 'HH24:MI'), 'end', to_char(public.org_local_now(org_id)::time + interval '60 minutes', 'HH24:MI'))) where id = $1`, [cls]);
+      'start', case when public.org_local_now(org_id)::time < time '00:31' then '00:00' else to_char(public.org_local_now(org_id)::time - interval '30 minutes', 'HH24:MI') end,
+      'end', case when public.org_local_now(org_id)::time > time '22:58' then '23:59' else to_char(public.org_local_now(org_id)::time + interval '60 minutes', 'HH24:MI') end)) where id = $1`, [cls]);
     await as(null, 'delete from public.attendance where student_id in ($1, $2) and date = public.org_today($3)', [studentS, child, orgA]);   // earlier tests recorded today
   });
   it('needs today\'s code, marks late after the grace period, and hides the code from students', async () => {

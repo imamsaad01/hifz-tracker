@@ -86,25 +86,15 @@ export function StudentApp({ tab }: { tab: string }) {
     {tab === 'home' && <>
       <PageTitle title={`Assalamu alaikum, ${me.name.split(' ')[0]}`} sub={<>{niceDate(today)} · {hijriDate(today)}</>} />
       <div className="mb-5" data-tour="halaqah"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
+      {/* 1. things that need doing now */}
       {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
-      <div className="mb-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} fresh /></div>
+      {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
       <div className="mb-5 empty:hidden" data-tour="partner"><PartnerRequestsCard /></div>
-      <div className="mb-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
-      <div className="mb-5 empty:hidden"><WeakAyahsCard sessions={sd.sessions} studentId={me.id} /></div>
-      <div className="mb-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
-      {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
-      <div className="mb-5" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
-      <div className="mb-5 empty:hidden" data-tour="notify"><NotifyToggle /></div>
+      <div className="mb-5 empty:hidden" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
+      <div className="mb-5 empty:hidden" data-tour="notify"><NotifyToggle compact /></div>
+      <div className="mb-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={2} fresh /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
-      <div className="mb-5 grid gap-5 lg:grid-cols-2">
-        <Card className="p-5"><h2 className="mb-3 text-lg font-bold">Today</h2><DailyRing parts={ring} /></Card>
-        <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
-      </div>
-      {(events.length > 0 || tests.length > 0) && <Card className="mb-5"><CardHead title={<span className="inline-flex items-center gap-2"><CalendarDays size={18} className="text-pine-700" />Coming up</span>} />
-        <ul className="mt-2 divide-y divide-line">{tests.map(x => <li key={x.id} className="px-5 py-2.5"><b>{x.title}</b> <span className="text-ink-faint">· {niceDate(x.scheduledOn)}{x.examiner ? ` · with ${x.examiner}` : ''}</span></li>)}
-          {events.map(e => <li key={e.id} className="flex items-center gap-2 px-5 py-2.5"><i className={`h-2.5 w-2.5 rounded-full ${KIND[e.kind][1]}`} /><b>{e.title}</b><span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}</ul></Card>}
-      <div className="mb-5"><RevisionFormCard student={me} forms={data.revisionForms} onChanged={reload} /></div>
-      <div className="mb-5"><StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} /></div>
+      {/* 2. today's reading */}
       <h2 className="mb-3 text-lg font-bold">Today’s plan <span className="text-sm font-normal text-ink-faint">· what to read today</span></h2>
       <div className="grid gap-4 lg:grid-cols-3" data-tour="today-plan">
         <PlanTile tip="new" icon={<BookOpen size={20} />} title="New lesson" body={pendingNew ? formatRange(pendingNew.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised'}
@@ -115,11 +105,31 @@ export function StudentApp({ tab }: { tab: string }) {
           note={!ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first.' : `${ins.revision.perDay} pages each revision day, in turn.`}
           action={ins.revision.isRevisionDay && ins.revision.today.length ? <Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button> : null} />
       </div>
+      {/* 3. this week */}
+      <div className="mt-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
       <div className="mt-5" data-tour="revision-log"><MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /></div>
       {startOpen && <RevisionStartModal student={me} onClose={() => setStartOpen(false)} onSaved={refresh} />}
-      <Card className="mt-5"><CardHead title="Assignments" sub="Mark them done; your teacher reviews them" /><AssignmentList items={ins.openAssignments.concat(data.assignments.filter(a => a.studentId === me.id && a.status === 'completed'))} asStudent onChanged={reload} /></Card>
-      <div className="mt-5"><Leaderboard limit={5} compact /></div>
-      {ins.lastSession && <Card className="mt-5 p-5"><p className="text-xs font-bold uppercase text-ink-faint">Last session · {niceDate(ins.lastSession.date)}</p><p className="mt-1">{formatRange(ins.lastSession.range)} · {ins.lastSession.errorsMajor + ins.lastSession.errorsMinor} errors</p>{ins.lastSession.teacherNote && <p className="mt-1 text-pine-800"><b>Teacher:</b> {ins.lastSession.teacherNote}</p>}</Card>}
+      <div className="mt-5 empty:hidden"><WeakAyahsCard sessions={sd.sessions} studentId={me.id} /></div>
+      <div className="mt-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
+      {ins.openAssignments.length > 0 && <Card className="mt-5"><CardHead title="Assignments" sub="Mark them done; your teacher reviews them" /><AssignmentList items={ins.openAssignments} asStudent onChanged={reload} /></Card>}
+      <div className="mt-5 empty:hidden">{(events.length > 0 || tests.length > 0) && <Card className=""><CardHead title={<span className="inline-flex items-center gap-2"><CalendarDays size={18} className="text-pine-700" />Coming up</span>} />
+        <ul className="mt-2 divide-y divide-line">{tests.map(x => <li key={x.id} className="px-5 py-2.5"><b>{x.title}</b> <span className="text-ink-faint">· {niceDate(x.scheduledOn)}{x.examiner ? ` · with ${x.examiner}` : ''}</span></li>)}
+          {events.map(e => <li key={e.id} className="flex items-center gap-2 px-5 py-2.5"><i className={`h-2.5 w-2.5 rounded-full ${KIND[e.kind][1]}`} /><b>{e.title}</b><span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}</ul></Card>}</div>
+      {/* 4. everything else, folded away */}
+      <details className="group mt-5 rounded-2xl border border-line bg-white shadow-card">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: streak, standing, partner form, leaderboard</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
+        <div className="flex flex-col gap-5 border-t border-line p-4">
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Card className="p-5"><h2 className="mb-3 text-lg font-bold">Today</h2><DailyRing parts={ring} /></Card>
+            <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
+          </div>
+          <StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
+          <RevisionFormCard student={me} forms={data.revisionForms} onChanged={reload} />
+          {data.assignments.some(a => a.studentId === me.id && a.status === 'completed') && <Card><CardHead title="Finished assignments" /><AssignmentList items={data.assignments.filter(a => a.studentId === me.id && a.status === 'completed')} asStudent onChanged={reload} /></Card>}
+          <Leaderboard limit={5} compact />
+          {ins.lastSession && <Card className="p-5"><p className="text-xs font-bold uppercase text-ink-faint">Last session · {niceDate(ins.lastSession.date)}</p><p className="mt-1">{formatRange(ins.lastSession.range)} · {ins.lastSession.errorsMajor + ins.lastSession.errorsMinor} errors</p>{ins.lastSession.teacherNote && <p className="mt-1 text-pine-800"><b>Teacher:</b> {ins.lastSession.teacherNote}</p>}</Card>}
+        </div>
+      </details>
     </>}
     {tab === 'progress' && <div className="flex flex-col gap-5">
       <PageTitle title="My progress" />
@@ -147,7 +157,7 @@ export function StudentApp({ tab }: { tab: string }) {
         <p><b>Parent:</b> {me.guardianName || '—'} {me.guardianEmail && <span className="text-ink-faint">({me.guardianEmail}{me.notify ? ', gets emails' : ''})</span>}</p>
       </Card>
       <Card className="mt-4 flex items-start gap-3 p-5"><KeyRound size={18} className="mt-1 text-ink-faint" /><p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span><br /><span className="text-sm text-ink-faint">Give this to a parent. They create an account and enter it to follow your progress. They cannot change anything.</span></p></Card>
-      <div className="mt-4"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>
+      <div className="mt-4"><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>
       <div className="mt-4"><NotifyToggle /></div>
       <Button kind="secondary" className="mt-4" onClick={startTour}><Sparkles size={16} />Take the app tour again</Button>
       <p className="mt-4 text-sm text-ink-faint">Only your teachers, you and linked parents can see your records.</p>

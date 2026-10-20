@@ -30,7 +30,7 @@ export function AyahMistakePicker({ start, end, value, onChange }: { start: numb
   </div>;
 }
 
-type Req = { session_id: string; student_name: string; type: string; start_ayah_id: number; end_ayah_id: number; date: string; student_note: string | null };
+type Req = { session_id: string; student_name: string; type: string; start_ayah_id: number; end_ayah_id: number; date: string | Date; student_note: string | null };
 const TYPE: Record<string, string> = { old: 'Old revision', recent: 'Recent revision', juz_revision: 'Full juz revision', review: 'Review' };
 
 /** Student home: classmates' revision waiting for me to confirm */
@@ -43,7 +43,7 @@ export function PartnerRequestsCard() {
   return <Card className="ring-2 ring-brass-500/60">
     <CardHead title={<span className="inline-flex items-center gap-2"><Users size={18} className="text-brass-500" />Confirm your partner’s revision<InfoTip k="partner" /></span>} sub="You listened to them. Note any mistakes, then confirm." />
     <ul className="mt-2 divide-y divide-line">{rows.map(r => <li key={r.session_id} className="flex flex-wrap items-center gap-2 px-5 py-3">
-      <span className="min-w-0 basis-full sm:basis-0 sm:flex-1"><b>{r.student_name}</b> · {TYPE[r.type] ?? r.type}<span className="block text-sm text-ink-soft">{formatRange({ start: r.start_ayah_id, end: r.end_ayah_id })} · {niceDate(String(r.date).slice(0, 10))}</span></span>
+      <span className="min-w-0 basis-full sm:basis-0 sm:flex-1"><b>{r.student_name}</b> · {TYPE[r.type] ?? r.type}<span className="block text-sm text-ink-soft">{formatRange({ start: r.start_ayah_id, end: r.end_ayah_id })} · {niceDate(r.date instanceof Date ? r.date.toISOString().slice(0, 10) : String(r.date).slice(0, 10))}</span></span>
       <Button className="min-h-[40px]" onClick={() => setOpen(r)}><Check size={16} />Confirm</Button></li>)}</ul>
     {open && <PartnerConfirmModal r={open} onClose={() => setOpen(null)} onSaved={load} />}
   </Card>;

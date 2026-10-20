@@ -154,3 +154,10 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **Revision consistency board**: share of revision days with Old revision logged over 4 weeks, next to the points board.
 - **Juzʾ tests**: finishing a juzʾ through lessons books a juzʾ test a week later (once per juzʾ) and tells the teacher.
 - **Weekly reports**: parents on Sunday at 6 pm (revision pages, new lessons, attendance, latest teacher note; also a card on the parent screen); teachers on Monday at 8 am (missed revision days, lessons to sign off, partner checks pending). `public.weekly_reports()` runs in the `hifz-reminders` cron job.
+
+## Audit fixes (Oct 2026)
+
+- Class expectations now default to the program's Hifdh Class Expectations (they were empty, so no student was ever asked to agree).
+- Student Today reordered: things to do now → Today's plan → this week → extras folded under "More". Parent page folds charts under "More". Class expectations show as a one-line "Read & agree" card.
+- Teacher Today: *Getting everyone set up* (not in a halaqah with quick add, notifications off, expectations not agreed, no parent linked) with copyable WhatsApp messages (`public.setup_status`).
+- Hardened search_path on small SQL helpers (Supabase advisor).

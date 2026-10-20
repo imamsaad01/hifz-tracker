@@ -75,15 +75,20 @@ export function ParentApp() {
       <RevisionFormCard student={child} forms={data.revisionForms} readOnly onChanged={reload} />
       <div className="empty:hidden" data-tour="qiraat"><QiraatStudentCard student={child} data={data} onChanged={reload} readOnly /></div>
       <div data-tour="revision-log"><MyRevisionLog studentId={child.id} sessions={sd.sessions} start={startLabel(child)} /></div>
+      {ins.openAssignments.length > 0 && <Card><h2 className="px-5 pt-4 font-bold">Assignments</h2><AssignmentList items={ins.openAssignments} onChanged={reload} /></Card>}
+      <details className="group rounded-2xl border border-line bg-white shadow-card">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: plan, progress charts, badges, tests</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
+        <div className="flex flex-col gap-5 border-t border-line p-4">
       <PlanCard plan={studentPlan(child, org.settings, today)} you={false} />
       <div className="grid gap-5 xl:grid-cols-2"><Card className="p-5"><LevelBar total={pts.total} lvl={level(pts.total)} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card><AdabSummary points={beh} /></div>
       <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={data.goals.filter(g => g.studentId === child.id)} today={today} />
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, child.memorized)} />
       {certs.length > 0 && <Card><CardHead title="Certificates" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', child.id, c.code)} className="inline-flex min-h-[40px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Card>}
       {data.exams.some(x => x.studentId === child.id) && <div><h2 className="mb-2 font-bold">Juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={child.id} onChanged={reload} /></div>}
-      <Card><h2 className="px-5 pt-4 font-bold">Assignments</h2><AssignmentList items={ins.openAssignments} onChanged={reload} /></Card>
-      <Leaderboard limit={5} compact />
-      <RulesCard text={org.settings.rulesText} ackAt={null} />
+          <Leaderboard limit={5} compact />
+        </div>
+      </details>
+      <RulesCard compact text={org.settings.rulesText} ackAt={null} />
     </div>}
     {absent && <AbsenceForm student={child} classes={data.classes} absences={data.absences} onClose={() => setAbsent(false)} onSaved={reload} />}
     {tab === 'history' && <History student={child} sessions={sd.sessions} today={today} settings={org.settings} />}

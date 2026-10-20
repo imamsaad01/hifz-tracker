@@ -1,3 +1,4 @@
+import { DEFAULT_RULES } from './rules';
 // Domain types shared by the app. Database rows are mapped to these in src/api.
 import type { Range } from '../quran';
 
@@ -70,7 +71,7 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   fees: { monthly: null, currency: 'USD' },
   attendance: { semesterStart: null, semesterEnd: null, freeAbsences: 1, excusedAbsences: 2 },
   revisionForm: { slots: [{ key: 'after_lesson', label: 'After the lesson at the mosque', day: null }, { key: 'wed', label: 'Wednesday night', day: 3 }, { key: 'fri', label: 'Friday night', day: 5 }], allowedMisses: 1 },
-  rulesText: '',
+  rulesText: DEFAULT_RULES,
   reports: { parentWeekly: true, teacherWeekly: true },
   qiraat: { testEveTime: '18:00', testMorningTime: '08:00', matnTime: '07:30', weakDay: 5, weakTime: '17:00' },
 };

@@ -1,5 +1,6 @@
 // "Who needs my attention today?" — the teacher's home, with one-tap recording.
 import { JoinRequestsCard } from '../../components/HalaqahJoin';
+import { SetupCard } from '../../components/SetupCard';
 import { QiraatTestsDue } from '../../components/Qiraat';
 import { RevisionCheckCard } from '../../components/RevisionSelf';
 import { useMemo, useState } from 'react';
@@ -49,6 +50,7 @@ export function Today() {
 
   return <>
     <PageTitle title="Today" sub={<>{niceDate(today)} · {hijriDate(today)}</>} action={<div className="flex flex-wrap gap-2" data-tour="today-actions"><Button onClick={() => go('classes', 'live')}><Radio size={18} />Live class</Button><Button kind="secondary" onClick={() => setPick(true)}><Plus size={18} />Record</Button><Button kind="secondary" onClick={() => go('assignments', 'new')}><ClipboardList size={18} />Assign</Button><Button kind="secondary" onClick={() => go('students', 'new')}><UserPlus size={18} />Add student</Button></div>} />
+    <div className="mb-5 empty:hidden"><SetupCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="requests"><JoinRequestsCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="revision-check"><RevisionCheckCard data={data} onChanged={reload} /></div>
     <div className="mb-5 empty:hidden" data-tour="qiraat-due"><QiraatTestsDue data={data} onOpenStudent={id => go('students', id)} /></div>
