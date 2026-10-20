@@ -1,5 +1,7 @@
 // Live class: the halaqah's queue for today. One tap opens the record sheet; when saved, the next student is up.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { RecallResult } from '../../api/data';
+import { useRefresh } from '../../components/PullToRefresh';
 import { Play, CheckCircle2, UserX, ChevronRight, ClipboardCheck, GripVertical, Clock3 } from 'lucide-react';
 import { RevisionReadOnly, weakAyahs } from '../../components/PartnerRevision';
 import { SignOffModal } from '../../components/RevisionSelf';
@@ -16,11 +18,17 @@ import { CheckinCode } from './AttendancePage';
 import { nowIn } from '../../lib/schedule';
 import type { Session, SessionType } from '../../lib/types';
 
+const niceAgo = (iso: string) => { const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 60 ? `${Math.max(1, m)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
+
 export function LiveClass({ data, reload }: { data: OrgData; reload: () => void }) {
   const { org, today, api, user } = useOrg(); const toast = useToast();
   const mine = data.classes.find(c => c.teacherUserId === user?.id);
   const [cls, setCls] = useState(mine?.id ?? data.classes[0]?.id ?? 'all');
   const [rec, setRec] = useState<string | null>(null);
+  const [tests, setTests] = useState<RecallResult[]>([]);
+  const loadTests = useCallback(() => api.recallTests(org.id, new Date(Date.now() - 7 * 864e5).toISOString()).then(setTests).catch(e => console.error('recall tests', e)), [api, org.id]);
+  useEffect(() => { loadTests(); }, [loadTests]); useRefresh(loadTests);
+  const lastTest = (sid: string) => tests.find(t => t.studentId === sid);
   const firstType = (_sid: string): SessionType => 'new'; // revision is confirmed by partners; the teacher hears the new lesson
   const students = data.students.filter(s => cls === 'all' || data.classes.find(c => c.id === cls)?.studentIds.includes(s.id));
   const ins = useMemo(() => students.map(s => insight(s, data.sessions, data.revision.get(s.id) ?? [], data.assignments, data.attendance, org.settings, today)), [students, data, org.settings, today]);
@@ -71,6 +79,9 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
         <div><p className="mb-1.5 flex flex-wrap items-center gap-2 text-sm font-bold text-pine-800">1. Their revision this week <span className="font-normal text-ink-faint">(confirmed by partners)</span>{(() => { const w = weekSummary(data.sessions.filter(x => x.studentId === current.student.id), today, days, current.revision.perDay, false); return w.target ? <Pill tone={w.percent >= 1 ? 'green' : w.missedDays ? 'amber' : 'slate'}>{w.oldPages}/{w.target} Old pages</Pill> : null; })()}</p>
           <RevisionReadOnly sessions={data.sessions} studentId={current.student.id} names={nameOf} />
           {(() => { const wa = weakAyahs(data.sessions, current.student.id, today).slice(0, 8); return wa.length ? <p className="mt-1.5 text-sm text-warn"><b>Weak ayahs:</b> {wa.map(w => { const a = fromAyahId(w.ayahId); return `${surahNameEn(a.surah)} ${a.ayah}`; }).join(' · ')}</p> : null; })()}</div>
+        {(() => { const t = lastTest(current.student.id); if (!t) return null; const pct = Math.round(((t.total - t.peeked.length) / t.total) * 100);
+          return <div><p className="mb-1 flex flex-wrap items-center gap-2 text-sm font-bold text-pine-800">Self-test <Pill tone={pct >= 90 ? 'green' : pct >= 70 ? 'amber' : 'red'}>{pct}% from memory</Pill><span className="font-normal text-ink-faint">{formatRange({ start: t.start, end: t.end })} · {niceAgo(t.createdAt)}</span></p>
+            {t.peeked.length > 0 && <p className="text-sm text-warn"><b>Peeked at:</b> {t.peeked.map(a => { const x = fromAyahId(a); return `${surahNameEn(x.surah)} ${x.ayah}`; }).join(' · ')}</p>}</div>; })()}
         <div><p className="mb-1 text-sm font-bold text-pine-800">2. New lesson</p>
           {pendingNew(current.student.id) ? <p className="text-[15px]">Submitted: <b>{formatRange(pendingNew(current.student.id)!.range)}</b>{pendingNew(current.student.id)!.studentNote ? <span className="text-ink-faint"> · “{pendingNew(current.student.id)!.studentNote}”</span> : null}</p>
             : <p className="text-[15px]"><b>{current.nextNew ? formatRange(current.nextNew) : 'all memorised'}</b></p>}</div>
@@ -86,9 +97,9 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
         onPointerUp={() => { if (drag) move(drag.from + 1, drag.to + 1); setDrag(null); }}
         onPointerCancel={() => setDrag(null)}
         onKeyDown={e => { if (e.key === 'ArrowUp') { e.preventDefault(); move(k + 1, Math.max(0, k)); } if (e.key === 'ArrowDown') { e.preventDefault(); move(k + 1, Math.min(ids.length - 1, k + 2)); } }}><GripVertical size={18} /></span>
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black/[.05] text-xs font-bold">{k + 2}</span><span className="min-w-0 flex-1"><b>{i.student.name}</b><span className="block text-sm text-ink-faint">{i.nextNew ? formatRange(i.nextNew) : ''}</span></span>
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black/[.05] text-xs font-bold">{k + 2}</span><span className="min-w-0 flex-1"><b>{i.student.name}</b><span className="block text-sm text-ink-faint">{i.nextNew ? formatRange(i.nextNew) : ''}{(() => { const t = lastTest(i.student.id); return t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''; })()}</span></span>
       <Button kind="quiet" className="min-h-[36px] px-2 text-sm" onClick={() => setRec(i.student.id)}>Record<ChevronRight size={14} /></Button></li>)}</ol></Card>}
-    {(done.length > 0 || absent.length > 0) && <div className="flex flex-wrap gap-1.5">{done.map(i => <Pill key={i.student.id} tone="green"><CheckCircle2 size={12} />{i.student.name}</Pill>)}{absent.map(i => <Pill key={i.student.id} tone="amber">{i.student.name} · absent</Pill>)}</div>}
+    {(done.length > 0 || absent.length > 0) && <div className="flex flex-wrap gap-1.5">{done.map(i => { const t = lastTest(i.student.id); return <Pill key={i.student.id} tone="green"><CheckCircle2 size={12} />{i.student.name}{t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''}</Pill>; })}{absent.map(i => <Pill key={i.student.id} tone="amber">{i.student.name} · absent</Pill>)}</div>}
     {signOff && <SignOffModal s={signOff} who={data.students.find(x => x.id === signOff.studentId)?.name ?? ''} onClose={() => setSignOff(null)} onSaved={reload} />}
     {recIns && <RecordSheet key={recIns.student.id + firstType(recIns.student.id)} open onClose={() => setRec(null)} student={recIns.student} insight={recIns} sessions={data.sessions} initialType={firstType(recIns.student.id)} onSaved={reload} />}
   </div>;

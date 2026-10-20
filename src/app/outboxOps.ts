@@ -4,6 +4,7 @@ type P = Record<string, unknown>;
 export async function sendPending(api: Api, p: P): Promise<void> {
   switch (p.__op) {
     case 'submitLesson': await api.submitLesson(p.args as Parameters<Api['submitLesson']>[0]); return;
+    case 'saveRecall': await api.saveRecall(p.args as Parameters<Api['saveRecall']>[0]); return;
     case 'partnerConfirm': await api.partnerConfirm(p.sessionId as string, p.args as Parameters<Api['partnerConfirm']>[1]); return;
     default: {
       const { __partner, __op, ...rec } = p; void __op;

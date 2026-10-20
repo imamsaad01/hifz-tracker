@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql', 'migrations/0018_partner_reports.sql', 'migrations/0019_setup_status.sql', 'migrations/0020_my_notifications.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql', 'migrations/0018_partner_reports.sql', 'migrations/0019_setup_status.sql', 'migrations/0020_my_notifications.sql', 'migrations/0021_recall_tests.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -510,5 +510,19 @@ describe('revision partners, weak ayahs, juz tests, reports', () => {
     const rows = await as<{ student_id: string; days_due: number; days_done: number }>(U.teacher, `select * from public.revision_consistency($1, 4)`, [orgA]);
     expect(rows.find(r => r.student_id === studentS)!.days_done).toBeGreaterThanOrEqual(1);
     expect((await one<{ n: number }>(null, `select public.weekly_reports() as n`))!.n).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('test yourself results', () => {
+  it('only the student saves their result; the teacher can read it; bad input is refused', async () => {
+    const p = { student_id: studentS, start_ayah_id: 5673, end_ayah_id: 5682, total: 10, peeked: [5675, 5680] };
+    await one(U.student, `select public.save_recall_test($1::jsonb)`, [JSON.stringify(p)]);
+    await rejects(U.otherStudent, `select public.save_recall_test($1::jsonb)`, [JSON.stringify(p)]);
+    await rejects(U.teacher, `select public.save_recall_test($1::jsonb)`, [JSON.stringify(p)]);
+    await rejects(U.student, `select public.save_recall_test($1::jsonb)`, [JSON.stringify({ ...p, peeked: [1] })]);   // outside the range
+    await rejects(U.student, `insert into public.recall_tests (org_id, student_id, start_ayah_id, end_ayah_id, total) values ($1, $2, 1, 2, 2)`, [orgA, studentS]);
+    const r = await one<{ peeked: number[]; total: number }>(U.teacher, `select peeked, total from public.recall_tests where student_id = $1 order by created_at desc limit 1`, [studentS]);
+    expect(r!.total).toBe(10); expect(r!.peeked.map(Number).sort()).toEqual([5675, 5680]);
+    expect(await as(U.otherAdmin, `select * from public.recall_tests where student_id = $1`, [studentS])).toHaveLength(0);
   });
 });

@@ -6,6 +6,7 @@ import type { Range } from '../quran';
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
+export type RecallResult = { id: string; studentId: string; start: number; end: number; total: number; peeked: number[]; createdAt: string };
 export interface Membership { orgId: string; role: Role; extraRoles: Role[]; displayName: string | null }
 export interface Member { userId: string; role: Role; extraRoles: Role[]; displayName: string | null; createdAt: string }
 export interface Slot { day: number; start: string; end: string }
@@ -205,6 +206,12 @@ export function api(be: Backend) {
     consistency: (orgId: string, weeks: number) => be.rpc<Array<{ student_id: string; display_name: string; days_due: number; days_done: number; partner_checked: number; is_me: boolean }>>('revision_consistency', { org: orgId, p_weeks: weeks }),
     signOff: (id: string, p: { status: 'ok' | 'redo'; errorsMajor: number; errorsMinor: number; note: string }) =>
       be.rpc<null>('sign_off_session', { p_id: id, p: { status: p.status, errors_major: p.errorsMajor, errors_minor: p.errorsMinor, note: p.note } }),
+    saveRecall: (p: { studentId: string; start: number; end: number; total: number; peeked: number[] }) =>
+      be.rpc<string>('save_recall_test', { p: { student_id: p.studentId, start_ayah_id: p.start, end_ayah_id: p.end, total: p.total, peeked: p.peeked } }),
+    async recallTests(orgId: string, since: string): Promise<RecallResult[]> {
+      return (await sel<Row>({ table: 'recall_tests', where: [{ op: 'eq', col: 'org_id', value: orgId }, { op: 'gte', col: 'created_at', value: since }], order: [['created_at', 'desc']], limit: 2000 }))
+        .map(r => ({ id: r.id, studentId: r.student_id, start: Number(r.start_ayah_id), end: Number(r.end_ayah_id), total: Number(r.total), peeked: ((r.peeked ?? []) as unknown[]).map(Number), createdAt: ts(r.created_at) }));
+    },
     submitLesson: (p: { studentId: string; start: number; end: number; note: string }) =>
       be.rpc<string>('submit_lesson', { p: { student_id: p.studentId, start_ayah_id: p.start, end_ayah_id: p.end, student_note: p.note } }),
     checkSessions: (ids: string[], status: 'ok' | 'redo', note?: string) => be.rpc<number>('check_sessions', { p_ids: ids, p_status: status, p_note: note ?? null }),
