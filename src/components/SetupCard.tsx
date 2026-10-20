@@ -22,15 +22,12 @@ export function SetupCard({ data, onChanged }: { data: OrgData; onChanged: () =>
   const noClass = data.students.filter(s => !data.classes.some(c => c.studentIds.includes(s.id)));
   const noNotif = students.filter(s => status.get(s.id) && !status.get(s.id)!.notifications);
   const noRules = students.filter(s => !s.rulesAckAt);
-  const noParent = data.students.filter(s => status.get(s.id) && status.get(s.id)!.parents === 0);
   const rows = [
     { key: 'class', n: noClass.length, title: 'Not in a halaqah', who: noClass, hint: 'Add them here, or they can tap “Request to join” on their home screen.' },
     { key: 'notif', n: noNotif.length, title: 'Notifications off', who: noNotif, hint: 'They miss check-in, revision and partner reminders.',
       msg: `Assalamu alaikum! Please turn on notifications in the Hifz app so you get class and revision reminders:\n1. Open ${APP}\n2. iPhone: tap Share → Add to Home Screen, then open it from your home screen\n3. Tap “Turn on notifications” on the Today screen and allow.` },
     { key: 'rules', n: noRules.length, title: 'Haven’t agreed to the class expectations', who: noRules, hint: 'They see the expectations at the top of their home screen.',
       msg: `Assalamu alaikum! Please open the Hifz app (${APP}), read the Hifdh Class Expectations at the top of your Today screen and tap “I have read and agree”. Jazakum Allahu khayran.` },
-    { key: 'parent', n: noParent.length, title: 'No parent linked', who: noParent, hint: 'Parents create an account and enter the 10-letter code to follow progress.',
-      msg: `Assalamu alaikum! To follow your child's hifz: open ${APP}, create an account, choose "Join with a code" and enter your child's code:\n` + noParent.map(s => `• ${s.name}: ${s.parentCode ?? ''}`).join('\n') },
   ].filter(r => r.n > 0);
   if (!rows.length) return null;
   const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); toast('Copied. Paste it in your WhatsApp group.'); } catch { toast('Could not copy on this device.', 'err'); } };
