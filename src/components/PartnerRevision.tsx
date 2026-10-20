@@ -11,6 +11,7 @@ import { useRefresh } from './PullToRefresh';
 import { Button, Card, CardHead, Field, Modal, Pill, inputCls, useToast, cx } from './ui';
 import { InfoTip } from './InfoTip';
 import { useAyahStarts } from '../lib/ayahText';
+import { AyahPlayer } from './AyahPlayer';
 
 export type AyahMark = { ayahId: number; severity: 'major' | 'minor' };
 
@@ -79,13 +80,16 @@ export function weakAyahs(sessions: Session[], studentId: string, today: string)
 }
 export function WeakAyahsCard({ sessions, studentId, you = true, limit = 12 }: { sessions: Session[]; studentId: string; you?: boolean; limit?: number }) {
   const { today } = useOrg();
+  const [pick, setPick] = useState<number | null>(null);
   const list = weakAyahs(sessions, studentId, today);
   if (!list.length) return null;
   return <Card>
-    <CardHead title={<span className="inline-flex items-center gap-2"><AlertTriangle size={18} className="text-warn" />Weak ayahs<InfoTip text="Ayahs where a mistake was marked in the last 60 days, by your partner or your teacher. Read these before class." title="Weak ayahs" /></span>} sub={you ? 'Read these again before class' : 'Mistakes marked in the last 60 days'} />
-    <ul className="flex flex-wrap gap-1.5 px-5 pb-5 pt-3">{list.slice(0, limit).map(w => { const { surah, ayah } = fromAyahId(w.ayahId); return <li key={w.ayahId} className={cx('rounded-lg px-2.5 py-1 text-sm ring-1 ring-inset', w.big ? 'bg-red-50 text-bad ring-bad/25' : 'bg-amber-50 text-warn ring-warn/25')}>
-      <b>{surahNameEn(surah)} {ayah}</b> <span className="opacity-80">×{w.n}</span></li>; })}
+    <CardHead title={<span className="inline-flex items-center gap-2"><AlertTriangle size={18} className="text-warn" />Weak ayahs<InfoTip text="Ayahs where a mistake was marked in the last 60 days, by your partner or your teacher. Tap one to hear it on repeat." title="Weak ayahs" /></span>} sub={you ? 'Tap one to listen to it 5 times' : 'Mistakes marked in the last 60 days'} />
+    <ul className="flex flex-wrap gap-1.5 px-5 pt-3">{list.slice(0, limit).map(w => { const { surah, ayah } = fromAyahId(w.ayahId); return <li key={w.ayahId}>
+      <button type="button" aria-pressed={pick === w.ayahId} onClick={() => setPick(pick === w.ayahId ? null : w.ayahId)} className={cx('min-h-[36px] rounded-lg px-2.5 py-1 text-sm ring-1 ring-inset', pick === w.ayahId ? 'bg-pine-700 text-white ring-pine-700' : w.big ? 'bg-red-50 text-bad ring-bad/25' : 'bg-amber-50 text-warn ring-warn/25')}>
+      <b>{surahNameEn(surah)} {ayah}</b> <span className="opacity-80">×{w.n}</span></button></li>; })}
       {list.length > limit && <li className="px-1 py-1 text-sm text-ink-faint">+{list.length - limit} more</li>}</ul>
+    <div className="px-5 pb-5 pt-3">{pick !== null ? <AyahPlayer key={pick} range={{ start: pick, end: pick }} initialRepeat={5} compact /> : null}</div>
   </Card>;
 }
 

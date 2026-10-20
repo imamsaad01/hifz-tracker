@@ -7,9 +7,9 @@ import { Select } from './ui';
 const RECITERS: Array<[string, string]> = [['Husary_64kbps', 'Al-Husary'], ['Minshawy_Murattal_128kbps', 'Al-Minshawi'], ['Alafasy_64kbps', 'Mishary Alafasy'], ['Abdul_Basit_Murattal_64kbps', 'Abdul Basit'], ['Maher_AlMuaiqly_64kbps', 'Maher Al-Muaiqly']];
 const KEY = 'hifz-reciter';
 const pad = (n: number) => String(n).padStart(3, '0');
-export function AyahPlayer({ range, compact }: { range: Range; compact?: boolean }) {
+export function AyahPlayer({ range, compact, initialRepeat = 1 }: { range: Range; compact?: boolean; initialRepeat?: number }) {
   const [reciter, setReciter] = useState(() => { try { return localStorage.getItem(KEY) || RECITERS[0][0]; } catch { return RECITERS[0][0]; } });
-  const [repeat, setRepeat] = useState(1);
+  const [repeat, setRepeat] = useState(initialRepeat);
   const [cur, setCur] = useState<number | null>(null); const [playing, setPlaying] = useState(false); const [err, setErr] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null); const pass = useRef(1);
   const total = range.end - range.start + 1;
