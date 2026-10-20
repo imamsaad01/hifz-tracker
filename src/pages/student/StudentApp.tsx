@@ -5,7 +5,7 @@ import { weekSummary } from '../../lib/weekly';
 import { InfoTip } from '../../components/InfoTip';
 import type { GlossaryKey } from '../../lib/glossary';
 import { useMemo, useState } from 'react';
-import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, CalendarDays, Sparkles } from 'lucide-react';
+import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, CalendarDays, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useStudentData } from '../../app/useStudentData';
@@ -18,7 +18,7 @@ import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
 import type { SessionType } from '../../lib/types';
-import { Button, Card, CardHead, Spinner, ErrorBox, Pill } from '../../components/ui';
+import { Button, Card, CardHead, Spinner, ErrorBox, Pill, cx } from '../../components/ui';
 import { Overview, History } from '../../components/StudentReport';
 import { AssignmentList } from '../../components/AssignmentList';
 import { RecordSheet } from '../../components/RecordSheet';
@@ -31,6 +31,7 @@ import { AyahPlayer } from '../../components/AyahPlayer';
 import { AnnouncementBoard } from '../../components/Announcements';
 import { HalaqahChooser } from '../../components/HalaqahJoin';
 import { startTour } from '../../components/Tour';
+import { DisplaySettings } from '../../components/DisplaySettings';
 import { MemorisedModal } from '../../components/MemorisedPicker';
 import { MyRevisionLog, RevisionStartModal, startLabel, SubmitLessonModal } from '../../components/RevisionSelf';
 import { QiraatStudentCard, ProfileModal, profileOf } from '../../components/Qiraat';
@@ -94,6 +95,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5 empty:hidden" data-tour="notify"><NotifyToggle compact /></div>
       <div className="mb-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={2} fresh /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
+      {ring.some(r => r.due) && ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />}
       {/* 2. today's reading */}
       <h2 className="mb-3 text-lg font-bold">Today’s plan <span className="text-sm font-normal text-ink-faint">· what to read today</span></h2>
       <div className="grid gap-4 lg:grid-cols-3" data-tour="today-plan">
@@ -159,6 +161,7 @@ export function StudentApp({ tab }: { tab: string }) {
       {org.settings.parentsEnabled && <Card className="mt-4 flex items-start gap-3 p-5"><KeyRound size={18} className="mt-1 text-ink-faint" /><p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span><br /><span className="text-sm text-ink-faint">Give this to a parent. They create an account and enter it to follow your progress. They cannot change anything.</span></p></Card>}
       <div className="mt-4"><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>
       <div className="mt-4"><NotifyToggle /></div>
+      <div className="mt-4"><DisplaySettings /></div>
       <Button kind="secondary" className="mt-4" onClick={startTour}><Sparkles size={16} />Take the app tour again</Button>
       <p className="mt-4 text-sm text-ink-faint">Only your teachers, you and linked parents can see your records.</p>
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
@@ -167,6 +170,17 @@ export function StudentApp({ tab }: { tab: string }) {
     {rec && <RecordSheet open onClose={() => { setRec(null); setRecDate(undefined); }} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} initialDate={recDate} onSaved={refresh} />}
   </>;
 }
+/** Shown once every part of today's reading is logged. The burst plays the first time each day. */
+function DoneToday({ name, streak }: { name: string; streak: number }) {
+  const { today } = useOrg();
+  const [fresh] = useState(() => { try { const k = 'hifz-done-day'; const first = localStorage.getItem(k) !== today; localStorage.setItem(k, today); return first; } catch { return false; } });
+  return <div role="status" className={cx('relative mb-5 overflow-hidden rounded-2xl bg-pine-700 px-5 py-4 text-white shadow-card', fresh && 'done-pop')}>
+    {fresh && <span aria-hidden className="done-burst" />}
+    <p className="flex items-center gap-2 text-lg font-bold"><CheckCircle2 size={22} />All done for today, {name}!</p>
+    <p className="text-sm text-white/85">New lesson and revision are logged. Mā shāʾ Allāh.{streak > 1 ? ` That is ${streak} days in a row.` : ''}</p>
+  </div>;
+}
+
 function PlanTile({ icon, title, body, note, action, tip }: { icon: React.ReactNode; title: string; body: string; note: string; action?: React.ReactNode; tip?: GlossaryKey }) {
   return <Card className="flex flex-col gap-2 p-5"><div className="flex items-center gap-2 text-pine-700">{icon}<h3 className="text-lg font-bold text-ink">{title}</h3>{tip && <InfoTip k={tip} />}</div><p className="text-[17px] font-bold">{body}</p>{note && <p className="text-sm text-ink-faint">{note}</p>}{action && <div className="mt-auto pt-2">{action}</div>}</Card>;
 }

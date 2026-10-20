@@ -1,4 +1,5 @@
 // Parents: read-only view of their linked children, plus messages with the teacher.
+import { DisplaySettings } from '../../components/DisplaySettings';
 import { ParentWeekCard } from '../../components/WeeklyRevision';
 import { WeakAyahsCard } from '../../components/PartnerRevision';
 import { weekSummary } from '../../lib/weekly';
@@ -89,6 +90,7 @@ export function ParentApp() {
         </div>
       </details>
       <RulesCard compact text={org.settings.rulesText} ackAt={null} />
+      <DisplaySettings />
     </div>}
     {absent && <AbsenceForm student={child} classes={data.classes} absences={data.absences} onClose={() => setAbsent(false)} onSaved={reload} />}
     {tab === 'history' && <History student={child} sessions={sd.sessions} today={today} settings={org.settings} />}

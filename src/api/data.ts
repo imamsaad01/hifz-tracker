@@ -193,6 +193,7 @@ export function api(be: Backend) {
     setMemorisedSurahs: (studentId: string, p: { surahs?: number[]; partial?: { surah: number; ayahs: number } | null; skipped?: number[]; nextFrom?: number | null; direction?: 'back' | 'forward' }) =>
       be.rpc<null>('set_memorised_surahs', { p_student: studentId, p: { ...(p.surahs ? { surahs: p.surahs } : {}), ...(p.partial ? { partial: p.partial } : {}), ...(p.skipped ? { skipped: p.skipped } : {}), ...(p.nextFrom !== undefined ? { next_from: p.nextFrom ?? '' } : {}), ...(p.direction ? { direction: p.direction } : {}) } }),
     setRevisionStart: (studentId: string, page: number | null) => be.rpc<null>('set_revision_start', { p_student: studentId, p_page: page }),
+    myNotifications: () => be.rpc<Array<{ id: number; title: string; body: string | null; url: string | null; created_at: string }>>('my_notifications', { p_limit: 80 }),
     setupStatus: (orgId: string) => be.rpc<Array<{ student_id: string; notifications: boolean; parents: number }>>('setup_status', { org: orgId }),
     revisionPartners: () => be.rpc<Array<{ student_id: string; name: string; same_class: boolean }>>('revision_partners', {}),
     requestPartner: (sessionId: string, partnerId: string) => be.rpc<null>('request_partner_check', { p_session: sessionId, p_partner: partnerId }),

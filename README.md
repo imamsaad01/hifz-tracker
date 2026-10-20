@@ -70,7 +70,7 @@ Every attempt (sent, failed or skipped) is listed under **More → Email log**.
 
 ## Qurʾān data
 
-Surah, ayah, page (604-page Madinah mushaf), juz and hizb boundaries come from **quran-meta 6.0.17** (MIT licence), Hafs ʿan ʿĀṣim. `npm run gen:quran` regenerates `src/quran/data.generated.ts` and `supabase/seed_quran.sql` and checks known boundaries (e.g. Al-Mulk 1 is page 562, juz 29). The app stores positions only; it never displays Qurʾān text.
+Surah, ayah, page (604-page Madinah mushaf), juz and hizb boundaries come from **quran-meta 6.0.17** (MIT licence), Hafs ʿan ʿĀṣim. `npm run gen:quran` regenerates `src/quran/data.generated.ts` and `supabase/seed_quran.sql` and checks known boundaries (e.g. Al-Mulk 1 is page 562, juz 29). The mistake picker shows the first few words of each ayah from `public/ayah-start.json` (Uthmani text via quran-json 3.1.2, sourced from QuranEnc, CC BY-SA 4.0).
 
 Accuracy, weak pages and revision dates are calculated from what the teacher records. Nothing in the app judges recitation automatically.
 
@@ -161,3 +161,15 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - Student Today reordered: things to do now → Today's plan → this week → extras folded under "More". Parent page folds charts under "More". Class expectations show as a one-line "Read & agree" card.
 - Teacher Today: *Getting everyone set up* (not in a halaqah with quick add, notifications off, expectations not agreed, no parent linked) with copyable WhatsApp messages (`public.setup_status`).
 - Hardened search_path on small SQL helpers (Supabase advisor).
+
+## Easier to use (Oct 2026)
+- **Teacher Today** is short: needs attention first, then only the students still to hear (tap “Show all” for everyone). Announcements, leaderboard and charts sit under “More”.
+- **Dark mode and text size**: Auto/Light/Dark and Normal/Large/Extra large, under My plan (students) or More → Settings (teacher). Faint text is darker for readability.
+- **Bell = notification history**: everything the app sent you in the last 60 days (sign-offs, partner confirmations, reminders, tests, messages, announcements), grouped by day. Tap one to go to it. (`my_notifications()`, migration 0020.)
+- **Instant tabs**: data is cached per screen, so switching tabs shows the last view at once and refreshes quietly.
+- **Ayah text in the mistake picker**: each row shows the opening words of the ayah, so partners and the teacher tap the right one.
+- **Sign-up**: three short steps of big tap buttons (About you, Memorised, Plan); ḥāfiẓ students get the qirāʾāt setup in step 3.
+- **“All done for today”**: a small celebration on the student home once the new lesson and revision are logged.
+- **Works offline**: logging revision, submitting a new lesson and confirming a partner are saved on the phone and sent when the connection returns.
+- **Settings in sections**: Program, Revision, Attendance, Reminders, Motivation, Fees, with one Save bar.
+- **Live class**: swipe the “Up now” card left (or tap Later) to move a student to the end; drag ⋮⋮ in “Next” to change the order. The order is kept on that device for the day.

@@ -8,9 +8,12 @@ import { addDays } from '../lib/dates';
 import { friendly } from '../api/backend';
 
 export interface OrgData { students: Student[]; sessions: Session[]; revision: Map<string, RevisionItem[]>; assignments: Assignment[]; attendance: Attendance[]; classes: ClassRow[]; goals: Goal[]; members: Member[]; announcements: Announcement[]; behaviour: BehaviourPoint[]; events: CalEvent[]; exams: Exam[]; absences: AbsenceRequest[]; revisionForms: RevisionCheckin[]; joinRequests: JoinRequest[]; qiraat: QiraatData }
+// last data per program, so switching tabs shows it instantly while it refreshes in the background
+const cache = new Map<string, OrgData>();
 export function useOrgData(opts: { days?: number } = {}) {
-  const { api, org, today, backend } = useOrg();
-  const [data, setData] = useState<OrgData | null>(null);
+  const { api, org, today, backend, user } = useOrg();
+  const ck = `${user?.id ?? ''}:${org.id}`;
+  const [data, setData] = useState<OrgData | null>(() => cache.get(ck) ?? null);
   const [error, setError] = useState<string | null>(null);
   const since = addDays(today, -(opts.days ?? 60));
   const reload = useCallback(async () => {
@@ -20,9 +23,10 @@ export function useOrgData(opts: { days?: number } = {}) {
         api.students(org.id), api.sessions(org.id, { since }), api.revision(org.id), api.assignments(org.id), api.attendance(org.id, since), api.classes(org.id), api.goals(org.id), api.members(org.id),
         api.announcements(org.id), api.behaviour(org.id, since), api.events(org.id), api.exams(org.id), api.absenceRequests(org.id), api.revisionCheckins(org.id, addDays(today, -63)), api.joinRequests(org.id).catch(() => []), api.qiraat(org.id).catch((): QiraatData => ({ profiles: [], tests: [], khatmah: [], matn: [] })),
       ]);
-      setData({ students, sessions, revision, assignments, attendance, classes, goals, members, announcements, behaviour, events, exams, absences, revisionForms, joinRequests, qiraat });
-    } catch (e) { setError(friendly(e)); }
-  }, [api, org.id, since]);
+      const next = { students, sessions, revision, assignments, attendance, classes, goals, members, announcements, behaviour, events, exams, absences, revisionForms, joinRequests, qiraat };
+      cache.set(ck, next); setData(next);
+    } catch (e) { if (!cache.has(ck)) setError(friendly(e)); }
+  }, [api, org.id, since, ck]);
   useEffect(() => { reload(); }, [reload]);
   useRefresh(reload);
   useEffect(() => backend.subscribe?.(['sessions', 'students', 'assignments', 'announcements', 'attendance', 'absence_requests', 'revision_checkins', 'class_join_requests', 'class_students', 'qiraat_profiles', 'qiraat_tests', 'qiraat_khatmah', 'qiraat_matn_log'], reload), [backend, reload]);

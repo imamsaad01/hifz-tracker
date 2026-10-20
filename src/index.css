@@ -4,9 +4,39 @@
 html, body, #root { height: 100%; }
 /* our own pull-to-refresh replaces the browser's, so it doesn't fire twice */
 html, body { overscroll-behavior-y: none; }
-body { background: #FAF8F4; color: #1B2524; -webkit-tap-highlight-color: transparent; }
+/* colours as variables so the app can switch to dark */
+:root { --paper: 250 248 244; --line: 230 225 214; --ink: 27 37 36; --ink-soft: 79 91 89; --ink-faint: 102 113 110; --good: 31 122 77; --warn: 161 92 7; --bad: 180 35 24; --card: 255 255 255; color-scheme: light; }
+html.dark { --paper: 16 21 20; --line: 45 55 53; --ink: 232 236 234; --ink-soft: 184 194 191; --ink-faint: 146 158 155; --good: 94 199 140; --warn: 240 177 92; --bad: 255 128 115; --card: 26 33 32; color-scheme: dark; }
+body { background: rgb(var(--paper)); color: rgb(var(--ink)); -webkit-tap-highlight-color: transparent; }
+/* dark: surfaces and tints written as fixed colours in the markup */
+html.dark .bg-white, html.dark [class*="bg-white/"] { background-color: rgb(var(--card)) !important; }
+html.dark [class*="bg-black/"] { background-color: rgb(255 255 255 / .07) !important; }
+html.dark .text-black { color: rgb(var(--ink)) !important; }
+html.dark [class*="bg-pine-50"] { background-color: rgb(46 107 96 / .2) !important; }
+html.dark [class*="bg-pine-100"] { background-color: rgb(46 107 96 / .32) !important; }
+html.dark [class*="bg-brass-100"] { background-color: rgb(184 137 59 / .2) !important; }
+html.dark [class*="bg-amber-50"], html.dark [class*="bg-amber-100"] { background-color: rgb(240 177 92 / .14) !important; }
+html.dark [class*="bg-red-50"] { background-color: rgb(255 128 115 / .14) !important; }
+html.dark [class*="bg-emerald-50"] { background-color: rgb(94 199 140 / .14) !important; }
+html.dark .text-pine-800, html.dark .text-pine-900 { color: #A6DCCB !important; }
+html.dark .text-pine-700 { color: #86CBB6 !important; }
+html.dark .text-brass-700 { color: #E7C886 !important; }
+html.dark .ring-line, html.dark .border-line { --tw-ring-color: rgb(var(--line)); }
+html.dark .shadow-card { box-shadow: 0 1px 2px rgb(0 0 0 / .4); }
+html.dark img.invert-dark { filter: invert(1); }
+/* larger text, chosen per device */
+html.text-large body { zoom: 1.1; }
+html.text-xl body { zoom: 1.22; }
 :focus-visible { outline: 3px solid #B8893B; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media print { .no-print { display: none !important; } body { background: #fff; } }
 
 @keyframes fadein { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* "All done for today" moment */
+@keyframes done-pop { 0% { transform: scale(.94); opacity: 0 } 60% { transform: scale(1.02); opacity: 1 } 100% { transform: scale(1) } }
+@keyframes done-burst { 0% { opacity: .9; transform: scale(.2) } 100% { opacity: 0; transform: scale(2.4) } }
+.done-pop { animation: done-pop .5s ease-out both }
+.done-burst { position: absolute; right: 18px; top: 50%; width: 120px; height: 120px; margin-top: -60px; border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255,215,140,.75) 0 12%, transparent 13% 30%, rgba(255,255,255,.5) 31% 34%, transparent 35%); animation: done-burst 1.1s ease-out .15s both; pointer-events: none }
+@media (prefers-reduced-motion: reduce) { .done-pop, .done-burst { animation: none } .done-burst { display: none } }

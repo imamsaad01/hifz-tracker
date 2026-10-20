@@ -1,4 +1,4 @@
-// Student setup: four short steps of dropdowns. Used by a student on first sign-in, and by a teacher adding a child.
+// Student setup: three short steps of big tap buttons (a fourth for parents when the program has them). Used by a student on first sign-in, and by a teacher adding a child.
 import { useApp } from '../app/context';
 import { useState } from 'react';
 import { ChevronRight, Check } from 'lucide-react';
@@ -23,6 +23,15 @@ export const SIZE_OPTIONS: Array<[string, string]> = [
   ...DAILY.map(n => [`a${n}`, `${n} ayah${n > 1 ? 's' : ''}`] as [string, string]),
 ];
 
+/** Big tap buttons for a short list of choices (easier than a dropdown on a phone) */
+export function Chips<T extends string>({ label, value, onChange, options, cols }: { label: string; value: T; onChange: (v: T) => void; options: Array<[T, string]>; cols?: number }) {
+  return <div role="radiogroup" aria-label={label} className={cx('grid gap-2', cols === 2 ? 'grid-cols-2' : cols === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3')}>
+    {options.map(([v, l]) => <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}
+      className={cx('min-h-[48px] rounded-xl px-2 text-[15px] font-bold ring-1 ring-inset transition', value === v ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line hover:bg-pine-50')}>{l}</button>)}
+  </div>;
+}
+const ChipLabel = ({ children, hint }: { children: React.ReactNode; hint?: string }) => <p className="mb-1.5 text-[13px] font-bold text-ink-soft">{children}{hint && <span className="block font-normal text-ink-faint">{hint}</span>}</p>;
+
 export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }: { byTeacher?: boolean; defaultName?: string; onSubmit: (d: StudentDraft) => Promise<void>; onCancel?: () => void }) {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
@@ -45,11 +54,11 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
   const emailOk = !gEmail || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gEmail);
   // a ḥāfiẓ skips the lesson-plan questions and goes straight to qirāʾāt
   const parents = useApp().org?.settings.parentsEnabled !== false;
-  const keys = ([...(hafidh ? ['about', 'mem', 'qiraat'] : ['about', 'mem', 'plan', 'qiraat']), ...(parents ? ['parent'] : [])] as Array<'about' | 'mem' | 'plan' | 'qiraat' | 'parent'>);
-  const LABEL = { about: 'About', mem: 'Memorised', plan: 'Plan', qiraat: 'Qirāʾāt', parent: 'Parent' } as const;
+  const keys = (['about', 'mem', 'plan', ...(parents ? ['parent'] : [])] as Array<'about' | 'mem' | 'plan' | 'parent'>);
+  const LABEL = { about: 'About you', mem: 'Memorised', plan: hafidh ? 'Qirāʾāt' : 'Plan', parent: 'Parent' } as const;
   const steps = keys.map(k => LABEL[k]);
   const key = keys[Math.min(step, keys.length - 1)];
-  const ok = { about: name.trim().length >= 2, mem: true, plan: true, qiraat: !readsQ || q.riwayat.length > 0, parent: emailOk }[key];
+  const ok = { about: name.trim().length >= 2, mem: true, plan: !readsQ || q.riwayat.length > 0, parent: emailOk }[key];
   const last = steps.length - 1;
   const you = byTeacher ? 'the student' : 'you';
 
@@ -64,14 +73,14 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
       {err && <div className="mb-4"><ErrorBox message={err} /></div>}
       {key === 'about' && <div className="flex flex-col gap-4">
         <Field label={byTeacher ? 'Student’s full name' : 'Your full name'}>{id => <input id={id} className={inputCls} value={name} onChange={e => setName(e.target.value)} maxLength={80} autoComplete="name" />}</Field>
-        <Field label="Age group" hint="Only the group is kept, never a birthday.">{id => <Select id={id} value={age} onChange={setAge} options={AGES.map(a => [a, a])} />}</Field>
+        <div><ChipLabel hint="Only the group is kept, never a birthday.">Age group</ChipLabel><Chips label="Age group" value={age} onChange={setAge} options={AGES.map(a => [a, a] as [string, string])} /></div>
       </div>}
       {key === 'mem' && <div className="flex flex-col gap-4">
         <Toggle on={hafidh} onChange={v => { setHafidh(v); if (v) setReadsQ(true); }} label={byTeacher ? 'Ḥāfiẓ: has memorised the whole Qurʾān' : 'I am a ḥāfiẓ: I have memorised the whole Qurʾān'} sub="Skips the lesson questions. Old revision goes through the whole Qurʾān." />
         {!hafidh && <Segmented label="How was it memorised" value={memMode} onChange={m => { setMemMode(m); if (m === 'pick') { const sur = whole.map(r => fromRangeSurah(r)); setMv({ direction, surahs: sur, partial: partAyah ? { surah: partSurah, ayahs: partAyah } : null, nextFrom: defaultNextFrom(direction, sur) }); } }} options={[['order', 'In order'], ['pick', 'Skipped some surahs']]} />}
         {!hafidh && memMode === 'pick' && <MemorisedPicker value={mv} onChange={setMv} you={byTeacher ? 'they' : 'you'} />}
         {!hafidh && memMode === 'order' && <>
-        <Field label="Which way is the memorisation going?">{id => <Select id={id} value={direction} onChange={v => { setDirection(v); setUpTo(0); setPartAyah(0); }} options={[['back', 'From An-Nās backwards (Juz ʿAmma first)'], ['forward', 'From Al-Fātiḥah forwards']]} />}</Field>
+        <div><ChipLabel>Which way is the memorisation going?</ChipLabel><Chips cols={2} label="Direction" value={direction} onChange={v => { setDirection(v); setUpTo(0); setPartAyah(0); }} options={[['back', 'Backwards from An-Nās'], ['forward', 'Forwards from Al-Fātiḥah']]} /></div>
         <Field label={direction === 'back' ? `Whole surahs memorised, from An-Nās back to…` : 'Whole surahs memorised, from Al-Fātiḥah up to…'}>{id =>
           <Select id={id} value={upTo} onChange={v => { setUpTo(v); const n = v === 0 ? (direction === 'back' ? 114 : 1) : direction === 'back' ? v - 1 : v + 1; if (n >= 1 && n <= 114) setPartSurah(n); setPartAyah(0); }}
             options={[[0, 'Nothing yet'] as [number, string], ...(direction === 'back' ? Array.from({ length: 114 }, (_, i) => 114 - i) : Array.from({ length: 114 }, (_, i) => i + 1)).map(s => [s, `${s}. ${surahNameEn(s)}`] as [number, string])]} />}</Field>
@@ -82,11 +91,13 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
         </>}
         {hafidh && <p className="rounded-xl bg-pine-50 px-3 py-2 text-[15px] text-pine-800">Mā shāʾ Allāh. The whole Qurʾān is marked as memorised. Next: your qirāʾāt.</p>}
       </div>}
-      {key === 'plan' && <div className="flex flex-col gap-4">
-        <Field label="How much to memorise each lesson" hint="Pages follow the Madani muṣḥaf. Small and steady is best. The teacher can change it.">{id => <Select id={id} value={size} onChange={setSize} options={SIZE_OPTIONS} />}</Field>
-        <Field label="Goal">{id => <Select id={id} value={goal} onChange={setGoal} options={GOALS.map(g => [g, g])} />}</Field>
-      </div>}
-      {key === 'qiraat' && <div className="flex flex-col gap-4">
+      {key === 'plan' && <div className="flex flex-col gap-5">
+        {!hafidh && <>
+          <div><ChipLabel hint="Madani muṣḥaf pages. Small and steady is best; your teacher can change it.">How much to memorise each lesson</ChipLabel>
+            <Chips label="Lesson size" value={size.startsWith('p') ? size : 'ayahs'} onChange={v => setSize(v === 'ayahs' ? 'a3' : v)} options={[['p0.5', '½ page'], ['p1', '1 page'], ['p2', '2 pages'], ['p3', '3 pages'], ['p4', '4 pages'], ['p5', '5 pages'], ['ayahs', 'In ayahs']]} />
+            {!size.startsWith('p') && <div className="mt-2"><Select aria-label="Ayahs each lesson" value={size} onChange={setSize} options={SIZE_OPTIONS.filter(([v]) => v.startsWith('a'))} /></div>}</div>
+          <div><ChipLabel>Goal</ChipLabel><Chips cols={2} label="Goal" value={goal} onChange={setGoal} options={GOALS.map(g => [g, g] as [string, string])} /></div>
+        </>}
         <Toggle on={readsQ} onChange={setReadsQ} label={byTeacher ? 'Reads the qirāʾāt to you' : 'I read the qirāʾāt to my teacher'} sub="The ten qurrāʾ: choose riwāyāt, jamʿ or ifrād, and a matn. Leave off for hifz only." />
         {readsQ && <QiraatSetup value={q} onChange={setQ} />}
       </div>}
@@ -101,6 +112,6 @@ export function StudentForm({ byTeacher, defaultName = '', onSubmit, onCancel }:
           : <Button disabled={!ok} busy={busy} onClick={submit}><Check size={18} />{byTeacher ? 'Add student' : 'Start tracking'}</Button>}
       </div>
     </Card>
-    <p className="text-center text-xs text-ink-faint">Everything except the name is a dropdown, and {you} can change it later.</p>
+    <p className="text-center text-xs text-ink-faint">Tap to choose. {you === 'you' ? 'You' : 'The student'} can change all of this later.</p>
   </div>;
 }

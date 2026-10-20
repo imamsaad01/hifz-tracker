@@ -1,4 +1,5 @@
 // Students log their own revision; the teacher checks it. Students choose where their Old revision starts.
+import { outbox, isNetworkError } from '../app/outbox';
 import { InfoTip } from './InfoTip';
 import { AyahMistakePicker, type AyahMark } from './PartnerRevision';
 import { useEffect, useMemo, useState } from 'react';
@@ -132,7 +133,7 @@ export function SubmitLessonModal({ student, suggested, onClose, onSaved }: { st
   const { api } = useOrg(); const toast = useToast();
   const startA = fromAyahId(suggested.start); const total = ayahCount(startA.surah);
   const [endAyah, setEndAyah] = useState(fromAyahId(suggested.end).ayah); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
-  const save = async () => { setBusy(true); try { await api.submitLesson({ studentId: student.id, start: suggested.start, end: ayahId(startA.surah, endAyah), note }); toast('Submitted. Your teacher will sign it off.'); onSaved(); onClose(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); } };
+  const save = async () => { setBusy(true); const args = { studentId: student.id, start: suggested.start, end: ayahId(startA.surah, endAyah), note }; try { await api.submitLesson(args); toast('Submitted. Your teacher will sign it off.'); onSaved(); onClose(); } catch (e) { if (isNetworkError(e)) { outbox.add(`New lesson · ${surahNameEn(startA.surah)}`, { __op: 'submitLesson', args }); toast('No connection: saved on this phone and will send automatically.'); onClose(); } else toast(friendly(e), 'err'); } finally { setBusy(false); } };
   return <Modal open onClose={onClose} title="I memorised my new lesson" footer={<div className="flex justify-end gap-2"><Button kind="secondary" onClick={onClose}>Cancel</Button><Button busy={busy} onClick={save}><Check size={16} />Submit for sign-off</Button></div>}>
     <div className="flex flex-col gap-4">
       <p className="text-[15px]"><b>{surahNameEn(startA.surah)}</b> <span lang="ar" dir="rtl" className="font-quran">{surahNameAr(startA.surah)}</span>, from ayah {startA.ayah}</p>

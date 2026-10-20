@@ -9,6 +9,7 @@ const TIMES: Array<[string, string]> = ['06:00', '06:30', '07:00', '07:30', '08:
 import { DEFAULT_RULES } from '../../components/StudentAttendance';
 import { OwnerTools } from './OwnerTools';
 import { startTour } from '../../components/Tour';
+import { DisplaySettings } from '../../components/DisplaySettings';
 import { Crown } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
@@ -42,7 +43,7 @@ export function More() {
     {sec === 'reports' && <Reports />}
     {sec === 'applications' && <Applications />}
     {sec === 'fees' && <Fees />}
-    {sec === 'settings' && <SettingsForm />}
+    {sec === 'settings' && <><SettingsForm /><div className="mt-5 max-w-2xl"><DisplaySettings /></div></>}
     {sec === 'codes' && <Codes />}
     {sec === 'people' && <People />}
     {sec === 'owner' && <OwnerTools />}
@@ -105,15 +106,20 @@ function SettingsForm() {
   const [name, setName] = useState(org.name); const [s, setS] = useState<OrgSettings>(org.settings); const [busy, setBusy] = useState(false);
   const r = s.revision;
   const setR = (p: Partial<OrgSettings['revision']>) => setS({ ...s, revision: { ...r, ...p } });
+  const [sec, setSec] = useState<'program' | 'revision' | 'attendance' | 'reminders' | 'motivation' | 'fees'>('revision');
   const setQ = (p: Partial<OrgSettings['qiraat']>) => setS({ ...s, qiraat: { ...s.qiraat, ...p } });
   const save = async () => { setBusy(true); try { await api.updateOrg(org.id, { name: name.trim(), settings: s }); toast('Settings saved.'); await refreshSession(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); } };
   return <div className="flex max-w-2xl flex-col gap-5">
+    <nav aria-label="Settings sections" className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">{([['program', 'Program'], ['revision', 'Revision'], ['attendance', 'Attendance'], ['reminders', 'Qirāʾāt'], ['motivation', 'Motivation'], ['fees', 'Fees']] as const).map(([k, l]) => <button key={k} type="button" aria-pressed={sec === k} onClick={() => setSec(k)} className={cx('inline-flex min-h-[40px] shrink-0 items-center rounded-xl px-4 text-sm font-bold', sec === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}>{l}</button>)}</nav>
+    {sec === 'program' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Program</h2>
       <Field label="Name">{id => <input id={id} className={inputCls} value={name} maxLength={80} onChange={e => setName(e.target.value)} />}</Field>
       <p className="text-sm text-ink-faint">Time zone: {org.timezone}. “Today” and streaks follow it.</p>
       <Field label="Scores">{id => <Select id={id} value={s.scoreScale} onChange={v => setS({ ...s, scoreScale: Number(v) })} options={[[5, '1 to 5 stars'], [10, '0 to 10 points']]} />}</Field>
     </Card>
+    </>}
+    {sec === 'revision' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Revision plan</h2>
       <Field label="How Old revision works">{id => <Select id={id} value={r.oldPlan} onChange={v => setR({ oldPlan: v as 'cycle' | 'spaced' })} options={[['cycle', 'In turn: a few pages each revision day, weak pages first'], ['spaced', 'Spaced: each page comes back on its own schedule']]} />}</Field>
@@ -141,6 +147,8 @@ function SettingsForm() {
       <Toggle on={s.reports.teacherWeekly} onChange={v => setS({ ...s, reports: { ...s.reports, teacherWeekly: v } })} label="Weekly summary for me" sub="Monday 8 am: who missed revision days, lessons waiting to sign off, partner checks pending" />
       <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
     </Card>
+    </>}
+    {sec === 'reminders' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Qirāʾāt reminders</h2>
       <p className="-mt-2 text-sm text-ink-faint">For students marked as qirāʾāt students (on their page).</p>
@@ -152,6 +160,8 @@ function SettingsForm() {
         <Field label="at">{id => <Select id={id} value={s.qiraat.weakTime} onChange={v => setQ({ weakTime: v })} options={TIMES} />}</Field>
       </div>
     </Card>
+    </>}
+    {sec === 'attendance' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Attendance</h2>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -162,6 +172,8 @@ function SettingsForm() {
       </div>
       <p className="text-sm text-ink-faint">Absences must be sent before class. After class, anyone who did not check in is marked absent automatically, and students and parents get a warning when an absence was not communicated or the limit is passed.</p>
     </Card>
+    </>}
+    {sec === 'revision' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Partner revision form</h2>
       <ul className="flex flex-col gap-2">{s.revisionForm.slots.map((sl, i) => <li key={sl.key} className="flex flex-wrap items-center gap-2">
@@ -174,18 +186,24 @@ function SettingsForm() {
         <Field label="Excused misses a week" className="ml-auto w-56">{id => <Select id={id} value={s.revisionForm.allowedMisses} onChange={v => setS({ ...s, revisionForm: { ...s.revisionForm, allowedMisses: Number(v) } })} options={[0, 1, 2].map(n => [n, `${n} (more is followed up)`] as [number, string])} />}</Field>
       </div>
     </Card>
+    </>}
+    {sec === 'program' && <>
     <Card className="flex flex-col gap-3 p-5">
       <h2 className="font-bold">Class expectations</h2>
       <p className="-mt-1 text-sm text-ink-faint">Shown to students and parents. Students tap “I have read and agree”. Start a line with “- ” for a bullet; other lines become headings.</p>
       <textarea aria-label="Class expectations" className={`${inputCls} min-h-[260px] py-2 font-mono text-sm`} value={s.rulesText} onChange={e => setS({ ...s, rulesText: e.target.value })} />
       {!s.rulesText.trim() && <div><Button kind="secondary" onClick={() => setS({ ...s, rulesText: DEFAULT_RULES })}>Use my Hifdh Class Expectations</Button></div>}
     </Card>
+    </>}
+    {sec === 'motivation' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Motivation</h2>
       <Field label="Streak freezes">{id => <Select id={id} value={s.motivation.freezePerWeek} onChange={v => setS({ ...s, motivation: { freezePerWeek: Number(v) } })} options={[[0, 'None: any missed day ends the streak'], [1, '1 missed day a week is forgiven'], [2, '2 missed days a week are forgiven']]} />}</Field>
       <TagEditor label="Adab points: positive" items={s.adab.positive} onChange={positive => setS({ ...s, adab: { ...s.adab, positive } })} />
       <TagEditor label="Adab points: to work on" items={s.adab.negative} onChange={negative => setS({ ...s, adab: { ...s.adab, negative } })} />
     </Card>
+    </>}
+    {sec === 'fees' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Fees</h2>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -193,6 +211,8 @@ function SettingsForm() {
         <Field label="Currency">{id => <Select id={id} value={s.fees.currency} onChange={v => setS({ ...s, fees: { ...s.fees, currency: v } })} options={[['USD', 'US dollar'], ['CAD', 'Canadian dollar'], ['GBP', 'Pound'], ['EUR', 'Euro'], ['AUD', 'Australian dollar'], ['PKR', 'Rupee (PKR)'], ['INR', 'Rupee (INR)'], ['SAR', 'Riyal'], ['AED', 'Dirham'], ['MYR', 'Ringgit'], ['ZAR', 'Rand'], ['NGN', 'Naira']]} />}</Field>
       </div>
     </Card>
+    </>}
+    {sec === 'revision' && <>
     <Card className="flex flex-col gap-4 p-5">
       <h2 className="font-bold">Accuracy</h2>
       <p className="-mt-2 text-sm text-ink-faint">Accuracy per page = 100 − points for each error. It reflects what the teacher recorded.</p>
@@ -201,6 +221,8 @@ function SettingsForm() {
         <Field label="Minor error">{id => <Select id={id} value={s.accuracy.minor} onChange={v => setS({ ...s, accuracy: { ...s.accuracy, minor: Number(v) } })} options={[1, 2, 3, 5].map(d => [d, `−${d} points`])} />}</Field>
       </div>
     </Card>
+    </>}
+    {sec === 'fees' && s.parentsEnabled && <>
     <Card className="flex flex-col gap-2 p-5">
       <h2 className="font-bold">Parent emails</h2>
       <Toggle on={s.email.enabled} onChange={v => setS({ ...s, email: { ...s.email, enabled: v } })} label="Send emails to parents" sub="Only to parents with an email address who have not turned it off" />
@@ -210,13 +232,16 @@ function SettingsForm() {
         <Toggle on={s.email.weekly} onChange={v => setS({ ...s, email: { ...s.email, weekly: v } })} label="Weekly summary" sub="Sunday evening" />
       </>}
     </Card>
+    </>}
+    {sec === 'motivation' && <>
     <Card className="flex flex-col gap-2 p-5">
       <h2 className="font-bold">Leaderboard</h2>
       <p className="-mt-1 text-sm text-ink-faint">Ranks students by consistency: days with a session, pages revised and clean pages. New lessons give no points. Teachers always see it.</p>
       <Toggle on={s.leaderboard.enabled} onChange={v => setS({ ...s, leaderboard: { ...s.leaderboard, enabled: v } })} label="Show it to students and parents" />
       {s.leaderboard.enabled && <Toggle on={s.leaderboard.fullNames} onChange={v => setS({ ...s, leaderboard: { ...s.leaderboard, fullNames: v } })} label="Show full names" sub="Off: first name and initial, e.g. “Amina S.”" />}
     </Card>
-    <div><Button busy={busy} onClick={save} disabled={name.trim().length < 2}>Save settings</Button></div>
+    </>}
+    <div className="sticky bottom-[calc(72px+env(safe-area-inset-bottom))] z-10 flex items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-card ring-1 ring-line backdrop-blur lg:bottom-4"><span className="flex-1 text-sm text-ink-faint">Changes apply to everyone in the program.</span><Button busy={busy} onClick={save} disabled={name.trim().length < 2}>Save settings</Button></div>
   </div>;
 }
 
@@ -291,7 +316,7 @@ function About() {
   return <Card className="flex max-w-2xl flex-col gap-3 p-5 text-[15px]">
     <h2 className="font-bold">Where the Qurʾān data comes from</h2>
     <p>Surahs, ayah counts, and page, juz and hizb boundaries come from <b>{SOURCE.name} {SOURCE.version}</b> ({SOURCE.license} licence), for the {SOURCE.riwayah} riwayah and the {SOURCE.mushaf} mushaf. The data is checked against known boundaries when it is generated.</p>
-    <p>This app stores ranges and positions only. It does not show Qurʾān text, so there is no text to mistype.</p>
+    <p>The opening words shown when marking a mistake on an ayah are the Uthmani text from <b>The Noble Qurʾān Encyclopedia (QuranEnc.com)</b>, via the quran-json package (CC BY-SA 4.0). Only the first few words of each ayah are shown, to help find the right ayah; the app never shows them as a full muṣḥaf.</p>
     <h2 className="mt-2 font-bold">What the numbers mean</h2>
     <p>Accuracy, weak pages and revision dates are calculated from the errors the teacher records. They do not judge recitation automatically; the teacher’s ear is the judge.</p>
   </Card>;

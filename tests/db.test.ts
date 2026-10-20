@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql', 'migrations/0018_partner_reports.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql', 'migrations/0018_partner_reports.sql', 'migrations/0019_setup_status.sql', 'migrations/0020_my_notifications.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -278,6 +278,7 @@ describe('check-in, absences and standing', () => {
     await as(null, 'delete from public.attendance where student_id in ($1, $2) and date = public.org_today($3)', [studentS, child, orgA]);   // earlier tests recorded today
   });
   it('needs today\'s code, marks late after the grace period, and hides the code from students', async () => {
+    if ((await one<{ m: number }>(null, `select extract(hour from public.org_local_now($1)) * 60 + extract(minute from public.org_local_now($1)) as m`, [orgA]))!.m < 45) return;   // class times cannot straddle midnight
     await rejects(U.student, 'select public.class_checkin_code($1)', [cls]);
     const msg = await rejects(U.student, `select public.student_check_in($1, '0000x')`, [cls]);
     expect(msg).toMatch(/code is not right/);
@@ -297,6 +298,7 @@ describe('check-in, absences and standing', () => {
     await rejects(U.student, `update public.absence_requests set status = 'approved' where student_id = $1 returning id`, [studentS]).catch(() => undefined);
   });
   it('marks missing students absent after class and warns about absences not communicated', async () => {
+    if ((await one<{ m: number }>(null, `select extract(hour from public.org_local_now($1)) * 60 + extract(minute from public.org_local_now($1)) as m`, [orgA]))!.m < 45) return;   // class times cannot straddle midnight
     await as(null, `update public.classes set schedule_slots = jsonb_build_array(jsonb_build_object('day', extract(dow from public.org_local_now(org_id))::int, 'start', '00:00', 'end', '00:01')) where id = $1`, [cls]);
     await db.exec('reset role');
     await db.query('select public.mark_absences()');

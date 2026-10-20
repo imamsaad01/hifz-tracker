@@ -1,4 +1,5 @@
 // Revision partners: confirm a classmate's revision and mark mistakes on exact ayahs. Weak ayahs come from those marks.
+import { outbox, isNetworkError } from '../app/outbox';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Users, Check, AlertTriangle, Eye } from 'lucide-react';
 import { useOrg } from '../app/context';
@@ -9,22 +10,31 @@ import { friendly } from '../api/backend';
 import { useRefresh } from './PullToRefresh';
 import { Button, Card, CardHead, Field, Modal, Pill, inputCls, useToast, cx } from './ui';
 import { InfoTip } from './InfoTip';
+import { useAyahStarts } from '../lib/ayahText';
 
 export type AyahMark = { ayahId: number; severity: 'major' | 'minor' };
 
 /** Tap an ayah once for a small mistake, twice for a big one, three times to clear. */
 export function AyahMistakePicker({ start, end, value, onChange }: { start: number; end: number; value: AyahMark[]; onChange: (v: AyahMark[]) => void }) {
   const ids = useMemo(() => Array.from({ length: Math.min(end - start + 1, 300) }, (_, i) => start + i), [start, end]);
+  const words = useAyahStarts();
   const at = (id: number) => value.find(v => v.ayahId === id)?.severity;
   const tap = (id: number) => { const cur = at(id); const rest = value.filter(v => v.ayahId !== id); onChange(cur === undefined ? [...rest, { ayahId: id, severity: 'minor' }] : cur === 'minor' ? [...rest, { ayahId: id, severity: 'major' }] : rest); };
   let lastSurah = 0;
   return <div>
     <p className="mb-1.5 flex items-center gap-1 text-[13px] font-bold text-ink-soft">Tap the ayah where a mistake happened <span className="font-normal text-ink-faint">(once = small, twice = big)</span><InfoTip k="smallMistake" /></p>
-    <div className="flex max-h-[220px] flex-wrap gap-1.5 overflow-y-auto overscroll-contain rounded-xl bg-paper p-2 ring-1 ring-line" data-no-pull>{ids.map(id => {
+    <div className={cx('max-h-[300px] overflow-y-auto overscroll-contain rounded-xl bg-paper p-2 ring-1 ring-line', words ? 'flex flex-col gap-1' : 'flex flex-wrap gap-1.5')} data-no-pull>{ids.map(id => {
       const { surah, ayah } = fromAyahId(id); const head = surah !== lastSurah; lastSurah = surah; const sev = at(id);
-      return <span key={id} className="contents">{head && <span className="w-full pt-1 text-xs font-bold text-ink-faint">{surahNameEn(surah)}</span>}
-        <button type="button" onClick={() => tap(id)} aria-pressed={!!sev} aria-label={`${surahNameEn(surah)} ayah ${ayah}${sev ? `, ${sev === 'major' ? 'big' : 'small'} mistake` : ''}`}
-          className={cx('grid h-9 min-w-[36px] place-items-center rounded-lg px-1.5 text-sm font-bold tabular-nums ring-1 ring-inset', sev === 'major' ? 'bg-bad text-white ring-bad' : sev === 'minor' ? 'bg-amber-100 text-warn ring-warn/40' : 'bg-white text-ink-soft ring-line')}>{ayah}</button></span>;
+      const tone = sev === 'major' ? 'bg-bad text-white ring-bad' : sev === 'minor' ? 'bg-amber-100 text-warn ring-warn/40' : 'bg-white text-ink-soft ring-line';
+      return <span key={id} className="contents">{head && <span className="w-full px-1 pt-1 text-xs font-bold text-ink-faint">{surahNameEn(surah)}</span>}
+        {words ? <button type="button" onClick={() => tap(id)} aria-pressed={!!sev} aria-label={`${surahNameEn(surah)} ayah ${ayah}${sev ? `, ${sev === 'major' ? 'big' : 'small'} mistake` : ''}`}
+            className={cx('flex min-h-[44px] w-full items-center gap-3 rounded-lg px-2 text-left ring-1 ring-inset', tone)}>
+            <span className="w-8 shrink-0 text-center text-sm font-bold tabular-nums">{ayah}</span>
+            <span lang="ar" dir="rtl" className="min-w-0 flex-1 truncate px-1 text-right font-quran text-lg leading-loose">{words[id - 1]}</span>
+            {sev && <span className="shrink-0 text-[11px] font-bold uppercase">{sev === 'major' ? 'Big' : 'Small'}</span>}
+          </button>
+          : <button type="button" onClick={() => tap(id)} aria-pressed={!!sev} aria-label={`${surahNameEn(surah)} ayah ${ayah}${sev ? `, ${sev === 'major' ? 'big' : 'small'} mistake` : ''}`}
+            className={cx('grid h-9 min-w-[36px] place-items-center rounded-lg px-1.5 text-sm font-bold tabular-nums ring-1 ring-inset', tone)}>{ayah}</button>}</span>;
     })}</div>
     {value.length > 0 && <p className="mt-1 text-xs text-ink-faint">{value.filter(v => v.severity === 'major').length} big · {value.filter(v => v.severity === 'minor').length} small</p>}
   </div>;
@@ -51,7 +61,7 @@ export function PartnerRequestsCard() {
 function PartnerConfirmModal({ r, onClose, onSaved }: { r: Req; onClose: () => void; onSaved: () => void }) {
   const { api } = useOrg(); const toast = useToast();
   const [marks, setMarks] = useState<AyahMark[]>([]); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
-  const save = async () => { setBusy(true); try { await api.partnerConfirm(r.session_id, { errors: marks, errorsMajor: marks.filter(m => m.severity === 'major').length, errorsMinor: marks.filter(m => m.severity === 'minor').length, note }); toast(`Confirmed. Jazāk Allāhu khayran.`); onSaved(); onClose(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); } };
+  const save = async () => { setBusy(true); const args = { errors: marks, errorsMajor: marks.filter(m => m.severity === 'major').length, errorsMinor: marks.filter(m => m.severity === 'minor').length, note }; try { await api.partnerConfirm(r.session_id, args); toast(`Confirmed. Jazāk Allāhu khayran.`); onSaved(); onClose(); } catch (e) { if (isNetworkError(e)) { outbox.add(`Confirm ${r.student_name}`, { __op: 'partnerConfirm', sessionId: r.session_id, args }); toast('No connection: saved on this phone and will send automatically.'); onClose(); } else toast(friendly(e), 'err'); } finally { setBusy(false); } };
   return <Modal open wide onClose={onClose} title={`${r.student_name}’s ${TYPE[r.type] ?? 'revision'}`} footer={<div className="flex justify-end gap-2"><Button kind="secondary" onClick={onClose}>Cancel</Button><Button busy={busy} onClick={save}><Check size={16} />{marks.length ? `Confirm with ${marks.length} mistake${marks.length > 1 ? 's' : ''}` : 'Confirm: no mistakes'}</Button></div>}>
     <div className="flex flex-col gap-4">
       <p className="rounded-xl bg-pine-50 px-3 py-2 text-[15px] text-pine-800">{formatRange({ start: r.start_ayah_id, end: r.end_ayah_id })}{r.student_note ? <span className="block text-sm text-pine-700">“{r.student_note}”</span> : null}</p>

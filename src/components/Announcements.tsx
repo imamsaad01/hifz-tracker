@@ -35,7 +35,7 @@ export function AnnouncementBoard({ items, classes, studentClassIds, onChanged, 
     {open && <Composer classes={classes} onClose={() => setOpen(false)} onSaved={onChanged} />}
   </Card>;
 }
-function Composer({ classes, onClose, onSaved }: { classes: ClassRow[]; onClose: () => void; onSaved: () => void }) {
+export function Composer({ classes, onClose, onSaved }: { classes: ClassRow[]; onClose: () => void; onSaved: () => void }) {
   const { org, api } = useOrg(); const toast = useToast();
   const [title, setTitle] = useState(''); const [body, setBody] = useState(''); const [to, setTo] = useState(''); const [pinned, setPinned] = useState(false); const [busy, setBusy] = useState(false);
   return <Modal open onClose={onClose} title="Post an announcement" footer={<div className="flex justify-end gap-2"><Button kind="secondary" onClick={onClose}>Cancel</Button><Button busy={busy} disabled={!title.trim()} onClick={async () => { setBusy(true); try { await api.addAnnouncement(org.id, { classId: to || null, title: title.trim(), body: body.trim(), pinned }); toast('Posted.'); onSaved(); onClose(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); } }}>Post</Button></div>}>

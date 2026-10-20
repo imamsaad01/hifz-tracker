@@ -1,6 +1,8 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import { applyDisplay, watchSystemTheme } from './lib/display';
+applyDisplay(); watchSystemTheme();
 import { App } from './App';
 import { AppProvider } from './app/context';
 import { ToastProvider } from './components/ui';

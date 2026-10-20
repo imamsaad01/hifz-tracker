@@ -1,4 +1,5 @@
 // Page frame: sidebar on desktop, bottom navigation on phones, sync status always visible.
+import { sendPending } from '../app/outboxOps';
 import React, { useEffect, useState } from 'react';
 import { LogOut, CloudOff, RefreshCw, type LucideIcon } from 'lucide-react';
 import { useApp } from '../app/context';
@@ -17,7 +18,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
   const pending = useOutboxCount();
   const toast = useToast();
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
-  const flush = async () => { const n = await outbox.flush(p => api.recordSession(p as never)); if (n) toast(`${n} saved session${n > 1 ? 's' : ''} sent.`); };
+  const flush = async () => { const n = await outbox.flush(p => sendPending(api, p)); if (n) toast(`${n} saved item${n > 1 ? 's' : ''} sent.`); };
   useEffect(() => { const on = () => { setOnline(true); flush(); }; const off = () => setOnline(false); window.addEventListener('online', on); window.addEventListener('offline', off); if (pending) flush(); return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); }; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return <div className="flex min-h-full flex-col lg:flex-row">
     <PullToRefresh />

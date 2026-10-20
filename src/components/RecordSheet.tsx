@@ -65,7 +65,7 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
       if (!asStudent && org?.settings.email.enabled && org.settings.email.onSession) api.notify({ type: 'session', student_id: student.id, date }).catch(() => {});
       toast(asStudent && partner ? `Saved. ${mates.find(m => m.student_id === partner)?.name.split(' ')[0] ?? 'Your partner'} will be asked to confirm it.` : `Saved: ${student.name}, ${formatRange(range)}`); onSaved(); onClose();
     } catch (e) {
-      if (isNetworkError(e)) { outbox.add(`${student.name} · ${formatRange(range)}`, payload as unknown as Record<string, unknown>); toast('No connection: kept on this device and will send automatically.'); onClose(); }
+      if (isNetworkError(e)) { outbox.add(`${student.name} · ${formatRange(range)}`, { ...(payload as unknown as Record<string, unknown>), ...(asStudent && partner ? { __partner: partner } : {}) }); toast('No connection: kept on this device and will send automatically.'); onClose(); }
       else setErr(friendly(e));
     } finally { setBusy(false); }
   };
