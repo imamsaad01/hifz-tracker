@@ -51,3 +51,9 @@ export function classLabel(studentId: string, classes: ClassRow[], members: Memb
   const admin = members.find(m => m.role === 'admin');
   return { title: programName, teacher: admin?.displayName ?? null };
 }
+
+/** How far through their own goal (not the whole Qur'an) */
+export function goalPct(st: Student, g: { remaining: number; done: boolean }) {
+  if (g.done) return 100; const t = goalTarget(st.goal, st.direction)?.target; if (!t) return 0;
+  return Math.max(0, Math.min(100, Math.round((1 - g.remaining / (t.end - t.start + 1)) * 100)));
+}

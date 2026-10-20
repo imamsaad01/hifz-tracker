@@ -7,7 +7,7 @@ import { MemorisedModal } from '../../components/MemorisedPicker';
 import { formatRange, surahNameEn } from '../../quran';
 import { RevisionCheckCard, RevisionStartModal, startLabel } from '../../components/RevisionSelf';
 import { useMemo, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { Tile, Row } from '../../components/Rows';
 import { ArrowLeft, Plus, ClipboardList, Target, Pencil, Archive, KeyRound, RefreshCw, Award } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
@@ -15,7 +15,7 @@ import { useStudentData } from '../../app/useStudentData';
 import { href, go } from '../../app/router';
 import { insight } from '../../lib/insights';
 import { METRIC_LABEL } from '../../lib/goals';
-import { Button, Card, CardHead, Spinner, ErrorBox, Segmented, SubTabs, Modal, Field, Select, inputCls, Toggle, Confirm, useToast, cx } from '../../components/ui';
+import { Button, Card, CardHead, Spinner, ErrorBox, Segmented, SubTabs, Modal, Field, Select, inputCls, Toggle, Confirm, useToast } from '../../components/ui';
 import { Overview, History, MonthReport, TermReport } from '../../components/StudentReport';
 import { PlanCard, ClassBadge } from '../../components/PlanCard';
 import { AdabTaps, AdabSummary } from '../../components/Adab';
@@ -23,7 +23,7 @@ import { LevelBar, BadgeGrid } from '../../components/Motivation';
 import { MessageThread } from '../../components/MessageThread';
 import { ExamList } from './Exams';
 import { certificatesFor } from '../Certificate';
-import { classLabel, studentPlan, goalTarget } from '../../lib/studentPlan';
+import { classLabel, studentPlan, goalPct } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
 import type { ClassRow } from '../../api/data';
 import { StandingCard, RevisionFormCard, missedLastWeek } from '../../components/StudentAttendance';
@@ -170,28 +170,4 @@ export function EditStudent({ st, onClose, onSaved, asStudent, classes = [] }: {
       </>}
     </div>
   </Modal>;
-}
-
-const TONE = { good: 'text-good', warn: 'text-warn', bad: 'text-bad' } as const;
-function Tile({ label, value, unit, sub, tone }: { label: string; value: string; unit?: string; sub?: string; tone?: keyof typeof TONE }) {
-  return <div className="rounded-xl bg-paper px-3 py-3 ring-1 ring-line">
-    <p className="text-xs font-bold uppercase tracking-wide text-ink-faint">{label}</p>
-    <p className={cx('mt-0.5 text-2xl font-bold tabular-nums', tone ? TONE[tone] : 'text-ink')}>{value}{unit && <span className="ml-1 text-sm font-bold text-ink-faint">{unit}</span>}</p>
-    {sub && <p className="text-xs text-ink-faint">{sub}</p>}
-  </div>;
-}
-/** One line with a value on the right; tap to open the details underneath (like a phone's settings list). */
-function Row({ title, value, tone, children }: { title: string; value: string; tone?: keyof typeof TONE; children: React.ReactNode }) {
-  return <details className="group">
-    <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-3 px-5 hover:bg-pine-50/50 [&::-webkit-details-marker]:hidden">
-      <span className="flex-1 font-bold">{title}</span>{value && <span className={cx('text-sm font-bold', tone ? TONE[tone] : 'text-ink-soft')}>{value}</span>}
-      <ChevronDown size={18} className="text-ink-faint transition group-open:rotate-180" />
-    </summary>
-    <div className="flex flex-col gap-4 border-t border-line bg-paper/60 p-4">{children}</div>
-  </details>;
-}
-/** How far through their own goal (not the whole Qur'an) */
-function goalPct(st: Student, g: { remaining: number; done: boolean }) {
-  if (g.done) return 100; const t = goalTarget(st.goal, st.direction)?.target; if (!t) return 0;
-  return Math.max(0, Math.min(100, Math.round((1 - g.remaining / (t.end - t.start + 1)) * 100)));
 }

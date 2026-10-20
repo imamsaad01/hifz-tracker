@@ -16,11 +16,14 @@ import { niceDate, hijriDate, addDays } from '../../lib/dates';
 import { formatRange, surahNameEn, pageRange } from '../../quran';
 import { RecallTestButton } from '../../components/RecallTest';
 import { streakDetail } from '../../lib/progress';
-import { studentPlan, classLabel } from '../../lib/studentPlan';
+import { studentPlan, classLabel, goalPct } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
 import type { SessionType } from '../../lib/types';
 import { Button, Card, CardHead, Spinner, ErrorBox, Pill, cx, SubTabs } from '../../components/ui';
 import { Overview, History } from '../../components/StudentReport';
+import { Rings, StreakCalendar } from '../../components/ProgressViz';
+import { Row } from '../../components/Rows';
+import { JuzMap } from '../../components/quran';
 import { AssignmentList } from '../../components/AssignmentList';
 import { RecordSheet } from '../../components/RecordSheet';
 import { Leaderboard } from '../../components/Leaderboard';
@@ -149,16 +152,32 @@ export function StudentApp({ tab }: { tab: string }) {
         </div>
       </details>
     </>}
-    {tab === 'progress' && <div className="flex flex-col gap-5">
-      <PageTitle title="My progress" />
+    {tab === 'progress' && (() => {
+      const due = ring.filter(r => r.due); const doneN = due.filter(r => r.done).length;
+      const gp = plan.goal ? goalPct(me, plan.goal) : Math.round(ins.progress.percent * 100);
+      const myTests = tests.length + data.exams.filter(x => x.studentId === me.id).length;
+      return <div className="flex flex-col gap-5">
+      <PageTitle title="My progress" sub={plan.goal ? `Goal: ${plan.goal.label}` : undefined} />
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card className="p-5"><Rings parts={[
+          { label: plan.goal ? 'Goal' : 'Qurʾān', value: gp / 100, detail: plan.goal?.done ? 'Reached!' : `${gp}%${plan.goal?.eta ? ` · by ${new Date(plan.goal.eta).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}` : ''}`, color: 'rgb(var(--good))' },
+          { label: 'This week', value: weekRev.target ? weekRev.oldPages / weekRev.target : 0, detail: weekRev.target ? `${weekRev.oldPages} of ${weekRev.target} Old pages` : `${weekRev.oldPages} pages`, color: '#C08A2E' },
+          { label: 'Today', value: due.length ? doneN / due.length : 1, detail: due.length ? `${doneN} of ${due.length} done` : 'Rest day', color: '#3B82C4' },
+        ]} /></Card>
+        <Card className="p-5"><div className="mb-3 flex items-baseline justify-between gap-2"><h2 className="font-bold">Streak</h2><p className="text-sm"><b className="text-2xl text-pine-700">{sk.days}</b> day{sk.days === 1 ? '' : 's'} <span className="text-ink-faint">· best {ins.longest}</span></p></div>
+          <StreakCalendar dates={sd.sessions.filter(x => x.studentId === me.id).map(x => x.date)} frozen={sk.frozen} today={today} /></Card>
+      </div>
       <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
+      <Card><CardHead title="Your Qurʾān" sub={`${ins.progress.juz} juz · ${ins.progress.pages} pages memorised`} /><div className="px-5 pb-5 pt-3"><JuzMap ranges={me.memorized} /></div></Card>
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, me.memorized)} />
-      {certs.length > 0 && <Card><CardHead title="My certificates" sub="Open one to print or save" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', me.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Card>}
-      <Leaderboard />
-      {tests.length + data.exams.filter(x => x.studentId === me.id).length > 0 && <div><h2 className="mb-2 font-bold">My juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={me.id} onChanged={reload} /></div>}
-      <AdabSummary points={beh} title="Adab & effort from your teacher" />
-      <Overview ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={goals} today={today} />
-    </div>}
+      <Card className="divide-y divide-line overflow-hidden">
+        {certs.length > 0 && <Row title="My certificates" value={`${certs.length}`}><div className="flex flex-wrap gap-2">{certs.map(c => <a key={c.code} href={href('certificate', me.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Row>}
+        <Row title="Leaderboard" value=""><Leaderboard /></Row>
+        {myTests > 0 && <Row title="My juz tests" value={`${myTests}`}><ExamList exams={data.exams} students={data.students} fixedStudent={me.id} onChanged={reload} /></Row>}
+        <Row title="Adab from your teacher" value={`${beh.filter(b => b.value > 0).length} good marks`}><AdabSummary points={beh} title="Adab & effort from your teacher" /></Row>
+        <Row title="Charts and all 604 pages" value=""><Overview noStats ins={ins} sessions={sd.sessions} milestones={sd.milestones} goals={goals} today={today} /></Row>
+      </Card>
+    </div>; })()}
     {tab === 'history' && <><PageTitle title="My sessions" /><History student={me} sessions={sd.sessions} today={today} settings={org.settings} /></>}
     {tab === 'messages' && <><PageTitle title="Messages" sub="With your teacher" /><MessageThread studentId={me.id} studentName={me.name} members={data.members} /></>}
     {tab === 'me' && <>
