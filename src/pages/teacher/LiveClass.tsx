@@ -2,10 +2,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RecallResult } from '../../api/data';
 import { useRefresh } from '../../components/PullToRefresh';
-import { Play, CheckCircle2, UserX, ChevronRight, ClipboardCheck, GripVertical, Clock3 } from 'lucide-react';
+import { Play, CheckCircle2, UserX, ChevronRight, ChevronDown, ClipboardCheck, GripVertical, Clock3 } from 'lucide-react';
 import { RevisionReadOnly, weakAyahs } from '../../components/PartnerRevision';
 import { SignOffModal } from '../../components/RevisionSelf';
 import { weekSummary } from '../../lib/weekly';
+import { addDays } from '../../lib/dates';
 import { useOrg } from '../../app/context';
 import type { OrgData } from '../../app/useOrgData';
 import { insight } from '../../lib/insights';
@@ -25,6 +26,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
   const mine = data.classes.find(c => c.teacherUserId === user?.id);
   const [cls, setCls] = useState(mine?.id ?? data.classes[0]?.id ?? 'all');
   const [rec, setRec] = useState<string | null>(null);
+  const [more, setMore] = useState<'rev' | 'weak' | 'test' | null>(null);
   const [tests, setTests] = useState<RecallResult[]>([]);
   const loadTests = useCallback(() => api.recallTests(org.id, new Date(Date.now() - 7 * 864e5).toISOString()).then(setTests).catch(e => console.error('recall tests', e)), [api, org.id]);
   useEffect(() => { loadTests(); }, [loadTests]); useRefresh(loadTests);
@@ -46,7 +48,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
   const rank = (id: string) => { const k = order.indexOf(id); return k < 0 ? 1e6 : k; };
   const waiting = ins.filter(i => !finished(i) && !away(i)).map((i, k) => ({ i, k })).sort((a, b) => (rank(a.i.student.id) - rank(b.i.student.id)) || a.k - b.k).map(x => x.i);
   const ids = waiting.map(i => i.student.id);
-  const skip = (sid: string) => { setOrder([...ids.filter(x => x !== sid), sid]); toast('Moved to the end of the queue.'); };
+  const skip = (sid: string) => { setMore(null); setOrder([...ids.filter(x => x !== sid), sid]); toast('Moved to the end of the queue.'); };
   const move = (from: number, to: number) => { if (from === to) return; const o = [...ids]; const [x] = o.splice(from, 1); o.splice(to, 0, x); setOrder(o); };
   // swipe the Up-now card left to skip
   const sw = useRef<{ x: number; y: number; id: number } | null>(null); const [dx, setDx] = useState(0);
@@ -56,6 +58,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
   const done = ins.filter(i => finished(i));
   const absent = ins.filter(i => !finished(i) && away(i));
   const current = waiting[0];
+  useEffect(() => { setMore(null); }, [current?.student.id]);
   const recIns = ins.find(i => i.student.id === rec);
   const absentNow = async (sid: string) => { try { await api.saveAttendance(org.id, sid, today, 'absent', 'in_person'); reload(); } catch (e) { toast(friendly(e), 'err'); } };
   return <div className="flex flex-col gap-5">
@@ -75,20 +78,35 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
     <Card className="border-2 border-pine-600 p-5">
       <p className="flex items-center text-xs font-bold uppercase tracking-wider text-pine-700"><span className="flex-1">Up now</span>{waiting.length > 1 && <span className="font-normal normal-case tracking-normal text-ink-faint">Swipe left to skip</span>}</p>
       <h2 className="mt-1 text-2xl font-bold">{current.student.name}</h2>
-      <div className="mt-3 flex flex-col gap-3">
-        <div><p className="mb-1.5 flex flex-wrap items-center gap-2 text-sm font-bold text-pine-800">1. Their revision this week <span className="font-normal text-ink-faint">(confirmed by partners)</span>{(() => { const w = weekSummary(data.sessions.filter(x => x.studentId === current.student.id), today, days, current.revision.perDay, false); return w.target ? <Pill tone={w.percent >= 1 ? 'green' : w.missedDays ? 'amber' : 'slate'}>{w.oldPages}/{w.target} Old pages</Pill> : null; })()}</p>
-          <RevisionReadOnly sessions={data.sessions} studentId={current.student.id} names={nameOf} />
-          {(() => { const wa = weakAyahs(data.sessions, current.student.id, today).slice(0, 8); return wa.length ? <p className="mt-1.5 text-sm text-warn"><b>Weak ayahs:</b> {wa.map(w => { const a = fromAyahId(w.ayahId); return `${surahNameEn(a.surah)} ${a.ayah}`; }).join(' · ')}</p> : null; })()}</div>
-        {(() => { const t = lastTest(current.student.id); if (!t) return null; const pct = Math.round(((t.total - t.peeked.length) / t.total) * 100);
-          return <div><p className="mb-1 flex flex-wrap items-center gap-2 text-sm font-bold text-pine-800">Self-test <Pill tone={pct >= 90 ? 'green' : pct >= 70 ? 'amber' : 'red'}>{pct}% from memory</Pill><span className="font-normal text-ink-faint">{formatRange({ start: t.start, end: t.end })} · {niceAgo(t.createdAt)}</span></p>
-            {t.peeked.length > 0 && <p className="text-sm text-warn"><b>Peeked at:</b> {t.peeked.map(a => { const x = fromAyahId(a); return `${surahNameEn(x.surah)} ${x.ayah}`; }).join(' · ')}</p>}</div>; })()}
-        <div><p className="mb-1 text-sm font-bold text-pine-800">2. New lesson</p>
-          {pendingNew(current.student.id) ? <p className="text-[15px]">Submitted: <b>{formatRange(pendingNew(current.student.id)!.range)}</b>{pendingNew(current.student.id)!.studentNote ? <span className="text-ink-faint"> · “{pendingNew(current.student.id)!.studentNote}”</span> : null}</p>
-            : <p className="text-[15px]"><b>{current.nextNew ? formatRange(current.nextNew) : 'all memorised'}</b></p>}</div>
-      </div>
-      {current.reasons.length > 0 && <p className="mt-1 text-sm text-warn">{current.reasons.map(r => r.text).join(' · ')}</p>}
-      <div className="mt-4 flex flex-wrap gap-2">{pendingNew(current.student.id) ? <Button onClick={() => setSignOff(pendingNew(current.student.id))}><ClipboardCheck size={16} />Sign off new lesson</Button> : <Button onClick={() => setRec(current.student.id)}><Play size={16} />Record new lesson</Button>}{waiting.length > 1 && <Button kind="secondary" onClick={() => skip(current.student.id)}><Clock3 size={16} />Later</Button>}<Button kind="secondary" onClick={() => absentNow(current.student.id)}><UserX size={16} />Absent</Button></div>
-      <div className="mt-3 -mx-1"><AdabTaps studentId={current.student.id} points={data.behaviour} onChanged={reload} compact /></div>
+      {(() => {
+        const sid = current.student.id; const pend = pendingNew(sid); const t = lastTest(sid);
+        const w = weekSummary(data.sessions.filter(x => x.studentId === sid), today, days, current.revision.perDay, false);
+        const waitingPartner = data.sessions.filter(x => x.studentId === sid && x.type !== 'new' && x.partnerStatus === 'pending' && x.date >= addDays(today, -6)).length;
+        const weak = weakAyahs(data.sessions, sid, today);
+        const pct = t ? Math.round(((t.total - t.peeked.length) / t.total) * 100) : null;
+        const chip = (k: 'rev' | 'weak' | 'test', tone: 'green' | 'amber' | 'red' | 'slate', label: string) => <button type="button" onClick={() => setMore(more === k ? null : k)} aria-expanded={more === k}
+          className={cx('inline-flex min-h-[34px] items-center gap-1 rounded-full px-3 text-sm font-bold ring-1 ring-inset', { green: 'bg-emerald-50 text-good ring-good/25', amber: 'bg-amber-50 text-warn ring-warn/25', red: 'bg-red-50 text-bad ring-bad/25', slate: 'bg-black/[.04] text-ink-soft ring-line' }[tone])}>{label}<ChevronDown size={14} className={cx('transition', more === k && 'rotate-180')} /></button>;
+        return <>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {w.target > 0 && chip('rev', w.percent >= 1 ? 'green' : w.missedDays ? 'amber' : 'slate', `Revision ${w.oldPages}/${w.target} pages${waitingPartner ? ` · ${waitingPartner} waiting` : ''}`)}
+            {pct !== null && chip('test', pct >= 90 ? 'green' : pct >= 70 ? 'amber' : 'red', `Self-test ${pct}%`)}
+            {weak.length > 0 && chip('weak', weak.some(x => x.big) ? 'red' : 'amber', `${weak.length} weak ayah${weak.length > 1 ? 's' : ''}`)}
+          </div>
+          {more === 'rev' && <div className="mt-2"><p className="mb-1.5 text-xs text-ink-faint">Last 7 days, confirmed by partners. You only read this.</p><RevisionReadOnly sessions={data.sessions} studentId={sid} names={nameOf} /></div>}
+          {more === 'test' && t && <p className="mt-2 rounded-xl bg-paper px-3 py-2 text-sm ring-1 ring-line">{formatRange({ start: t.start, end: t.end })} · {niceAgo(t.createdAt)}{t.peeked.length ? <><br /><b className="text-warn">Peeked at:</b> {t.peeked.map(a => { const x = fromAyahId(a); return `${surahNameEn(x.surah)} ${x.ayah}`; }).join(' · ')}</> : ' · no peeks'}</p>}
+          {more === 'weak' && <p className="mt-2 rounded-xl bg-paper px-3 py-2 text-sm ring-1 ring-line">{weak.slice(0, 12).map(x => { const a = fromAyahId(x.ayahId); return `${surahNameEn(a.surah)} ${a.ayah}${x.n > 1 ? ` ×${x.n}` : ''}`; }).join(' · ')}</p>}
+          <div className="mt-4 rounded-xl bg-pine-50 px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-pine-700">Hear now · new lesson</p>
+            <p className="mt-0.5 text-lg font-bold text-pine-800">{pend ? formatRange(pend.range) : current.nextNew ? formatRange(current.nextNew) : 'All memorised'}</p>
+            {pend ? <p className="text-sm text-pine-700">Submitted by the student{pend.studentNote ? <> · “{pend.studentNote}”</> : ''}</p> : <p className="text-sm text-pine-700">Not submitted yet: record it as you hear it.</p>}
+          </div>
+          {current.reasons.length > 0 && <p className="mt-2 text-sm text-warn">{current.reasons.map(r => r.text).join(' · ')}</p>}
+          <div className="mt-3 grid grid-cols-2 gap-2">{pend ? <Button className="col-span-2 min-h-[52px] text-[17px]" onClick={() => setSignOff(pend)}><ClipboardCheck size={18} />Sign off new lesson</Button> : <Button className="col-span-2 min-h-[52px] text-[17px]" onClick={() => setRec(sid)}><Play size={18} />Record new lesson</Button>}
+            {waiting.length > 1 ? <Button kind="secondary" onClick={() => skip(sid)}><Clock3 size={16} />Later</Button> : <span />}<Button kind="secondary" onClick={() => absentNow(sid)}><UserX size={16} />Absent</Button></div>
+        </>;
+      })()}
+      <details className="group mt-3"><summary className="flex min-h-[40px] cursor-pointer list-none items-center gap-1 text-sm font-bold text-ink-soft">Note manners (adab)<ChevronDown size={15} className="transition group-open:rotate-180" /></summary>
+        <div className="-mx-1 pt-1"><AdabTaps studentId={current.student.id} points={data.behaviour} onChanged={reload} compact /></div></details>
     </Card></div></div> : <Card><Empty icon={<CheckCircle2 size={30} />} title={ins.length ? 'Everyone is done for today' : 'No students in this halaqah'}>{ins.length ? 'Mā shāʾ Allāh. Check Today for anything that needs attention.' : 'Add students to the halaqah under Classes.'}</Empty></Card>}
     {waiting.length > 1 && <Card><h3 className="flex items-baseline gap-2 px-5 pt-4 font-bold">Next <span className="text-xs font-normal text-ink-faint">Drag ⋮⋮ to change the order</span></h3><ol ref={listRef} className="mt-2 divide-y divide-line">{waiting.slice(1).map((i, k) => <li key={i.student.id} className={cx('flex items-center gap-3 py-2.5 pl-2 pr-5 transition-colors', drag?.from === k && 'bg-pine-50', drag && drag.to === k && drag.from !== k && 'bg-brass-100/60')}>
       <span role="button" tabIndex={0} aria-label={`Move ${i.student.name}. Use arrow keys.`} className="grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-ink-faint hover:bg-black/5 active:cursor-grabbing"
