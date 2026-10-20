@@ -36,7 +36,7 @@ beforeAll(async () => {
     grant usage on schema public, auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;`);
   for (const id of Object.values(U)) await db.query('insert into auth.users (id) values ($1)', [id]);
-  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql']) await db.exec(sql(f));
+  for (const f of ['migrations/0001_schema.sql', 'migrations/0002_security.sql', 'migrations/0003_functions.sql', 'migrations/0004_parent_codes.sql', 'migrations/0005_leaderboard.sql', 'seed_quran.sql', 'finish_setup.sql', 'migrations/0006_program_owners.sql', 'migrations/0007_school_features.sql', 'migrations/0008_attendance_revision_push.sql', 'migrations/0011_shared_devices.sql', 'migrations/0012_halaqah_requests.sql', 'migrations/0013_qiraat.sql', 'migrations/0014_self_revision_goals.sql', 'migrations/0015_skipped_surahs.sql', 'migrations/0016_lesson_signoff.sql', 'migrations/0017_revision_log_reminders.sql', 'migrations/0018_partner_reports.sql']) await db.exec(sql(f));
 
   await db.query('insert into public.platform_owners (user_id) values ($1), ($2)', [U.teacher, U.otherAdmin]);
   orgA = (await one<{ id: string }>(U.teacher, `select public.create_organization('Masjid Hifz Class', 'America/New_York', 'Ustadh') as id`))!.id;
@@ -423,7 +423,8 @@ describe('self-logged revision', () => {
     await as(U.student, `select public.set_revision_start($1, 582)`, [studentS]);
     expect((await one<{ revision_start_page: number }>(U.teacher, `select revision_start_page from public.students where id = $1`, [studentS]))!.revision_start_page).toBe(582);
     await rejects(U.otherStudent, `select public.set_revision_start($1, 1)`, [studentS]);
-    const sid = (await rec(U.student, { student_id: studentS, date: new Date().toISOString().slice(0, 10), type: 'old', start_ayah_id: 6200, end_ayah_id: 6210, errors_major: 0, errors_minor: 0 }))!.id;
+    const localToday = (await one<{ d: string }>(null, `select to_char(public.org_today($1), 'YYYY-MM-DD') d`, [orgA]))!.d;
+    const sid = (await rec(U.student, { student_id: studentS, date: localToday, type: 'old', start_ayah_id: 6200, end_ayah_id: 6210, errors_major: 0, errors_minor: 0 }))!.id;
     await rejects(U.student, `select public.check_sessions(array[$1]::uuid[], 'ok')`, [sid]);
     await as(U.teacher, `select public.check_sessions(array[$1]::uuid[], 'redo', 'Again with your partner')`, [sid]);
     const r = (await one<{ check_status: string; check_note: string }>(U.student, `select check_status, check_note from public.sessions where id = $1`, [sid]))!;
@@ -473,5 +474,38 @@ describe('revision log reminder', () => {
     await as(null, `update public.sessions set deleted_at = now() where student_id = $1 and date = (public.org_local_now($2))::date and type in ('old','juz_revision')`, [studentS, orgA]);
     await as(null, `select public.revision_log_reminders()`);
     expect(await as(null, `select 1 from public.notification_queue where user_id = $1 and title like 'Did you do today%'`, [U.student])).toHaveLength(1);
+  });
+});
+
+describe('revision partners, weak ayahs, juz tests, reports', () => {
+  const P = '00000000-0000-0000-0000-000000000099';
+  let partnerS = '';
+  it('a classmate confirms revision with ayah mistakes; form ticked; others cannot', async () => {
+    await as(null, `insert into auth.users (id) values ($1) on conflict do nothing`, [P]);
+    await one(P, 'select public.join_organization($1, $2)', [joinA, 'Partner P']);
+    partnerS = (await one<{ id: string }>(P, 'select public.create_student($1::jsonb) as id', [JSON.stringify({ org_id: orgA, for_self: true, name: 'Partner Pupil', memorized: [] })]))!.id;
+    const today = (await one<{ d: string }>(null, `select to_char(public.org_today($1), 'YYYY-MM-DD') d`, [orgA]))!.d;
+    const sid = (await rec(U.student, { student_id: studentS, date: today, type: 'old', start_ayah_id: 6222, end_ayah_id: 6230, errors_major: 0, errors_minor: 0 }))!.id;
+    await rejects(U.otherStudent, `select public.request_partner_check($1, $2)`, [sid, partnerS]);
+    await as(U.student, `select public.request_partner_check($1, $2)`, [sid, partnerS]);
+    expect(await as(P, `select * from public.partner_requests()`)).toHaveLength(1);
+    await rejects(U.otherStudent, `select public.partner_confirm($1, '{}'::jsonb)`, [sid]);
+    await as(P, `select public.partner_confirm($1, $2::jsonb)`, [sid, JSON.stringify({ errors: [{ ayah_id: 6225, severity: 'major' }, { ayah_id: 6226, severity: 'minor' }], note: 'Watch ayah 4' })]);
+    const r = (await one<{ partner_status: string; errors_major: number; errors_minor: number; check_status: string }>(U.student, `select partner_status, errors_major, errors_minor, check_status from public.sessions where id = $1`, [sid]))!;
+    expect(r).toMatchObject({ partner_status: 'confirmed', errors_major: 1, errors_minor: 1, check_status: 'ok' });
+    expect(await as(U.student, `select 1 from public.session_errors where session_id = $1 and ayah_id = 6225`, [sid])).toHaveLength(1);
+    expect(await as(U.student, `select 1 from public.revision_checkins where student_id = $1 and partner = 'Partner Pupil'`, [studentS])).toHaveLength(1);
+    await rejects(P, `select public.partner_confirm($1, '{}'::jsonb)`, [sid]); // already confirmed
+  });
+  it('finishing a juz through lessons books a juz test once', async () => {
+    const before = (await one<{ n: number }>(null, `select count(*)::int n from public.exams where student_id = $1 and juz = 30`, [partnerS]))!.n;
+    await rec(U.teacher, { student_id: partnerS, type: 'new', start_ayah_id: 5673, end_ayah_id: 6236, errors_major: 0, errors_minor: 0 });
+    await rec(U.teacher, { student_id: partnerS, type: 'new', start_ayah_id: 5673, end_ayah_id: 6236, errors_major: 0, errors_minor: 0 });
+    expect((await one<{ n: number }>(null, `select count(*)::int n from public.exams where student_id = $1 and juz = 30`, [partnerS]))!.n).toBe(before + 1);
+  });
+  it('consistency board and weekly reports run', async () => {
+    const rows = await as<{ student_id: string; days_due: number; days_done: number }>(U.teacher, `select * from public.revision_consistency($1, 4)`, [orgA]);
+    expect(rows.find(r => r.student_id === studentS)!.days_done).toBeGreaterThanOrEqual(1);
+    expect((await one<{ n: number }>(null, `select public.weekly_reports() as n`))!.n).toBeGreaterThanOrEqual(0);
   });
 });

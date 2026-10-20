@@ -9,14 +9,17 @@ const MEDAL = ['bg-brass-500 text-white', 'bg-[#9AA5A3] text-white', 'bg-[#B5835
 export function Leaderboard({ limit, compact }: { limit?: number; compact?: boolean }) {
   const { api, org, backend } = useOrg();
   const [days, setDays] = useState<'7' | '30'>('7');
+  const [kind, setKind] = useState<'consistency' | 'points'>('consistency');
+  const [cons, setCons] = useState<Array<{ student_id: string; display_name: string; days_due: number; days_done: number; partner_checked: number; is_me: boolean }> | null>(null);
   const [rows, setRows] = useState<BoardRow[] | null>(null);
   const [off, setOff] = useState(false);
   const [why, setWhy] = useState(false);
   useEffect(() => {
     let live = true;
     const load = () => api.leaderboard(org.id, Number(days)).then(r => { if (live) { setRows(r); setOff(false); } }).catch(() => { if (live) setOff(true); });
-    load();
-    const unsub = backend.subscribe?.(['sessions'], load);
+    const loadC = () => api.consistency(org.id, 4).then(r => { if (live) setCons(r.map(x => ({ ...x, days_due: Number(x.days_due), days_done: Number(x.days_done), partner_checked: Number(x.partner_checked) })).sort((a, b) => (b.days_done / Math.max(1, b.days_due)) - (a.days_done / Math.max(1, a.days_due)) || b.partner_checked - a.partner_checked || a.display_name.localeCompare(b.display_name))); }).catch(() => { if (live) setCons([]); });
+    load(); loadC();
+    const unsub = backend.subscribe?.(['sessions'], () => { load(); loadC(); });
     return () => { live = false; unsub?.(); };
   }, [api, org.id, days, backend]);
   if (off) return null;
@@ -29,13 +32,25 @@ export function Leaderboard({ limit, compact }: { limit?: number; compact?: bool
       sub={staff && !org.settings.leaderboard.enabled ? 'Only teachers can see this. Turn it on for students in More → Settings.' : myRank ? `You are #${myRank} of ${rows!.length}` : 'Rewards showing up and revising, not speed'}
       action={<button type="button" onClick={() => setWhy(w => !w)} aria-expanded={why} aria-label="How points work" className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint hover:bg-black/5"><Info size={16} /></button>} />
     {why && <p className="mx-5 mt-2 rounded-xl bg-pine-50 px-3 py-2 text-sm text-pine-800">10 points for each day with a session, 2 for each page of revision and 1 more for each page with no mistakes. Revision counts up to 20 pages a day. New lessons give no points, so going faster never wins.</p>}
-    {!compact && <div className="px-5 pt-3"><Segmented label="Period" value={days} onChange={setDays} options={[['7', 'This week'], ['30', 'Last 30 days']]} /></div>}
-    {rows === null ? <p className="px-5 py-4 text-sm text-ink-faint">Loading…</p> : <ol className="mt-2 divide-y divide-line">{shown.map((r, i) => <li key={r.studentId} className={cx('flex items-center gap-3 px-5 py-2.5', r.isMe && 'bg-brass-100/60')}>
+    <div className="flex flex-col gap-2 px-5 pt-3"><Segmented label="Ranking" value={kind} onChange={setKind} options={[['consistency', 'Revision consistency'], ['points', 'Points']]} />{kind === 'points' && !compact && <Segmented label="Period" value={days} onChange={setDays} options={[['7', 'This week'], ['30', 'Last 30 days']]} />}</div>
+    {kind === 'consistency' && <ConsistencyList rows={cons} limit={limit} />}
+    {kind === 'points' && (rows === null ? <p className="px-5 py-4 text-sm text-ink-faint">Loading…</p> : <ol className="mt-2 divide-y divide-line">{shown.map((r, i) => <li key={r.studentId} className={cx('flex items-center gap-3 px-5 py-2.5', r.isMe && 'bg-brass-100/60')}>
       <span className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold', MEDAL[i] ?? 'bg-black/[.05] text-ink-soft')}>{i + 1}</span>
       <span className="min-w-0 flex-1"><b className="block truncate">{r.name}{r.isMe ? ' (you)' : ''}</b><span className="text-xs text-ink-faint">{r.days} day{r.days === 1 ? '' : 's'} · {r.pages} page{r.pages === 1 ? '' : 's'} revised · {r.clean} clean</span></span>
       <span className="text-right font-bold tabular-nums text-pine-800">{r.points}<span className="block text-[10px] font-normal uppercase text-ink-faint">points</span></span>
     </li>)}
       {me && limit && myRank && myRank > limit && <li className="flex items-center gap-3 bg-brass-100/60 px-5 py-2.5"><span className="grid h-7 w-7 place-items-center rounded-full bg-black/[.05] text-xs font-bold">{myRank}</span><b className="flex-1">{me.name} (you)</b><b className="tabular-nums text-pine-800">{me.points}</b></li>}
-    </ol>}
+    </ol>)}
   </Card>;
+}
+
+/** Ranks by the share of revision days (last 4 weeks) with Old revision logged, so steady students win, not fast ones */
+function ConsistencyList({ rows, limit }: { rows: Array<{ student_id: string; display_name: string; days_due: number; days_done: number; partner_checked: number; is_me: boolean }> | null; limit?: number }) {
+  if (rows === null) return <p className="px-5 py-4 text-sm text-ink-faint">Loading…</p>;
+  const shown = limit ? rows.slice(0, limit) : rows;
+  return <ol className="mt-2 divide-y divide-line">{shown.map((r, i) => { const pct = Math.round((r.days_done / Math.max(1, r.days_due)) * 100); return <li key={r.student_id} className={cx('flex items-center gap-3 px-5 py-2.5', r.is_me && 'bg-brass-100/60')}>
+    <span className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold', MEDAL[i] ?? 'bg-black/[.05] text-ink-soft')}>{i + 1}</span>
+    <span className="min-w-0 flex-1"><b className="block truncate">{r.display_name}{r.is_me ? ' (you)' : ''}</b><span className="text-xs text-ink-faint">{r.days_done} of {r.days_due} revision days · {r.partner_checked} partner-checked</span></span>
+    <span className="text-right font-bold tabular-nums text-pine-800">{pct}%<span className="block text-[10px] font-normal uppercase text-ink-faint">4 weeks</span></span>
+  </li>; })}</ol>;
 }

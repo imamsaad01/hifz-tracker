@@ -1,4 +1,5 @@
 // The student's own app: today's plan, progress and rewards, sessions, messages and their plan.
+import { PartnerRequestsCard, WeakAyahsCard } from '../../components/PartnerRevision';
 import { WeeklyRevisionCard } from '../../components/WeeklyRevision';
 import { weekSummary } from '../../lib/weekly';
 import { InfoTip } from '../../components/InfoTip';
@@ -87,7 +88,9 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5" data-tour="halaqah"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
       {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
       <div className="mb-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={3} fresh /></div>
+      <div className="mb-5 empty:hidden" data-tour="partner"><PartnerRequestsCard /></div>
       <div className="mb-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
+      <div className="mb-5 empty:hidden"><WeakAyahsCard sessions={sd.sessions} studentId={me.id} /></div>
       <div className="mb-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
       {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mb-5"><RulesCard text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
       <div className="mb-5" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>

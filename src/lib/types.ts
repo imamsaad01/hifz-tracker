@@ -19,7 +19,8 @@ export interface OrgSettings {
     /** 'cycle': go through all memorised pages in turn on revision days; 'spaced': each page returns on its own schedule */
     oldPlan: 'cycle' | 'spaced'; days: number[];
     /** phone reminder on revision days */ remind?: boolean; reminderTime?: string;
-    /** evening nudge to log revision if nothing logged */ logRemind?: boolean; logReminderTime?: string };
+    /** evening nudge to log revision if nothing logged */ logRemind?: boolean; logReminderTime?: string;
+    /** how the teacher hears about revision: a daily summary, each confirmed revision, or not at all */ teacherNotify?: 'daily' | 'each' | 'off' };
   accuracy: { major: number; minor: number };
   email: { enabled: boolean; onSession: boolean; lowRevision: boolean; weekly: boolean };
   leaderboard: { enabled: boolean; fullNames: boolean };
@@ -30,6 +31,7 @@ export interface OrgSettings {
   revisionForm: { slots: Array<{ key: string; label: string; day: number | null }>; allowedMisses: number };
   rulesText: string;
   /** qira'at reminders: test eve/morning, daily matn lines, weekly weak-areas review */
+  /** weekly summaries */ reports: { parentWeekly: boolean; teacherWeekly: boolean };
   qiraat: { testEveTime: string; testMorningTime: string; matnTime: string; weakDay: number; weakTime: string };
 }
 export interface Org { id: string; name: string; timezone: string; joinCode: string; settings: OrgSettings; role: Role; roles: Role[] }
@@ -48,7 +50,7 @@ export interface Session {
   scores: { tajweed: number | null; fluency: number | null; accuracy: number | null; tarteel: number | null; overall: number | null };
   attendance: AttendanceStatus; mode: AttendanceMode; teacherNote: string | null; studentNote: string | null; followUp: boolean;
   recordedBy: 'teacher' | 'student'; errors: SessionError[]; createdAt: string;
-  /** teacher's check of revision the student logged */ checkStatus?: 'ok' | 'redo' | null; checkedAt?: string | null; checkNote?: string | null; selfLogged?: boolean;
+  /** teacher's check of revision the student logged */ checkStatus?: 'ok' | 'redo' | null; checkedAt?: string | null; checkNote?: string | null; selfLogged?: boolean; partnerStudentId?: string | null; partnerStatus?: 'pending' | 'confirmed' | null;
 }
 export interface RevisionItem { page: number; lastReviewedOn: string | null; intervalDays: number; lapses: number; dueOn: string }
 export interface Assignment {
@@ -59,7 +61,7 @@ export interface Milestone { code: string; achievedOn: string }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
   scoreScale: 5,
-  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null, oldPlan: 'spaced', days: [0, 1, 2, 3, 4, 5, 6], remind: true, reminderTime: '15:00', logRemind: true, logReminderTime: '20:30' },
+  revision: { recentDays: 7, maxIntervalDays: 30, weakThreshold: 2, failThreshold: 3, dailyOldPages: null, maxOverdueBeforeNew: null, oldPlan: 'spaced', days: [0, 1, 2, 3, 4, 5, 6], remind: true, reminderTime: '15:00', logRemind: true, logReminderTime: '20:30', teacherNotify: 'daily' },
   accuracy: { major: 10, minor: 3 },
   email: { enabled: true, onSession: true, lowRevision: true, weekly: false },
   leaderboard: { enabled: false, fullNames: false },
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   attendance: { semesterStart: null, semesterEnd: null, freeAbsences: 1, excusedAbsences: 2 },
   revisionForm: { slots: [{ key: 'after_lesson', label: 'After the lesson at the mosque', day: null }, { key: 'wed', label: 'Wednesday night', day: 3 }, { key: 'fri', label: 'Friday night', day: 5 }], allowedMisses: 1 },
   rulesText: '',
+  reports: { parentWeekly: true, teacherWeekly: true },
   qiraat: { testEveTime: '18:00', testMorningTime: '08:00', matnTime: '07:30', weakDay: 5, weakTime: '17:00' },
 };
 export const SESSION_LABEL: Record<SessionType, string> = {

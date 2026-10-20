@@ -32,3 +32,20 @@ export function WeeklyRevisionCard({ w, you = true, onLog }: { w: WeekSummary; y
     </div>
   </Card>;
 }
+
+/** Parent: the week at a glance (also sent as a notification on Sunday evening) */
+export function ParentWeekCard({ name, w, newLessons, present, classes, note }: { name: string; w: WeekSummary; newLessons: number; present: number; classes: number; note: string | null }) {
+  const first = name.split(' ')[0];
+  const items: Array<[string, string, string?]> = [
+    ['Old revision', w.target ? `${w.oldPages} of ${w.target} pages` : `${w.oldPages} pages`, w.target ? `${Math.round(w.percent * 100)}%` : undefined],
+    ['Recent revision', `${w.recentDays} day${w.recentDays === 1 ? '' : 's'}`],
+    ['New lessons signed off', String(newLessons)],
+    ['Class attendance', classes ? `${present} of ${classes}` : String(present)],
+  ];
+  return <Card>
+    <CardHead title={<span className="inline-flex items-center gap-2"><CalendarCheck size={18} className="text-pine-700" />{first}’s week</span>} sub="Monday to today. A summary is also sent every Sunday evening." />
+    <dl className="grid grid-cols-2 gap-2 px-5 pb-4 pt-3 sm:grid-cols-4">{items.map(([k, v, x]) => <div key={k} className="rounded-xl bg-paper p-3 ring-1 ring-line"><dt className="text-xs font-bold uppercase tracking-wide text-ink-faint">{k}</dt><dd className="mt-0.5 text-lg font-bold">{v}{x && <span className="ml-1 text-sm font-normal text-ink-faint">{x}</span>}</dd></div>)}</dl>
+    {w.missedDays > 0 && <p className="mx-5 mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-bad">{w.missedDays} revision day{w.missedDays > 1 ? 's' : ''} this week with no Old revision logged.</p>}
+    {note && <p className="mx-5 mb-5 rounded-xl bg-pine-50 px-3 py-2 text-sm text-pine-800"><b>Teacher’s latest note:</b> “{note}”</p>}
+  </Card>;
+}

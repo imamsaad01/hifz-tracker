@@ -49,6 +49,7 @@ export function mergeSettings(s: Row | null | undefined): OrgSettings {
     revisionForm: { ...DEFAULT_SETTINGS.revisionForm, ...(x.revisionForm ?? {}) },
     rulesText: typeof x.rulesText === 'string' ? x.rulesText : DEFAULT_SETTINGS.rulesText,
     qiraat: { ...DEFAULT_SETTINGS.qiraat, ...(x.qiraat ?? {}) },
+    reports: { ...DEFAULT_SETTINGS.reports, ...(x.reports ?? {}) },
   };
 }
 const toStudent = (r: Row, ranges: Range[] = []): Student => ({
@@ -63,7 +64,7 @@ const toSession = (r: Row, errs: SessionError[] = []): Session => ({
   id: r.id, orgId: r.org_id, studentId: r.student_id, date: iso(r.date), type: r.type, range: { start: r.start_ayah_id, end: r.end_ayah_id },
   errorsMajor: r.errors_major, errorsMinor: r.errors_minor,
   scores: { tajweed: num(r.score_tajweed), fluency: num(r.score_fluency), accuracy: num(r.score_accuracy), tarteel: num(r.score_tarteel), overall: num(r.score_overall) },
-  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: ts(r.created_at), checkStatus: r.check_status ?? null, checkedAt: r.checked_at ? ts(r.checked_at) : null, checkNote: r.check_note ?? null, selfLogged: !!r.self_logged,
+  attendance: r.attendance, mode: r.mode, teacherNote: r.teacher_note, studentNote: r.student_note, followUp: r.follow_up, recordedBy: r.recorded_by, errors: errs, createdAt: ts(r.created_at), checkStatus: r.check_status ?? null, checkedAt: r.checked_at ? ts(r.checked_at) : null, checkNote: r.check_note ?? null, selfLogged: !!r.self_logged, partnerStudentId: r.partner_student_id ?? null, partnerStatus: r.partner_status ?? null,
 });
 
 export function api(be: Backend) {
@@ -191,6 +192,14 @@ export function api(be: Backend) {
     setMemorisedSurahs: (studentId: string, p: { surahs?: number[]; partial?: { surah: number; ayahs: number } | null; skipped?: number[]; nextFrom?: number | null; direction?: 'back' | 'forward' }) =>
       be.rpc<null>('set_memorised_surahs', { p_student: studentId, p: { ...(p.surahs ? { surahs: p.surahs } : {}), ...(p.partial ? { partial: p.partial } : {}), ...(p.skipped ? { skipped: p.skipped } : {}), ...(p.nextFrom !== undefined ? { next_from: p.nextFrom ?? '' } : {}), ...(p.direction ? { direction: p.direction } : {}) } }),
     setRevisionStart: (studentId: string, page: number | null) => be.rpc<null>('set_revision_start', { p_student: studentId, p_page: page }),
+    revisionPartners: () => be.rpc<Array<{ student_id: string; name: string; same_class: boolean }>>('revision_partners', {}),
+    requestPartner: (sessionId: string, partnerId: string) => be.rpc<null>('request_partner_check', { p_session: sessionId, p_partner: partnerId }),
+    partnerRequests: () => be.rpc<Array<{ session_id: string; student_name: string; type: string; start_ayah_id: number; end_ayah_id: number; date: string; student_note: string | null }>>('partner_requests', {}),
+    partnerConfirm: (sessionId: string, p: { errors: Array<{ ayahId: number; severity: 'major' | 'minor' }>; errorsMajor: number; errorsMinor: number; note: string }) =>
+      be.rpc<null>('partner_confirm', { p_session: sessionId, p: { errors: p.errors.map(e => ({ ayah_id: e.ayahId, severity: e.severity })), errors_major: p.errorsMajor, errors_minor: p.errorsMinor, note: p.note } }),
+    tagErrors: (sessionId: string, errors: Array<{ ayahId: number; severity: 'major' | 'minor' }>) =>
+      be.rpc<number>('tag_session_errors', { p_session: sessionId, p_errors: errors.map(e => ({ ayah_id: e.ayahId, severity: e.severity })) }),
+    consistency: (orgId: string, weeks: number) => be.rpc<Array<{ student_id: string; display_name: string; days_due: number; days_done: number; partner_checked: number; is_me: boolean }>>('revision_consistency', { org: orgId, p_weeks: weeks }),
     signOff: (id: string, p: { status: 'ok' | 'redo'; errorsMajor: number; errorsMinor: number; note: string }) =>
       be.rpc<null>('sign_off_session', { p_id: id, p: { status: p.status, errors_major: p.errorsMajor, errors_minor: p.errorsMinor, note: p.note } }),
     submitLesson: (p: { studentId: string; start: number; end: number; note: string }) =>

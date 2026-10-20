@@ -144,3 +144,13 @@ insert into public.platform_owners (user_id) select id from auth.users where ema
 - **(i) info buttons** next to New lesson, Recent revision, Old revision, mistakes, weekly revision and more (hover on a computer, tap on a phone). Wording lives in `src/lib/glossary.ts`.
 - **This week's revision** (student home, student page): distinct Old pages revised Monday–Sunday against the target (Old pages per revision day × revision days), a day strip, missed revision days, and buttons to log today's or a missed day's revision. The students list shows "Revision this week: X/Y pages".
 - **Log reminders**: on revision days, students with nothing logged get a nudge in the evening (default 8:30 pm, More → Settings → Revision plan), plus their weekly total on Sunday at 7 pm (`public.revision_log_reminders()`).
+
+## Revision partners, weak ayahs, reports
+
+- **Revision partners**: when logging revision, a student picks who listened. That partner gets a notification and a *Confirm your partner's revision* card: tap the ayahs with mistakes (once = small, twice = big), add a note, confirm. This fills in the weekly revision form, marks weak pages, and tells the student. Teachers only see revision (Live class, each student's page) and get a daily summary, each confirmation, or nothing (Settings).
+- **Teacher sign-off** is for new lessons only, with mistakes marked on ayahs.
+- **Weak ayahs**: ayahs with mistakes in the last 60 days, on the student, parent and teacher screens and in Live class.
+- **Live class**: the student's revision this week (read-only, with partner and mistakes), weekly pages, weak ayahs, then the new lesson (sign off a submitted one, or record it).
+- **Revision consistency board**: share of revision days with Old revision logged over 4 weeks, next to the points board.
+- **Juzʾ tests**: finishing a juzʾ through lessons books a juzʾ test a week later (once per juzʾ) and tells the teacher.
+- **Weekly reports**: parents on Sunday at 6 pm (revision pages, new lessons, attendance, latest teacher note; also a card on the parent screen); teachers on Monday at 8 am (missed revision days, lessons to sign off, partner checks pending). `public.weekly_reports()` runs in the `hifz-reminders` cron job.

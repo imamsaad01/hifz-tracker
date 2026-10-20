@@ -27,7 +27,7 @@ export function Classes() {
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   if (!data) return <Spinner />;
   return <>
-    <PageTitle title={tab === 'live' ? 'Live class' : tab === 'calendar' ? 'Calendar' : tab === 'attendance' ? 'Attendance' : 'Halaqahs'} sub={tab === 'live' ? 'Revision is tested first, then the new lesson.' : tab === 'calendar' ? 'Class days, holidays, tests and events' : tab === 'attendance' ? 'Check-ins, absence requests and semester standing' : 'Groups, teachers and class times'} />
+    <PageTitle title={tab === 'live' ? 'Live class' : tab === 'calendar' ? 'Calendar' : tab === 'attendance' ? 'Attendance' : 'Halaqahs'} sub={tab === 'live' ? 'See their revision (confirmed by partners), then hear the new lesson.' : tab === 'calendar' ? 'Class days, holidays, tests and events' : tab === 'attendance' ? 'Check-ins, absence requests and semester standing' : 'Groups, teachers and class times'} />
     <nav aria-label="Class sections" className="no-print mb-5 flex gap-1 overflow-x-auto">{([['live', 'Live class'], ['attendance', 'Attendance'], ['halaqahs', 'Halaqahs'], ['calendar', 'Calendar']] as const).map(([k, l]) => <a key={k} href={href('classes', k)} aria-current={tab === k ? 'page' : undefined} className={cx('inline-flex min-h-[40px] shrink-0 items-center rounded-xl px-4 text-sm font-bold', tab === k ? 'bg-pine-700 text-white' : 'bg-white text-ink-soft ring-1 ring-line')}>{l}</a>)}</nav>
     {tab === 'live' && <LiveClass data={data} reload={reload} />}
     {tab === 'calendar' && <CalendarView events={data.events} exams={data.exams} students={data.students} classes={data.classes} onChanged={reload} />}

@@ -1,4 +1,8 @@
 // Parents: read-only view of their linked children, plus messages with the teacher.
+import { ParentWeekCard } from '../../components/WeeklyRevision';
+import { WeakAyahsCard } from '../../components/PartnerRevision';
+import { weekSummary } from '../../lib/weekly';
+import { weekStart } from '../../lib/schedule';
 import { useMemo, useState } from 'react';
 import { Users, Award } from 'lucide-react';
 import { useOrg } from '../../app/context';
@@ -57,6 +61,12 @@ export function ParentApp() {
       <Segmented label="Section" value={tab} onChange={setTab} options={[['overview', 'Progress'], ['history', 'Sessions'], ['messages', 'Messages'], ['report', 'Report']]} />
     </div>
     {tab === 'overview' && <div className="flex flex-col gap-5">
+      {(() => { const ws = weekStart(today); const mine = sd.sessions.filter(x => x.studentId === child.id);
+        const w = weekSummary(mine, today, org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6], ins.revision.perDay, false);
+        const att = data.attendance.filter(a => a.studentId === child.id && a.date >= ws);
+        const note = mine.filter(x => x.date >= ws && x.teacherNote).sort((a, b) => b.date.localeCompare(a.date))[0]?.teacherNote ?? null;
+        return <ParentWeekCard name={child.name} w={w} newLessons={mine.filter(x => x.date >= ws && x.type === 'new' && (!x.selfLogged || x.checkStatus === 'ok')).length} present={att.filter(a => a.status === 'present' || a.status === 'late').length} classes={att.length} note={note} />; })()}
+      <div className="empty:hidden"><WeakAyahsCard sessions={sd.sessions} studentId={child.id} you={false} /></div>
       <div className="empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={classIds} onChanged={reload} limit={3} fresh /></div>
       {!classIds.length && <HalaqahChooser student={child} data={data} onChanged={reload} forChild />}
       <div className="flex flex-wrap gap-2" data-tour="absence"><Button kind="secondary" onClick={() => setAbsent(true)}><CalendarX size={16} />Report an absence</Button><Button kind="quiet" onClick={startTour}>App tour</Button></div>

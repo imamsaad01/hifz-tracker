@@ -1,3 +1,4 @@
+import { WeakAyahsCard, RevisionReadOnly } from '../../components/PartnerRevision';
 import { WeeklyRevisionCard } from '../../components/WeeklyRevision';
 import { weekSummary } from '../../lib/weekly';
 import { sizeValue, parseSize, SIZE_OPTIONS } from '../../components/StudentForm';
@@ -65,6 +66,8 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
     {tab === 'overview' && <div className="flex flex-col gap-5">
       <Card><CardHead title="Adab & effort today" sub="Tap to give a point; tap again to undo" /><AdabTaps studentId={st.id} points={data.behaviour} onChanged={reload} /></Card>
       <PlanCard plan={plan} you={false} />
+      <div className="empty:hidden"><WeakAyahsCard sessions={sd.sessions} studentId={st.id} you={false} /></div>
+      <Card className="p-5"><h2 className="mb-2 font-bold">Revision this week</h2><RevisionReadOnly sessions={sd.sessions} studentId={st.id} names={id => (data.students.find(x => x.id === id)?.name ?? 'partner').split(' ')[0]} /></Card>
       <WeeklyRevisionCard w={weekSummary(sd.sessions.filter(s => s.studentId === st.id), today, org.settings.revision.days?.length ? org.settings.revision.days : [0, 1, 2, 3, 4, 5, 6], ins.revision.perDay, false)} you={false} />
       <div className="empty:hidden"><RevisionCheckCard data={data} onChanged={reload} studentId={st.id} /></div>
       <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Old revision starts from:</b> {startLabel(st) ?? 'default order'}</span><Button kind="secondary" className="min-h-[38px] px-3 text-sm" onClick={() => setStartOpen(true)}>Change</Button></Card>

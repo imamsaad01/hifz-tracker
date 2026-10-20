@@ -135,6 +135,9 @@ function SettingsForm() {
         <Toggle on={r.logRemind !== false} onChange={v => setR({ logRemind: v })} label="Remind students to log their revision" sub="On revision days, if nothing is logged by this time. Plus a weekly total on Sunday at 7 pm." />
         {r.logRemind !== false && <Field label="Evening reminder time">{id => <Select id={id} value={r.logReminderTime ?? '20:30'} onChange={v => setR({ logReminderTime: v })} options={['18:00', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map(t => [t, fmtTime(t)] as [string, string])} />}</Field>}
 </div>
+      <Field label="Tell me about students’ revision" hint="Revision is confirmed by partners; you only see it.">{id => <Select id={id} value={r.teacherNotify ?? 'daily'} onChange={v => setR({ teacherNotify: v as 'daily' | 'each' | 'off' })} options={[['daily', 'One summary each revision evening'], ['each', 'Every time a partner confirms'], ['off', 'Don’t notify me']]} />}</Field>
+      <Toggle on={s.reports.parentWeekly} onChange={v => setS({ ...s, reports: { ...s.reports, parentWeekly: v } })} label="Weekly report to parents" sub="Sunday 6 pm: revision pages, new lessons, attendance and your latest note" />
+      <Toggle on={s.reports.teacherWeekly} onChange={v => setS({ ...s, reports: { ...s.reports, teacherWeekly: v } })} label="Weekly summary for me" sub="Monday 8 am: who missed revision days, lessons waiting to sign off, partner checks pending" />
       <p className="text-sm text-ink-faint">You can give any student their own amount on their page (Edit → Old revision per revision day).</p>
     </Card>
     <Card className="flex flex-col gap-4 p-5">

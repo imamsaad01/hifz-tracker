@@ -1,6 +1,7 @@
 // Students log their own revision; the teacher checks it. Students choose where their Old revision starts.
 import { InfoTip } from './InfoTip';
-import { useMemo, useState } from 'react';
+import { AyahMistakePicker, type AyahMark } from './PartnerRevision';
+import { useEffect, useMemo, useState } from 'react';
 import { Check, RotateCcw, ClipboardCheck, Flag, Undo2 } from 'lucide-react';
 import { useOrg } from '../app/context';
 import type { OrgData } from '../app/useOrgData';
@@ -48,19 +49,26 @@ export function RevisionStartModal({ student, onClose, onSaved }: { student: Stu
 const LOGGED: Array<Session['type']> = ['new', 'old', 'recent', 'juz_revision'];
 const TYPE_NAME: Partial<Record<Session['type'], string>> = { new: 'New lesson', old: 'Old revision', recent: 'Recent revision', juz_revision: 'Full juz revision' };
 const mistakes = (s: Session) => s.errorsMajor + s.errorsMinor;
-const statusPill = (s: Session) => s.checkStatus === 'ok' ? <Pill tone="green"><Check size={12} />Signed off{mistakes(s) ? ` · ${mistakes(s)} mistake${mistakes(s) > 1 ? 's' : ''}` : ''}</Pill>
-  : s.checkStatus === 'redo' ? <Pill tone="red">Redo</Pill> : <Pill tone="slate">Waiting for sign-off</Pill>;
+const statusPill = (s: Session, mate: (id: string | null | undefined) => string) => {
+  const m = mistakes(s) ? ` · ${mistakes(s)} mistake${mistakes(s) > 1 ? 's' : ''}` : ' · no mistakes';
+  if (s.type !== 'new') return s.partnerStatus === 'confirmed' ? <Pill tone={mistakes(s) ? 'amber' : 'green'}><Check size={12} />Confirmed by {mate(s.partnerStudentId)}{m}</Pill>
+    : s.partnerStatus === 'pending' ? <Pill tone="slate">Waiting for {mate(s.partnerStudentId)}</Pill> : <Pill tone="slate">Logged</Pill>;
+  return s.checkStatus === 'ok' ? <Pill tone="green"><Check size={12} />Signed off{mistakes(s) ? m : ''}</Pill> : s.checkStatus === 'redo' ? <Pill tone="red">Redo</Pill> : <Pill tone="slate">Waiting for sign-off</Pill>;
+};
 const isSelf = (s: Session) => !!s.selfLogged || s.recordedBy === 'student';
 
 /** Student / parent: what they submitted this week and the teacher's sign-off */
 export function MyRevisionLog({ studentId, sessions, onStart, start }: { studentId: string; sessions: Session[]; onStart?: () => void; start?: string | null }) {
-  const { today } = useOrg();
+  const { today, api } = useOrg();
+  const [mates, setMates] = useState<Array<{ student_id: string; name: string }>>([]);
+  useEffect(() => { api.revisionPartners().then(setMates).catch(() => setMates([])); }, [api]);
+  const mate = (id: string | null | undefined) => mates.find(m => m.student_id === id)?.name.split(' ')[0] ?? 'your partner';
   const mine = sessions.filter(s => s.studentId === studentId && isSelf(s) && LOGGED.includes(s.type) && s.date >= addDays(today, -7));
   return <Card>
-    <CardHead title={<span className="inline-flex items-center gap-2"><RotateCcw size={18} className="text-pine-700" />My lessons & revision this week</span>} sub="Submit what you read. Your teacher signs it off and notes any mistakes." />
+    <CardHead title={<span className="inline-flex items-center gap-2"><RotateCcw size={18} className="text-pine-700" />My lessons & revision this week</span>} sub="New lessons are signed off by your teacher. Revision is confirmed by your partner." />
     {(onStart || start) && <p className="flex flex-wrap items-center gap-2 px-5 pt-3 text-sm"><Flag size={14} className="text-brass-500" />Old revision {start ? <>started from <b>{start}</b></> : 'follows the default order'}{onStart && <button type="button" className="font-bold text-pine-700 underline-offset-2 hover:underline" onClick={onStart}>{start ? 'Change' : 'Choose where to start'}</button>}</p>}
     {mine.length ? <ul className="mt-2 divide-y divide-line">{mine.map(s => <li key={s.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5">
-      <span className="min-w-0 flex-1"><b>{TYPE_NAME[s.type]}</b> · {formatRange(s.range)}<span className="block text-sm text-ink-faint">{niceDate(s.date)}{s.checkNote ? <> · <span className="text-ink-soft">Teacher: “{s.checkNote}”</span></> : ''}</span></span>{statusPill(s)}</li>)}</ul>
+      <span className="min-w-0 flex-1"><b>{TYPE_NAME[s.type]}</b> · {formatRange(s.range)}<span className="block text-sm text-ink-faint">{niceDate(s.date)}{s.checkNote ? <> · <span className="text-ink-soft">{s.type !== 'new' && s.partnerStatus ? 'Partner' : 'Teacher'}: “{s.checkNote}”</span></> : ''}</span></span>{statusPill(s, mate)}</li>)}</ul>
       : <p className="px-5 py-4 text-sm text-ink-faint">Nothing submitted in the last 7 days.</p>}
   </Card>;
 }
@@ -70,14 +78,14 @@ export function RevisionCheckCard({ data, onChanged, studentId }: { data: OrgDat
   const { api, today } = useOrg(); const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState<Session | null>(null);
-  const todo = data.sessions.filter(s => isSelf(s) && LOGGED.includes(s.type) && !s.checkStatus && s.date >= addDays(today, -14) && (!studentId || s.studentId === studentId))
+  const todo = data.sessions.filter(s => isSelf(s) && s.type === 'new' && !s.checkStatus && s.date >= addDays(today, -14) && (!studentId || s.studentId === studentId))
     .sort((a, b) => (a.type === 'new' ? 0 : 1) - (b.type === 'new' ? 0 : 1) || a.date.localeCompare(b.date));
   if (!todo.length) return null;
   const name = (id: string) => data.students.find(s => s.id === id)?.name ?? '';
   const quick = async (ids: string[]) => { setBusy(ids.join()); try { await api.checkSessions(ids, 'ok'); toast(`${ids.length} signed off.`); onChanged(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(null); } };
   return <Card>
-    <CardHead title={<span className="inline-flex items-center gap-2"><ClipboardCheck size={18} className="text-pine-700" />To sign off <span className="rounded-full bg-pine-50 px-2 text-sm text-pine-800">{todo.length}</span></span>}
-      sub="What students say they read. Sign off, add mistakes, or send back." action={todo.length > 1 ? <Button kind="secondary" className="min-h-[38px] px-3 text-sm" busy={busy === todo.map(t => t.id).join()} onClick={() => quick(todo.map(t => t.id))}><Check size={15} />Sign off all (no mistakes)</Button> : undefined} />
+    <CardHead title={<span className="inline-flex items-center gap-2"><ClipboardCheck size={18} className="text-pine-700" />New lessons to sign off <span className="rounded-full bg-pine-50 px-2 text-sm text-pine-800">{todo.length}</span></span>}
+      sub="Students say they memorised these. Hear them, then sign off." action={todo.length > 1 ? <Button kind="secondary" className="min-h-[38px] px-3 text-sm" busy={busy === todo.map(t => t.id).join()} onClick={() => quick(todo.map(t => t.id))}><Check size={15} />Sign off all (no mistakes)</Button> : undefined} />
     <ul className="mt-2 divide-y divide-line">{todo.slice(0, 40).map(s => <li key={s.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5">
       <span className="min-w-0 basis-full sm:basis-0 sm:flex-1">{!studentId && <b>{name(s.studentId)} · </b>}<span className={s.type === 'new' ? 'font-bold text-pine-800' : ''}>{TYPE_NAME[s.type]}</span>: {formatRange(s.range)}
         <span className="block text-sm text-ink-faint">{niceDate(s.date)}{mistakes(s) ? ` · student noted ${mistakes(s)} mistake(s)` : ''}{s.studentNote ? ` · “${s.studentNote}”` : ''}</span></span>
@@ -99,15 +107,18 @@ function Stepper({ label, value, onChange, tone }: { label: string; value: numbe
   </div>;
 }
 const NOTE_CHIPS = ['Excellent, keep it up', 'Weak in the middle, read it again', 'Confused similar ayahs', 'Watch the madd and ghunnah', 'Hesitated a lot, revise before next class'];
-function SignOffModal({ s, who, onClose, onSaved }: { s: Session; who: string; onClose: () => void; onSaved: () => void }) {
+export function SignOffModal({ s, who, onClose, onSaved }: { s: Session; who: string; onClose: () => void; onSaved: () => void }) {
   const { api } = useOrg(); const toast = useToast();
   const [maj, setMaj] = useState(s.errorsMajor); const [min, setMin] = useState(s.errorsMinor); const [note, setNote] = useState('');
+  const [marks, setMarks] = useState<AyahMark[]>([]);
   const [busy, setBusy] = useState<'ok' | 'redo' | null>(null);
-  const go = async (status: 'ok' | 'redo') => { setBusy(status); try { await api.signOff(s.id, { status, errorsMajor: maj, errorsMinor: min, note }); toast(status === 'ok' ? `Signed off for ${who}.` : `Sent back to ${who}.`); onSaved(); onClose(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(null); } };
+  const go = async (status: 'ok' | 'redo') => { setBusy(status); try { const bigs = marks.filter(m => m.severity === 'major').length, smalls = marks.length - bigs; await api.signOff(s.id, { status, errorsMajor: Math.max(maj, bigs), errorsMinor: Math.max(min, smalls), note }); if (marks.length) await api.tagErrors(s.id, marks); toast(status === 'ok' ? `Signed off for ${who}.` : `Sent back to ${who}.`); onSaved(); onClose(); } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(null); } };
   return <Modal open onClose={onClose} title={`Sign off: ${who}`} footer={<div className="flex flex-wrap justify-end gap-2"><Button kind="secondary" busy={busy === 'redo'} onClick={() => go('redo')}>Send back to redo</Button><Button busy={busy === 'ok'} onClick={() => go('ok')}><Check size={16} />Sign off</Button></div>}>
     <div className="flex flex-col gap-4">
       <p className="rounded-xl bg-pine-50 px-3 py-2 text-[15px] text-pine-800"><b>{TYPE_NAME[s.type]}</b> · {formatRange(s.range)}<span className="block text-sm text-pine-700">{niceDate(s.date)}{s.studentNote ? ` · “${s.studentNote}”` : ''}</span></p>
       {s.type === 'new' && <p className="text-sm text-ink-soft">Signing off adds this lesson to what {who.split(' ')[0]} has memorised.</p>}
+      <AyahMistakePicker start={s.range.start} end={s.range.end} value={marks} onChange={setMarks} />
+      <p className="text-xs text-ink-faint">Or just count them:</p>
       <Stepper label="Big mistakes" value={maj} onChange={setMaj} tone="bad" />
       <Stepper label="Small mistakes" value={min} onChange={setMin} tone="warn" />
       <Field label="Note for the student (optional)">{id => <textarea id={id} className={`${inputCls} min-h-[80px] py-2`} maxLength={500} value={note} onChange={e => setNote(e.target.value)} placeholder="Which ayahs, what to fix…" />}</Field>

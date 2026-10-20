@@ -35,8 +35,8 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
   const { api, org, today } = useApp();
   const toast = useToast();
   const scale = org?.settings.scoreScale ?? 5;
-  const [type, setType] = useState<SessionType>(asStudent ? 'old' : initialType);
-  const [range, setRange] = useState<Range>(() => defaultRange(asStudent ? 'old' : initialType, student, insight, sessions, today));
+  const [type, setType] = useState<SessionType>((asStudent ? (['old', 'recent', 'review'].includes(initialType) ? initialType : 'old') : initialType));
+  const [range, setRange] = useState<Range>(() => defaultRange((asStudent ? (['old', 'recent', 'review'].includes(initialType) ? initialType : 'old') : initialType), student, insight, sessions, today));
   const [date, setDate] = useState(initialDate ?? today);
   const [major, setMajor] = useState(0); const [minor, setMinor] = useState(0);
   const [tags, setTags] = useState<SessionError[]>([]);
@@ -45,8 +45,10 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
   const [attendance, setAttendance] = useState('present'); const [mode, setMode] = useState('in_person');
   const [note, setNote] = useState(''); const [followUp, setFollowUp] = useState(false);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const [partner, setPartner] = useState(''); const [mates, setMates] = useState<Array<{ student_id: string; name: string }>>([]);
+  useEffect(() => { if (open && asStudent) api.revisionPartners().then(setMates).catch(() => setMates([])); }, [open, asStudent, api]);
 
-  useEffect(() => { if (open) { const t = asStudent ? 'old' : initialType; setType(t); setRange(defaultRange(t, student, insight, sessions, today)); setDate(today); setMajor(0); setMinor(0); setTags([]); setScores({ overall: null, tajweed: null, fluency: null, accuracy: null, tarteel: null }); setAttendance('present'); setMode('in_person'); setNote(''); setFollowUp(false); setErr(null); } }, [open, student.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { const t = (asStudent ? (['old', 'recent', 'review'].includes(initialType) ? initialType : 'old') : initialType); setType(t); setRange(defaultRange(t, student, insight, sessions, today)); setDate(initialDate ?? today); setMajor(0); setMinor(0); setTags([]); setScores({ overall: null, tajweed: null, fluency: null, accuracy: null, tarteel: null }); setAttendance('present'); setMode('in_person'); setNote(''); setFollowUp(false); setErr(null); } }, [open, student.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const pickType = (t: SessionType) => { setType(t); setRange(defaultRange(t, student, insight, sessions, today)); };
   const ayahChoices = useMemo<Array<[number, string]>>(() => { const out: Array<[number, string]> = []; for (let id = range.start; id <= Math.min(range.end, range.start + 400); id++) { const { surah, ayah } = fromAyahId(id); out.push([id, `${surah}:${ayah}`]); } return out; }, [range]);
   const absent = attendance === 'absent' || attendance === 'excused';
@@ -58,9 +60,10 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
       errors: tags, scores: asStudent ? {} : scores, attendance: asStudent ? 'present' : attendance, mode, teacherNote: asStudent ? undefined : note, studentNote: asStudent ? note : undefined, followUp,
     };
     try {
-      await api.recordSession(payload);
+      const sid = await api.recordSession(payload);
+      if (asStudent && partner && sid) { try { await api.requestPartner(sid, partner); } catch (e) { toast(friendly(e), 'err'); } }
       if (!asStudent && org?.settings.email.enabled && org.settings.email.onSession) api.notify({ type: 'session', student_id: student.id, date }).catch(() => {});
-      toast(`Saved: ${student.name}, ${formatRange(range)}`); onSaved(); onClose();
+      toast(asStudent && partner ? `Saved. ${mates.find(m => m.student_id === partner)?.name.split(' ')[0] ?? 'Your partner'} will be asked to confirm it.` : `Saved: ${student.name}, ${formatRange(range)}`); onSaved(); onClose();
     } catch (e) {
       if (isNetworkError(e)) { outbox.add(`${student.name} · ${formatRange(range)}`, payload as unknown as Record<string, unknown>); toast('No connection: kept on this device and will send automatically.'); onClose(); }
       else setErr(friendly(e));
@@ -105,6 +108,7 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
         <Field label="Where">{() => <Segmented label="Where" value={mode} onChange={setMode} options={[['in_person', 'In person'], ['online', 'Online']]} />}</Field>
       </div>}
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        {asStudent && <Field label="Who listened? (revision partner)" hint="They get a notification to confirm it and note any mistakes.">{id => <Select id={id} value={partner} onChange={setPartner} options={[['', 'Nobody / on my own'], ...mates.map(m => [m.student_id, m.name + ((m as { same_class?: boolean }).same_class === false ? ' (other halaqah)' : '')] as [string, string])]} />}</Field>}
         <Field label={asStudent ? 'My note (optional)' : 'Note for the student (optional)'}>{id => <textarea id={id} className={cx(inputCls, 'min-h-[64px] py-2')} value={note} onChange={e => setNote(e.target.value)} maxLength={1000} />}</Field>
         <Field label="Date">{id => <input id={id} type="date" className={inputCls} value={date} max={today} onChange={e => setDate(e.target.value || today)} />}</Field>
       </div>
