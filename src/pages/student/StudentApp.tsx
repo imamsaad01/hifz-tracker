@@ -5,7 +5,7 @@ import { weekSummary } from '../../lib/weekly';
 import { InfoTip } from '../../components/InfoTip';
 import type { GlossaryKey } from '../../lib/glossary';
 import { useMemo, useState } from 'react';
-import { BookOpen, RotateCcw, Repeat, Plus, Pencil, KeyRound, Award, Sparkles, CheckCircle2, Clock3, ChevronDown } from 'lucide-react';
+import { BookOpen, RotateCcw, Repeat, Plus, Pencil, Award, Sparkles, CheckCircle2, Clock3, ChevronDown } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useStudentData } from '../../app/useStudentData';
@@ -13,7 +13,7 @@ import { href } from '../../app/router';
 import { insight, recentRanges } from '../../lib/insights';
 import { groupPages } from '../../lib/revision';
 import { niceDate, hijriDate, addDays } from '../../lib/dates';
-import { formatRange, surahNameEn, pageRange } from '../../quran';
+import { formatRange, pageRange } from '../../quran';
 import { RecallTestButton } from '../../components/RecallTest';
 import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel, goalPct } from '../../lib/studentPlan';
@@ -22,7 +22,8 @@ import type { SessionType } from '../../lib/types';
 import { Button, Card, CardHead, Spinner, ErrorBox, Pill, cx, SubTabs } from '../../components/ui';
 import { Overview, History } from '../../components/StudentReport';
 import { Rings, StreakCalendar } from '../../components/ProgressViz';
-import { Row } from '../../components/Rows';
+import { Row, LinkRow, Group } from '../../components/Rows';
+import { getTheme, getTextSize } from '../../lib/display';
 import { JuzMap } from '../../components/quran';
 import { AssignmentList } from '../../components/AssignmentList';
 import { RecordSheet } from '../../components/RecordSheet';
@@ -83,6 +84,7 @@ export function StudentApp({ tab }: { tab: string }) {
     { label: 'Recent revision', due: recent.length > 0, done: todays.some(s => s.type === 'recent'), color: '#B8893B' },
     { label: 'Old revision', due: ins.revision.isRevisionDay && ins.revision.today.length > 0, done: todays.some(s => s.type === 'old' || s.type === 'juz_revision'), color: '#0369A1' },
   ];
+  ring.forEach(r => { if (r.done) r.due = true; }); // something done today always counts, even on a rest day
   const week = addDays(today, 14);
   const events = data.events.filter(e => (!e.classId || myClassIds.includes(e.classId)) && e.startsOn <= week && (e.endsOn ?? e.startsOn) >= today);
   const tests = data.exams.filter(x => x.studentId === me.id && x.status === 'scheduled' && x.scheduledOn >= today);
@@ -103,8 +105,8 @@ export function StudentApp({ tab }: { tab: string }) {
       {/* 2. today's reading */}
       <div data-tour="today-plan"><TodayPath steps={[
         { key: 'new', tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
-          state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ins.nextNew ? 'todo' : 'none',
-          note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : 'Listen, learn it, test yourself, then tap “I memorised it”.',
+          state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ring[0].due ? 'todo' : 'none',
+          note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : !ring[0].due && ins.nextNew ? `Not a lesson day.${ins.revision.nextRevisionDay ? ` Next lesson day: ${niceDate(ins.revision.nextRevisionDay)}.` : ''} You can still get ahead.` : 'Listen, learn it, test yourself, then tap “I memorised it”.',
           action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /></div><AyahPlayer range={ins.nextNew} /></div>
             : pendingNew ? <RecallTestButton studentId={me.id} range={pendingNew.range} label="Test yourself before class" /> : null },
         { key: 'recent', tip: 'recent', icon: <Repeat size={18} />, title: 'Recent revision', body: recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week',
@@ -180,27 +182,35 @@ export function StudentApp({ tab }: { tab: string }) {
     </div>; })()}
     {tab === 'history' && <><PageTitle title="My sessions" /><History student={me} sessions={sd.sessions} today={today} settings={org.settings} /></>}
     {tab === 'messages' && <><PageTitle title="Messages" sub="With your teacher" /><MessageThread studentId={me.id} studentName={me.name} members={data.members} /></>}
-    {tab === 'me' && <>
-      <PageTitle title="My plan" action={<Button kind="secondary" onClick={() => setEdit(true)}><Pencil size={16} />Change</Button>} />
-      <div className="mb-4"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
-      <PlanCard plan={plan} />
-      <Card className="mt-4 flex flex-wrap items-center gap-3 p-5"><span className="min-w-0 flex-1"><b className="block">What I’ve memorised</b><span className="text-sm text-ink-soft">Next lesson: {ins.nextNew ? formatRange(ins.nextNew) : 'all memorised'}{me.skippedSurahs?.length ? ` · skipped for later: ${me.skippedSurahs.map(n => surahNameEn(n)).join(', ')}` : ''}</span></span><Button kind="secondary" onClick={() => setMemOpen(true)}>Change</Button></Card>
-      {memOpen && <MemorisedModal student={me} onClose={() => setMemOpen(false)} onSaved={refresh} />}
-      <div className="mt-4"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>
-      <div className="mt-4"><QiraatMine student={me} data={data} onChanged={reload} /></div>
-      <Card className="mt-4 flex flex-col gap-2 p-5 text-[15px]">
-        <p><b>Order:</b> {me.direction === 'back' ? 'From An-Nās backwards' : 'From Al-Fātiḥah forwards'}</p>
-        <p><b>Goal:</b> {me.goal || '—'}</p>
-        {org.settings.parentsEnabled && <p><b>Parent:</b> {me.guardianName || '—'} {me.guardianEmail && <span className="text-ink-faint">({me.guardianEmail}{me.notify ? ', gets emails' : ''})</span>}</p>}
+    {tab === 'me' && <div className="flex flex-col gap-6">
+      <Card className="flex items-center gap-4 p-5">
+        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-pine-700 text-lg font-bold text-white">{me.name.split(' ').map(w => w[0]).slice(0, 2).join('')}</span>
+        <span className="min-w-0 flex-1"><b className="block text-xl leading-tight">{me.name}</b><span className="block text-sm text-ink-soft">{cl.title}{cl.teacher ? ` · ${cl.teacher}` : ''}</span></span>
+        <Button kind="secondary" className="w-11 shrink-0 px-0" aria-label="Edit my details" title="Edit my details" onClick={() => setEdit(true)}><Pencil size={16} /></Button>
       </Card>
-      {org.settings.parentsEnabled && <Card className="mt-4 flex items-start gap-3 p-5"><KeyRound size={18} className="mt-1 text-ink-faint" /><p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span><br /><span className="text-sm text-ink-faint">Give this to a parent. They create an account and enter it to follow your progress. They cannot change anything.</span></p></Card>}
-      <div className="mt-4"><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>
-      <div className="mt-4"><NotifyToggle /></div>
-      <div className="mt-4"><DisplaySettings /></div>
-      <Button kind="secondary" className="mt-4" onClick={startTour}><Sparkles size={16} />Take the app tour again</Button>
-      <p className="mt-4 text-sm text-ink-faint">Only your teachers, you and linked parents can see your records.</p>
+      <Group title="My hifz">
+        <LinkRow title="What I’ve memorised" value={`${ins.progress.pages} pages${me.skippedSurahs?.length ? ` · ${me.skippedSurahs.length} skipped` : ''}`} onClick={() => setMemOpen(true)} />
+        <LinkRow title="Each lesson" value={me.newPages ? `${me.newPages === 0.5 ? '½' : me.newPages} page${me.newPages > 1 ? 's' : ''}` : `${me.dailyNewAyahs} ayahs`} onClick={() => setEdit(true)} />
+        <LinkRow title="Goal" value={me.goal || 'Not set'} onClick={() => setEdit(true)} />
+        <LinkRow title="Direction" value={me.direction === 'back' ? 'Backwards from An-Nās' : 'Forwards from Al-Fātiḥah'} onClick={() => setEdit(true)} />
+        <LinkRow title="Old revision starts from" value={startLabel(me) ?? 'Default order'} onClick={() => setStartOpen(true)} />
+        <Row title="My full plan" value={ins.nextNew ? `Next: ${formatRange(ins.nextNew)}` : ''}><PlanCard plan={plan} /></Row>
+      </Group>
+      <Group title="Halaqah and qirāʾāt">
+        <Row title="My halaqah" value={cl.title}><HalaqahChooser student={me} data={data} onChanged={reload} /></Row>
+        <Row title="Qirāʾāt" value=""><QiraatMine student={me} data={data} onChanged={reload} /></Row>
+        <Row title="Class expectations" value={me.rulesAckAt ? 'Agreed' : 'Not yet'} tone={me.rulesAckAt ? 'good' : 'warn'}><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></Row>
+        {org.settings.parentsEnabled && <Row title="Parent" value={me.guardianName || ''}><p className="text-[15px]">{me.guardianName || '—'} {me.guardianEmail && <span className="text-ink-faint">({me.guardianEmail})</span>}</p>{me.parentCode && <p className="text-[15px]"><b>Parent code:</b> <span className="font-mono tracking-widest">{me.parentCode}</span></p>}</Row>}
+      </Group>
+      <Group title="This phone">
+        <Row title="Notifications" value=""><NotifyToggle /></Row>
+        <Row title="Display" value={`${{ auto: 'Auto', light: 'Light', dark: 'Dark' }[getTheme()]} · ${{ normal: 'Normal text', large: 'Large text', xl: 'Extra large text' }[getTextSize()]}`}><DisplaySettings /></Row>
+        <LinkRow title="Take the app tour" icon={Sparkles} onClick={startTour} />
+      </Group>
+      <p className="px-1 text-sm text-ink-faint">Only you and your teachers{org.settings.parentsEnabled ? ' (and a linked parent)' : ''} can see your records.</p>
+      {memOpen && <MemorisedModal student={me} onClose={() => setMemOpen(false)} onSaved={refresh} />}
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
-    </>}
+    </div>}
     {submitNew && ins?.nextNew && me && <SubmitLessonModal student={me} suggested={ins.nextNew} onClose={() => setSubmitNew(false)} onSaved={refresh} />}
     {rec && <RecordSheet open onClose={() => { setRec(null); setRecDate(undefined); }} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} initialDate={recDate} onSaved={refresh} />}
   </>;

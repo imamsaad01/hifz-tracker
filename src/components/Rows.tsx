@@ -1,5 +1,5 @@
 // Summary tiles and tap-to-open rows, shared by the profile and progress screens.
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cx } from './ui';
 
 const TONE = { good: 'text-good', warn: 'text-warn', bad: 'text-bad' } as const;
@@ -19,4 +19,16 @@ export function Row({ title, value, tone, children }: { title: string; value: st
     </summary>
     <div className="flex flex-col gap-4 border-t border-line bg-paper/60 p-4">{children}</div>
   </details>;
+}
+
+/** A row that opens something (a form, a page): title on the left, current value and an arrow on the right. */
+export function LinkRow({ title, value, onClick, icon: I }: { title: string; value?: string; onClick: () => void; icon?: import('lucide-react').LucideIcon }) {
+  return <button type="button" onClick={onClick} className="flex min-h-[56px] w-full items-center gap-3 px-5 text-left hover:bg-pine-50/50">
+    {I && <I size={18} className="shrink-0 text-pine-700" />}<span className="flex-1 font-bold">{title}</span>
+    {value && <span className="max-w-[55%] truncate text-sm text-ink-soft">{value}</span>}<ChevronRight size={18} className="shrink-0 text-ink-faint" />
+  </button>;
+}
+/** A titled group of rows, like a phone's settings screen. */
+export function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section><h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wider text-ink-faint">{title}</h2><div className="divide-y divide-line overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-line">{children}</div></section>;
 }
