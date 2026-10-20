@@ -9,6 +9,7 @@ import { juzProgress, memorisedPages, unionRanges } from '../lib/progress';
 import { SESSION_LABEL, ERROR_LABEL, type Session, type RevisionItem } from '../lib/types';
 import { niceDate } from '../lib/dates';
 import { Field, Segmented, Select, cx, Pill } from './ui';
+import { openMushaf } from './Mushaf';
 
 const surahOpts: Array<[number, string]> = Array.from({ length: 114 }, (_, i) => [i + 1, `${i + 1}. ${surahNameEn(i + 1)} · ${surahNameAr(i + 1)}`]);
 const ayahOpts = (s: number, from = 1): Array<[number, string]> => Array.from({ length: ayahCount(s) - from + 1 }, (_, i) => [from + i, `Ayah ${from + i}`]);
@@ -76,11 +77,12 @@ export function ScoreInput({ label, value, onChange, scale }: { label: string; v
 export function JuzMap({ ranges }: { ranges: Range[] }) {
   const p = useMemo(() => juzProgress(ranges), [ranges]);
   return <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-10" role="list" aria-label="Juz memorised">
-    {p.map((v, i) => <div key={i} role="listitem" aria-label={`Juz ${i + 1}: ${Math.round(v * 100)}% memorised`} title={`Juz ${i + 1}: ${Math.round(v * 100)}%`}
-      className={cx('relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg border text-center', v >= 1 ? 'border-pine-700 bg-pine-700 text-white' : v > 0 ? 'border-pine-600/40 bg-white text-ink' : 'border-line bg-white text-ink-faint')}>
+    {p.map((v, i) => <button type="button" key={i} role="listitem" onClick={() => openMushaf({ ayah: juzRange(i + 1).start, title: `Juz ${i + 1}` })} aria-label={`Juz ${i + 1}: ${Math.round(v * 100)}% memorised. Open in the muṣḥaf`} title={`Juz ${i + 1}: ${Math.round(v * 100)}%`}
+      style={{ animationDelay: `${i * 22}ms` }}
+      className={cx('juz-grow relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg border text-center transition hover:-translate-y-0.5 hover:shadow-card active:scale-95', v >= 1 ? 'border-pine-700 bg-pine-700 text-white' : v > 0 ? 'border-pine-600/40 bg-white text-ink' : 'border-line bg-white text-ink-faint')}>
       {v > 0 && v < 1 && <span className="absolute inset-x-0 bottom-0 bg-pine-100" style={{ height: `${Math.max(6, v * 100)}%` }} />}
       <span className="relative text-[10px] font-bold uppercase opacity-70">Juz</span><span className="relative text-base font-bold leading-none">{i + 1}</span>
-    </div>)}
+    </button>)}
   </div>;
 }
 

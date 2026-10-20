@@ -42,3 +42,17 @@ html.text-xl body { zoom: 1.22; }
 @media (prefers-reduced-motion: reduce) { .done-pop, .done-burst { animation: none } .done-burst { display: none } }
 @keyframes intro-in { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: none } }
 @media (prefers-reduced-motion: reduce) { [class*="intro-in"] { animation: none !important } }
+
+/* practice games */
+.bead { transition: left .45s cubic-bezier(.34,1.56,.64,1), background .3s }
+@keyframes ripple { from { box-shadow: 0 0 0 0 rgb(46 107 96 / .45) } to { box-shadow: 0 0 0 26px rgb(46 107 96 / 0) } }
+.ripple { animation: ripple .6s ease-out }
+@keyframes fly-in { from { opacity: 0; transform: translateY(28px) scale(.8) } to { opacity: 1; transform: none } }
+.fly-in { animation: fly-in .35s cubic-bezier(.34,1.56,.64,1) both }
+@keyframes shake { 0%, 100% { transform: none } 25% { transform: translateX(-6px) } 75% { transform: translateX(6px) } }
+.shake { animation: shake .35s ease-in-out }
+@keyframes pop { 0% { transform: scale(.6); opacity: 0 } 70% { transform: scale(1.1); opacity: 1 } 100% { transform: scale(1) } }
+.pop { animation: pop .4s ease-out both }
+@keyframes juz-grow { from { transform: scale(.6); opacity: 0 } to { transform: none; opacity: 1 } }
+.juz-grow { animation: juz-grow .45s cubic-bezier(.34,1.56,.64,1) both }
+@media (prefers-reduced-motion: reduce) { .bead, .ripple, .fly-in, .shake, .pop, .juz-grow { animation: none !important; transition: none !important } }

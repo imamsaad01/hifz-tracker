@@ -13,10 +13,11 @@ import { href } from '../../app/router';
 import { insight, recentRanges } from '../../lib/insights';
 import { groupPages, nextRevisionDay } from '../../lib/revision';
 import { niceDate, hijriDate, addDays } from '../../lib/dates';
-import { formatRange, pageRange } from '../../quran';
+import { formatRange, pageRange, type Range } from '../../quran';
 import { RecallTestButton } from '../../components/RecallTest';
 import { MushafLink, rangeMarks, type Mark } from '../../components/Mushaf';
 import { LookalikeNote } from '../../components/Lookalike';
+import { PracticeButton } from '../../components/Practice';
 import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel, goalPct } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
@@ -114,12 +115,12 @@ export function StudentApp({ tab }: { tab: string }) {
       {ring.some(r => r.due) && ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />}
       {/* 2. today's reading */}
       <div data-tour="today-plan"><TodayPath steps={[
-        { key: 'new', tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
+        { key: 'new', practice: pendingNew?.range ?? (ring[0].done ? todays.find(x => x.type === 'new')?.range : ins.nextNew) ?? null, tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
           state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ring[0].due ? 'todo' : 'none',
           note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : !ring[0].due && ins.nextNew ? `New lessons are heard in your halaqah${nextLesson ? `, next on ${niceDate(nextLesson)}` : ''}. Learn it before then and submit it when it’s ready.` : 'Listen, learn it, test yourself, then tap “I memorised it”.',
           action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /><MushafLink range={ins.nextNew} title="New lesson" marks={[...rangeMarks(ins.nextNew, 'lesson'), ...weakMarks]} /></div><LookalikeNote range={ins.nextNew} /><AyahPlayer range={ins.nextNew} /></div>
             : pendingNew ? <RecallTestButton studentId={me.id} range={pendingNew.range} label="Test yourself before class" /> : null },
-        { key: 'recent', tip: 'recent', icon: <Repeat size={18} />, title: 'Recent revision', body: recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week',
+        { key: 'recent', practice: recent.length ? { start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) } : null, tip: 'recent', icon: <Repeat size={18} />, title: 'Recent revision', body: recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week',
           state: !recent.length ? 'none' : ring[1].done ? 'done' : 'todo',
           note: `Every new lesson from the last ${org.settings.revision.recentDays} days, read once today.`,
           action: recent.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /><MushafLink range={recent[0]} title="Recent revision" marks={[...recent.flatMap(r => rangeMarks(r, 'revision')), ...weakMarks]} /></div> : null },
@@ -253,7 +254,7 @@ function Notebook({ tabs, initial }: { tabs: Array<{ key: string; label: string;
   </div>;
 }
 
-type Step = { key: string; tip?: GlossaryKey; icon: React.ReactNode; title: string; body: string; note: string; action: React.ReactNode; state: 'todo' | 'done' | 'waiting' | 'none' };
+type Step = { practice?: Range | null; key: string; tip?: GlossaryKey; icon: React.ReactNode; title: string; body: string; note: string; action: React.ReactNode; state: 'todo' | 'done' | 'waiting' | 'none' };
 /** Today as one short path: the next thing to do is open with its buttons; finished and later steps stay folded. */
 function TodayPath({ steps }: { steps: Step[] }) {
   const due = steps.filter(s => s.state !== 'none'); const doneN = due.filter(s => s.state !== 'todo').length;
@@ -280,6 +281,7 @@ function TodayPath({ steps }: { steps: Step[] }) {
           {st.note && <p className="flex items-start gap-1 text-sm text-ink-soft">{st.note}{st.tip && <InfoTip k={st.tip} />}</p>}
           {st.state !== 'done' && st.action}
           {st.state === 'done' && <p className="text-sm font-bold text-good">Logged today. Mā shāʾ Allāh.</p>}
+          {st.practice && <div><PracticeButton range={st.practice} label="Practise: repeat & word order" /></div>}
         </div>}
       </li>; })}</ol>
   </Card>;
