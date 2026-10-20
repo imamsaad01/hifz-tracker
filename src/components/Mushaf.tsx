@@ -78,6 +78,7 @@ const LAST = 'hifz-mushaf-page';
 export function MushafHost() {
   const [o, setO] = useState<Opts | null>(null);
   useEffect(() => { const l = (x: Opts) => setO(x); listeners.add(l); return () => { listeners.delete(l); }; }, []);
+  useEffect(() => { const c = () => setO(null); window.addEventListener('hashchange', c); return () => window.removeEventListener('hashchange', c); }, []);
   return o ? <Reader opts={o} onClose={() => setO(null)} /> : null;
 }
 
