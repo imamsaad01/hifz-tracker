@@ -7,7 +7,8 @@ import { Check, RotateCcw, ClipboardCheck, Flag, Undo2 } from 'lucide-react';
 import { useOrg } from '../app/context';
 import type { OrgData } from '../app/useOrgData';
 import type { Session, Student } from '../lib/types';
-import { fromAyahId, pageOf, surahFirstId, surahNameEn, surahNameAr, formatRange, ayahCount, ayahId } from '../quran';
+import { RangePicker } from './quran';
+import { fromAyahId, pageOf, surahFirstId, surahNameEn, surahNameAr, formatRange } from '../quran';
 import { unionRanges } from '../lib/progress';
 import { niceDate, addDays } from '../lib/dates';
 import { friendly } from '../api/backend';
@@ -131,13 +132,12 @@ export function SignOffModal({ s, who, onClose, onSaved }: { s: Session; who: st
 /** Student: submit the new lesson they memorised (counts once the teacher signs it off) */
 export function SubmitLessonModal({ student, suggested, onClose, onSaved }: { student: Student; suggested: { start: number; end: number }; onClose: () => void; onSaved: () => void }) {
   const { api } = useOrg(); const toast = useToast();
-  const startA = fromAyahId(suggested.start); const total = ayahCount(startA.surah);
-  const [endAyah, setEndAyah] = useState(fromAyahId(suggested.end).ayah); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
-  const save = async () => { setBusy(true); const args = { studentId: student.id, start: suggested.start, end: ayahId(startA.surah, endAyah), note }; try { await api.submitLesson(args); toast('Submitted. Your teacher will sign it off.'); onSaved(); onClose(); } catch (e) { if (isNetworkError(e)) { outbox.add(`New lesson · ${surahNameEn(startA.surah)}`, { __op: 'submitLesson', args }); toast('No connection: saved on this phone and will send automatically.'); onClose(); } else toast(friendly(e), 'err'); } finally { setBusy(false); } };
+  const [range, setRange] = useState({ start: suggested.start, end: suggested.end }); const [note, setNote] = useState(''); const [busy, setBusy] = useState(false);
+  const save = async () => { setBusy(true); const args = { studentId: student.id, start: range.start, end: range.end, note }; try { await api.submitLesson(args); toast('Submitted. Your teacher will sign it off.'); onSaved(); onClose(); } catch (e) { if (isNetworkError(e)) { outbox.add(`New lesson · ${formatRange(range)}`, { __op: 'submitLesson', args }); toast('No connection: saved on this phone and will send automatically.'); onClose(); } else toast(friendly(e), 'err'); } finally { setBusy(false); } };
   return <Modal open onClose={onClose} title="I memorised my new lesson" footer={<div className="flex justify-end gap-2"><Button kind="secondary" onClick={onClose}>Cancel</Button><Button busy={busy} onClick={save}><Check size={16} />Submit for sign-off</Button></div>}>
     <div className="flex flex-col gap-4">
-      <p className="text-[15px]"><b>{surahNameEn(startA.surah)}</b> <span lang="ar" dir="rtl" className="font-quran">{surahNameAr(startA.surah)}</span>, from ayah {startA.ayah}</p>
-      <Field label="Up to ayah">{id => <Select id={id} value={endAyah} onChange={setEndAyah} options={Array.from({ length: total - startA.ayah + 1 }, (_, i) => startA.ayah + i).map(n => [n, `Ayah ${n}`] as [number, string])} />}</Field>
+      <p className="text-sm text-ink-soft">Your plan suggested this lesson. Change the <b>from</b> and <b>to</b> if you memorised something different.</p>
+      <RangePicker value={range} onChange={setRange} label="New lesson" />
       <Field label="Anything for your teacher? (optional)">{id => <input id={id} className={inputCls} maxLength={300} value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Ayah 5 is still a bit weak" />}</Field>
       <p className="text-sm text-ink-faint">It counts as memorised once your teacher signs it off.</p>
     </div>

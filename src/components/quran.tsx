@@ -1,5 +1,5 @@
 // Qur'an-aware inputs and displays: range selector, juz and page maps, scores, timeline.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Star } from 'lucide-react';
 import {
   ayahCount, ayahId, fromAyahId, surahNameAr, surahNameEn, formatRange, formatPages, pageRange, juzRange, pageOf, juzOf,
@@ -10,33 +10,45 @@ import { SESSION_LABEL, ERROR_LABEL, type Session, type RevisionItem } from '../
 import { niceDate } from '../lib/dates';
 import { Field, Segmented, Select, cx, Pill } from './ui';
 
-const surahOpts: Array<[number, string]> = Array.from({ length: 114 }, (_, i) => [i + 1, `${i + 1}. ${surahNameEn(i + 1)}`]);
+const surahOpts: Array<[number, string]> = Array.from({ length: 114 }, (_, i) => [i + 1, `${i + 1}. ${surahNameEn(i + 1)} · ${surahNameAr(i + 1)}`]);
 const ayahOpts = (s: number, from = 1): Array<[number, string]> => Array.from({ length: ayahCount(s) - from + 1 }, (_, i) => [from + i, `Ayah ${from + i}`]);
 const pageOpts = (from = 1): Array<[number, string]> => Array.from({ length: TOTAL_PAGES - from + 1 }, (_, i) => [from + i, `Page ${from + i}`]);
 
-/** Choose a range by surah and ayah, by page, or by juz. Invalid ranges cannot be built. */
+/** Choose a range: From surah · ayah → To surah · ayah (can cross surahs), or by pages, or by juz. A reversed choice is swapped, so it is always valid. */
 export function RangePicker({ value, onChange, label = 'Qur’an range' }: { value: Range; onChange: (r: Range) => void; label?: string }) {
   const [mode, setMode] = useState<'surah' | 'page' | 'juz'>('surah');
   const a = fromAyahId(value.start), b = fromAyahId(value.end);
-  const sameSurah = a.surah === b.surah;
-  useEffect(() => { if (!sameSurah && mode === 'surah') setMode('page'); }, [sameSurah]); // eslint-disable-line react-hooks/exhaustive-deps
-  const setSurah = (s: number) => onChange({ start: ayahId(s, 1), end: ayahId(s, Math.min(ayahCount(s), 5)) });
+  const set = (x: number, y: number) => onChange(x <= y ? { start: x, end: y } : { start: y, end: x });
   return <fieldset className="flex flex-col gap-3">
     <legend className="sr-only">{label}</legend>
     <Segmented label="Choose by" value={mode} onChange={setMode} options={[['surah', 'Surah · ayah'], ['page', 'Pages'], ['juz', 'Juz']]} />
-    {mode === 'surah' && <div className="grid gap-2 sm:grid-cols-[1.4fr_1fr_1fr]">
-      <Field label="Surah">{id => <Select id={id} value={a.surah} onChange={setSurah} options={surahOpts} />}</Field>
-      <Field label="From">{id => <Select id={id} value={a.ayah} onChange={v => onChange({ start: ayahId(a.surah, v), end: Math.max(ayahId(a.surah, v), sameSurah ? value.end : ayahId(a.surah, v)) })} options={ayahOpts(a.surah)} />}</Field>
-      <Field label="To">{id => <Select id={id} value={sameSurah ? b.ayah : ayahCount(a.surah)} onChange={v => onChange({ start: value.start, end: ayahId(a.surah, v) })} options={ayahOpts(a.surah, a.ayah)} />}</Field>
+    {mode === 'surah' && <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-[1.7fr_1fr] gap-2">
+        <Field label="From surah">{id => <Select id={id} value={a.surah} onChange={sn => set(ayahId(sn, 1), Math.max(value.end, ayahId(sn, 1)))} options={surahOpts} />}</Field>
+        <Field label="Ayah">{id => <Select id={id} value={a.ayah} onChange={v => set(ayahId(a.surah, v), Math.max(value.end, ayahId(a.surah, v)))} options={ayahOpts(a.surah)} />}</Field>
+      </div>
+      <div className="grid grid-cols-[1.7fr_1fr] gap-2">
+        <Field label="To surah">{id => <Select id={id} value={b.surah} onChange={sn => set(value.start, ayahId(sn, sn === a.surah ? Math.max(a.ayah, ayahCount(sn)) : ayahCount(sn)))} options={surahOpts.filter(([n]) => n >= a.surah)} />}</Field>
+        <Field label="Ayah">{id => <Select id={id} value={b.ayah} onChange={v => set(value.start, ayahId(b.surah, v))} options={ayahOpts(b.surah, b.surah === a.surah ? a.ayah : 1)} />}</Field>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <QuickBtn onClick={() => set(ayahId(a.surah, 1), ayahId(a.surah, ayahCount(a.surah)))}>Whole of {surahNameEn(a.surah)}</QuickBtn>
+        {b.surah !== a.surah && <QuickBtn onClick={() => set(ayahId(a.surah, 1), ayahId(b.surah, ayahCount(b.surah)))}>Whole surahs {a.surah}–{b.surah}</QuickBtn>}
+        <QuickBtn onClick={() => set(pageRange(pageOf(value.start)).start, pageRange(pageOf(value.end)).end)}>Round to full pages</QuickBtn>
+      </div>
     </div>}
     {mode === 'page' && <div className="grid grid-cols-2 gap-2">
       <Field label="From page">{id => <Select id={id} value={pageOf(value.start)} onChange={p => onChange({ start: pageRange(p).start, end: Math.max(pageRange(p).end, pageRange(Math.max(p, pageOf(value.end))).end) })} options={pageOpts()} />}</Field>
       <Field label="To page">{id => <Select id={id} value={pageOf(value.end)} onChange={p => onChange({ start: value.start, end: pageRange(p).end })} options={pageOpts(pageOf(value.start))} />}</Field>
     </div>}
-    {mode === 'juz' && <Field label="Juz">{id => <Select id={id} value={juzOf(value.start)} onChange={j => onChange(juzRange(j))} options={Array.from({ length: 30 }, (_, i) => [i + 1, `Juz ${i + 1}`] as [number, string])} />}</Field>}
+    {mode === 'juz' && <div className="grid grid-cols-2 gap-2">
+      <Field label="From juz">{id => <Select id={id} value={juzOf(value.start)} onChange={j => onChange({ start: juzRange(j).start, end: Math.max(juzRange(j).end, value.end) })} options={Array.from({ length: 30 }, (_, i) => [i + 1, `Juz ${i + 1}`] as [number, string])} />}</Field>
+      <Field label="To juz">{id => <Select id={id} value={juzOf(value.end)} onChange={j => onChange({ start: value.start, end: juzRange(j).end })} options={Array.from({ length: 31 - juzOf(value.start) }, (_, i) => [juzOf(value.start) + i, `Juz ${juzOf(value.start) + i}`] as [number, string])} />}</Field>
+    </div>}
     <RangeLabel range={value} />
   </fieldset>;
 }
+const QuickBtn = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => <button type="button" onClick={onClick} className="min-h-[34px] rounded-full bg-white px-3 text-sm font-bold text-pine-800 ring-1 ring-inset ring-line hover:bg-pine-50">{children}</button>;
 export function RangeLabel({ range, compact }: { range: Range; compact?: boolean }) {
   if (!isValidRange(range)) return <p className="text-sm font-bold text-bad">That range is not valid.</p>;
   const s = fromAyahId(range.start).surah;
