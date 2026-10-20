@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, EyeOff, Eye, BookOpen } from 'lucide-react';
 import { fromAyahId, pageOf, pageRange, juzOf, surahNameAr, surahNameEn, surahFirstId, ayahId, TOTAL_PAGES, type Range } from '../quran';
 import { AyahPlayer } from './AyahPlayer';
+import { MadinahPage } from './MadinahPage';
 import { cx } from './ui';
 
 const cache = new Map<number, Promise<string[]>>();
@@ -26,9 +27,14 @@ const MARK_CLS: Record<Mark, string> = {
 export const MARK_LABEL: Record<Mark, string> = { lesson: 'Lesson', revision: 'Revision', weak: 'Weak ayah', small: 'Small mistake', big: 'Big mistake' };
 
 /** One page of the muṣḥaf. Tap an ayah to call onTap (when given). */
-export function MushafPage({ page, marks, onTap, hidden, revealed, onReveal, size = 'md' }: {
-  page: number; marks?: Map<number, Mark>; onTap?: (id: number) => void; hidden?: boolean; revealed?: Set<number>; onReveal?: (id: number) => void; size?: 'sm' | 'md';
-}) {
+type PageProps = { page: number; marks?: Map<number, Mark>; onTap?: (id: number) => void; hidden?: boolean; revealed?: Set<number>; onReveal?: (id: number) => void; size?: 'sm' | 'md' };
+/** One page: the real Madinah page (KFGQPC font and 15-line layout) when it can be loaded, otherwise flowing Uthmani text. */
+export function MushafPage(props: PageProps) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [props.page]);
+  return failed ? <TextPage {...props} /> : <MadinahPage {...props} onFail={() => setFailed(true)} />;
+}
+function TextPage({ page, marks, onTap, hidden, revealed, onReveal, size = 'md' }: PageProps) {
   const [text, setText] = useState<string[] | null>(null); const [err, setErr] = useState(false);
   useEffect(() => { let live = true; setText(null); setErr(false); loadPage(page).then(t => { if (live) setText(t); }).catch(() => live && setErr(true));
     if (page < TOTAL_PAGES) loadPage(page + 1).catch(() => undefined); if (page > 1) loadPage(page - 1).catch(() => undefined); return () => { live = false; }; }, [page]);
