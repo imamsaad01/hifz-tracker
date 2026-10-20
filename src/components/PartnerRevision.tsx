@@ -1,10 +1,10 @@
 // Revision partners: confirm a classmate's revision and mark mistakes on exact ayahs. Weak ayahs come from those marks.
 import { outbox, isNetworkError } from '../app/outbox';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, Check, AlertTriangle, Eye } from 'lucide-react';
+import { Users, Check, AlertTriangle, Eye, BookOpen, List } from 'lucide-react';
 import { useOrg } from '../app/context';
 import type { Session } from '../lib/types';
-import { fromAyahId, surahNameEn, formatRange } from '../quran';
+import { fromAyahId, surahNameEn, formatRange, pageOf } from '../quran';
 import { addDays, niceDate } from '../lib/dates';
 import { friendly } from '../api/backend';
 import { useRefresh } from './PullToRefresh';
@@ -12,6 +12,7 @@ import { Button, Card, CardHead, Field, Modal, Pill, inputCls, useToast, cx } fr
 import { InfoTip } from './InfoTip';
 import { useAyahStarts } from '../lib/ayahText';
 import { AyahPlayer } from './AyahPlayer';
+import { openMushaf, MushafPage, type Mark } from './Mushaf';
 
 export type AyahMark = { ayahId: number; severity: 'major' | 'minor' };
 
@@ -19,11 +20,20 @@ export type AyahMark = { ayahId: number; severity: 'major' | 'minor' };
 export function AyahMistakePicker({ start, end, value, onChange }: { start: number; end: number; value: AyahMark[]; onChange: (v: AyahMark[]) => void }) {
   const ids = useMemo(() => Array.from({ length: Math.min(end - start + 1, 300) }, (_, i) => start + i), [start, end]);
   const words = useAyahStarts();
+  const [view, setView] = useState<'list' | 'page'>(() => { try { return (localStorage.getItem('hifz-picker-view') as 'list' | 'page') ?? 'list'; } catch { return 'list'; } });
+  const pickView = (v: 'list' | 'page') => { setView(v); try { localStorage.setItem('hifz-picker-view', v); } catch { /* */ } };
   const at = (id: number) => value.find(v => v.ayahId === id)?.severity;
   const tap = (id: number) => { const cur = at(id); const rest = value.filter(v => v.ayahId !== id); onChange(cur === undefined ? [...rest, { ayahId: id, severity: 'minor' }] : cur === 'minor' ? [...rest, { ayahId: id, severity: 'major' }] : rest); };
   let lastSurah = 0;
   return <div>
     <p className="mb-1.5 flex items-center gap-1 text-[13px] font-bold text-ink-soft">Tap the ayah where a mistake happened <span className="font-normal text-ink-faint">(once = small, twice = big)</span><InfoTip k="smallMistake" /></p>
+    <div className="mb-2 flex gap-1.5" role="radiogroup" aria-label="Show as">{([['list', 'List', List], ['page', 'Muṣḥaf page', BookOpen]] as const).map(([k, l, I]) => <button key={k} type="button" role="radio" aria-checked={view === k} onClick={() => pickView(k)}
+      className={cx('inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 text-sm font-bold ring-1 ring-inset', view === k ? 'bg-pine-700 text-white ring-pine-700' : 'bg-white text-ink-soft ring-line')}><I size={15} />{l}</button>)}</div>
+    {view === 'page' ? <div className="max-h-[420px] overflow-y-auto overscroll-contain rounded-xl bg-white p-3 ring-1 ring-line" data-no-pull>
+      {Array.from({ length: pageOf(end) - pageOf(start) + 1 }, (_, i) => pageOf(start) + i).map(p => <div key={p} className="border-b border-line pb-2 last:border-0">
+        <MushafPage page={p} size="sm" marks={new Map(ids.map(id => [id, at(id) === 'major' ? 'big' : at(id) === 'minor' ? 'small' : 'revision'] as [number, Mark]))} onTap={id => { if (id >= start && id <= end) tap(id); }} />
+        <p className="text-center text-xs text-ink-faint">Page {p}</p></div>)}
+    </div> :
     <div className={cx('max-h-[300px] overflow-y-auto overscroll-contain rounded-xl bg-paper p-2 ring-1 ring-line', words ? 'flex flex-col gap-1' : 'flex flex-wrap gap-1.5')} data-no-pull>{ids.map(id => {
       const { surah, ayah } = fromAyahId(id); const head = surah !== lastSurah; lastSurah = surah; const sev = at(id);
       const tone = sev === 'major' ? 'bg-bad text-white ring-bad' : sev === 'minor' ? 'bg-amber-100 text-warn ring-warn/40' : 'bg-white text-ink-soft ring-line';
@@ -36,7 +46,7 @@ export function AyahMistakePicker({ start, end, value, onChange }: { start: numb
           </button>
           : <button type="button" onClick={() => tap(id)} aria-pressed={!!sev} aria-label={`${surahNameEn(surah)} ayah ${ayah}${sev ? `, ${sev === 'major' ? 'big' : 'small'} mistake` : ''}`}
             className={cx('grid h-11 min-w-[44px] place-items-center rounded-lg px-1.5 text-sm font-bold tabular-nums ring-1 ring-inset', tone)}>{ayah}</button>}</span>;
-    })}</div>
+    })}</div>}
     {value.length > 0 && <p className="mt-1 text-xs text-ink-faint">{value.filter(v => v.severity === 'major').length} big · {value.filter(v => v.severity === 'minor').length} small</p>}
   </div>;
 }
@@ -89,7 +99,8 @@ export function WeakAyahsCard({ sessions, studentId, you = true, limit = 12 }: {
       <button type="button" aria-pressed={pick === w.ayahId} onClick={() => setPick(pick === w.ayahId ? null : w.ayahId)} className={cx('min-h-[44px] rounded-lg px-2.5 py-1 text-sm ring-1 ring-inset', pick === w.ayahId ? 'bg-pine-700 text-white ring-pine-700' : w.big ? 'bg-red-50 text-bad ring-bad/25' : 'bg-amber-50 text-warn ring-warn/25')}>
       <b>{surahNameEn(surah)} {ayah}</b> <span className="opacity-80">×{w.n}</span></button></li>; })}
       {list.length > limit && <li className="px-1 py-1 text-sm text-ink-faint">+{list.length - limit} more</li>}</ul>
-    <div className="px-5 pb-5 pt-3">{pick !== null ? <AyahPlayer key={pick} range={{ start: pick, end: pick }} initialRepeat={5} compact /> : null}</div>
+    <div className="flex flex-col gap-3 px-5 pb-5 pt-3">{pick !== null ? <AyahPlayer key={pick} range={{ start: pick, end: pick }} initialRepeat={5} compact /> : null}
+      <button type="button" onClick={() => openMushaf({ ayah: pick ?? list[0].ayahId, marks: list.map(w => [w.ayahId, w.big ? 'big' : 'weak'] as [number, Mark]), title: 'Weak ayahs' })} className="inline-flex min-h-[44px] items-center gap-1.5 self-start rounded-xl px-3 text-sm font-bold text-pine-700 ring-1 ring-inset ring-pine-600/30 hover:bg-pine-50"><BookOpen size={16} />See them on the page</button></div>
   </Card>;
 }
 

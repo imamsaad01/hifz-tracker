@@ -22,24 +22,39 @@ import { pagesInRange, SOURCE } from '../../quran';
 import { sessionRows } from '../../components/StudentReport';
 import type { OrgSettings, Role } from '../../lib/types';
 import type { AuditRow, Notice } from '../../api/data';
-import { Button, Card, CardHead, Field, Select, Toggle, inputCls, Spinner, ErrorBox, Pill, Stat, Empty, Confirm, useToast, cx, SubNav, SubTabs } from '../../components/ui';
+import { Button, Card, CardHead, Field, Select, Toggle, inputCls, Spinner, ErrorBox, Pill, Stat, Empty, Confirm, useToast, cx, SubTabs } from '../../components/ui';
 import { DailyBars } from '../../components/quran';
 import { PageTitle } from '../../components/Shell';
 import { friendly } from '../../api/backend';
+import { Group, LinkRow } from '../../components/Rows';
+import { ChevronRight, ArrowLeft, Sparkles, LogOut } from 'lucide-react';
 
+// More: a short list grouped like a phone's settings; each item opens its own page with a way back.
 const SECTIONS = [
-  ['reports', 'Reports', BarChart3, false], ['applications', 'Applications', Inbox, false], ['fees', 'Fees', Wallet, true], ['settings', 'Settings', Settings, true], ['codes', 'Join codes', KeyRound, true], ['people', 'People', Users, true],
-  ['owner', 'Site owner', Crown, true], ['email', 'Email log', Mail, false], ['audit', 'Audit log', HistoryIcon, true], ['about', 'About the data', BookOpen, false],
+  ['reports', 'Reports', BarChart3, false, 'Weekly and monthly numbers, leaderboard', 'program'], ['applications', 'Applications and join requests', Inbox, false, 'People asking to join', 'program'],
+  ['people', 'People', Users, true, 'Teachers, admins and roles', 'program'], ['codes', 'Join codes', KeyRound, true, 'Codes students use to sign up', 'program'], ['fees', 'Fees', Wallet, true, 'Who has paid', 'program'],
+  ['settings', 'Settings', Settings, true, 'Revision days, reminders, expectations, display', 'settings'],
+  ['about', 'About the data', BookOpen, false, 'Qurʾān data and sources', 'help'], ['email', 'Email log', Mail, false, 'Emails the app sent', 'help'], ['audit', 'Audit log', HistoryIcon, true, 'Who changed what', 'help'], ['owner', 'Site owner', Crown, true, 'Programs on this site', 'help'],
 ] as const;
+const GROUPS = [['program', 'Your program'], ['settings', 'Settings'], ['help', 'Help and records']] as const;
 export function More() {
-  const { org } = useOrg();
+  const { org, backend } = useOrg();
   const route = useRoute();
   const admin = org.role === 'admin';
   const visible = SECTIONS.filter(s => !s[3] || admin);
-  const sec = visible.find(s => s[0] === route[1])?.[0] ?? 'reports';
+  const cur = visible.find(s => s[0] === route[1]);
+  if (!cur) return <>
+    <PageTitle title="More" sub={org.name} />
+    <div className="flex max-w-2xl flex-col gap-6">
+      {GROUPS.map(([g, t]) => { const items = visible.filter(s => s[5] === g); return items.length ? <Group key={g} title={t}>{items.map(([k, l, I, , hint]) =>
+        <a key={k} href={href('more', k)} className="flex min-h-[60px] items-center gap-3 px-5 py-2 hover:bg-pine-50/50"><I size={18} className="shrink-0 text-pine-700" /><span className="min-w-0 flex-1"><b className="block">{l}</b><span className="block truncate text-sm text-ink-faint">{hint}</span></span><ChevronRight size={18} className="shrink-0 text-ink-faint" /></a>)}
+        {g === 'help' && <><LinkRow title="Take the app tour" icon={Sparkles} onClick={startTour} /><LinkRow title="Sign out" icon={LogOut} onClick={() => backend.signOut()} /></>}</Group> : null; })}
+    </div>
+  </>;
+  const sec = cur[0];
   return <>
-    <PageTitle title="More" sub={org.name} action={<Button kind="secondary" onClick={startTour}>Take the app tour</Button>} />
-    <SubNav label="More sections" active={sec} href={k => href('more', k)} items={visible.map(([k, l, I]) => ({ key: k, label: l, icon: I }))} />
+    <a href={href('more')} className="no-print mb-2 inline-flex min-h-[44px] items-center gap-1 text-sm font-bold text-ink-faint hover:text-ink"><ArrowLeft size={16} />More</a>
+    <PageTitle title={cur[1]} sub={cur[4]} />
     {sec === 'reports' && <Reports />}
     {sec === 'applications' && <Applications />}
     {sec === 'fees' && <Fees />}

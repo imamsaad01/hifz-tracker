@@ -37,7 +37,7 @@ import { CalendarX } from 'lucide-react';
 
 type Tab = 'overview' | 'history' | 'messages' | 'report';
 export function ParentApp() {
-  const { org, today } = useOrg();
+  const { org, today, backend } = useOrg();
   const { data, error, reload } = useOrgData();
   const [pick, setPick] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('overview');
@@ -91,6 +91,7 @@ export function ParentApp() {
       </details>
       <RulesCard compact text={org.settings.rulesText} ackAt={null} />
       <DisplaySettings />
+      <button type="button" onClick={() => backend.signOut()} className="inline-flex min-h-[44px] items-center gap-2 self-start rounded-xl px-3 font-bold text-ink-soft hover:bg-black/5 lg:hidden">Sign out</button>
     </div>}
     {absent && <AbsenceForm student={child} classes={data.classes} absences={data.absences} onClose={() => setAbsent(false)} onSaved={reload} />}
     {tab === 'history' && <History student={child} sessions={sd.sessions} today={today} settings={org.settings} />}

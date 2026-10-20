@@ -6,6 +6,8 @@ import { useApp } from '../app/context';
 import { outbox, useOutboxCount } from '../app/outbox';
 import { Brand } from './Brand';
 import { SearchButton } from './Search';
+import { MushafHost, openMushaf } from './Mushaf';
+import { BookOpen } from 'lucide-react';
 import { InstallApp } from './InstallApp';
 import { InboxBell } from './Inbox';
 import { PullToRefresh, AutoRefresh } from './PullToRefresh';
@@ -26,6 +28,7 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
     <PullToRefresh />
     <AutoRefresh />
     <Tour />
+    <MushafHost />
     <aside className="no-print hidden w-64 shrink-0 flex-col gap-6 border-r border-line bg-white p-5 lg:flex">
       <Brand small />
       <nav aria-label="Main" className="flex flex-col gap-1">{nav.map(n => <a key={n.key} href={n.href} data-tour={`nav-${n.key}`} aria-current={active === n.key ? 'page' : undefined} className={cx('flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] font-bold', active === n.key ? 'bg-pine-50 text-pine-800' : 'text-ink-soft hover:bg-paper')}><n.icon size={18} />{n.label}</a>)}</nav>
@@ -44,9 +47,9 @@ export function Shell({ nav, active, children }: { nav: NavItem[]; active: strin
           {org && org.roles.length > 1 && <Select aria-label="View as" className="!w-auto !min-h-[44px] text-sm lg:hidden" value={org.role} onChange={switchRole} options={org.roles.map(r => [r, ROLE_NAME[r]] as [typeof r, string])} />}
           {org && (org.role === 'admin' || org.role === 'teacher') && <SearchButton />}
           <InstallApp compact />
+          <button type="button" onClick={() => openMushaf()} aria-label="Open the muṣḥaf" title="Muṣḥaf" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5"><BookOpen size={19} /></button>
           <InboxBell />
           {(!online || pending > 0) && <button type="button" onClick={flush} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-amber-50 px-3 text-xs font-bold text-warn ring-1 ring-warn/30">{online ? <RefreshCw size={14} /> : <CloudOff size={14} />}{online ? `${pending} waiting · send now` : `Offline${pending ? ` · ${pending} waiting` : ''}`}</button>}
-          <button type="button" onClick={() => backend.signOut()} className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5 lg:hidden" aria-label="Sign out"><LogOut size={18} /></button>
         </div>
       </header>
       <main id="main" tabIndex={-1} className="outline-none mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-5 lg:px-8 lg:pb-10">{children}</main>

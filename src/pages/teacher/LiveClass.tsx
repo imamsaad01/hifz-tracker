@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RecallResult } from '../../api/data';
 import { useRefresh } from '../../components/PullToRefresh';
+import { MushafLink, rangeMarks, type Mark } from '../../components/Mushaf';
 import { Play, CheckCircle2, UserX, ChevronRight, ChevronDown, ClipboardCheck, GripVertical, Clock3 } from 'lucide-react';
 import { RevisionReadOnly, weakAyahs } from '../../components/PartnerRevision';
 import { SignOffModal } from '../../components/RevisionSelf';
@@ -99,6 +100,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
             <p className="text-xs font-bold uppercase tracking-wider text-pine-700">Hear now · new lesson</p>
             <p className="mt-0.5 text-lg font-bold text-pine-800">{pend ? formatRange(pend.range) : current.nextNew ? formatRange(current.nextNew) : 'All memorised'}</p>
             {pend ? <p className="text-sm text-pine-700">Submitted by the student{pend.studentNote ? <> · “{pend.studentNote}”</> : ''}</p> : <p className="text-sm text-pine-700">Not submitted yet: record it as you hear it.</p>}
+            {(pend?.range ?? current.nextNew) && <MushafLink className="mt-2 bg-white" range={(pend?.range ?? current.nextNew)!} title={`${current.student.name.split(' ')[0]} · new lesson`} marks={[...rangeMarks((pend?.range ?? current.nextNew)!, 'lesson'), ...weak.map(w => [w.ayahId, 'weak'] as [number, Mark])]} />}
           </div>
           {current.reasons.length > 0 && <p className="mt-2 text-sm text-warn">{current.reasons.map(r => r.text).join(' · ')}</p>}
           <div className="mt-3 grid grid-cols-2 gap-2">{pend ? <Button className="col-span-2 min-h-[52px] text-[17px]" onClick={() => setSignOff(pend)}><ClipboardCheck size={18} />Sign off new lesson</Button> : <Button className="col-span-2 min-h-[52px] text-[17px]" onClick={() => setRec(sid)}><Play size={18} />Record new lesson</Button>}

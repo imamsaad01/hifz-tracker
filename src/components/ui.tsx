@@ -45,14 +45,14 @@ const pill = (on: boolean) => cx('inline-flex min-h-[44px] shrink-0 items-center
 type SectionItem<T extends string> = { key: T; label: React.ReactNode; icon?: import('lucide-react').LucideIcon };
 /** Sections that are their own address (links), e.g. Halaqah → Live class / Attendance */
 export function SubNav<T extends string>({ items, active, label, href: link, className }: { items: SectionItem<T>[]; active: T; label: string; href: (k: T) => string; className?: string }) {
-  return <nav aria-label={label} className={cx('no-print -mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1', className)} data-no-pull>
+  return <nav aria-label={label} className={cx('no-print -mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible', className)} data-no-pull>
     {items.map(({ key, label: l, icon: I }) => <a key={key} href={link(key)} aria-current={active === key ? 'page' : undefined} className={pill(active === key)}>{I && <I size={15} />}{l}</a>)}
   </nav>;
 }
 /** Sections inside one screen (tabs). Arrow keys move between them. */
 export function SubTabs<T extends string>({ items, active, onChange, label, className }: { items: SectionItem<T>[]; active: T; onChange: (k: T) => void; label: string; className?: string }) {
   const key = (e: React.KeyboardEvent, i: number) => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (!d) return; e.preventDefault(); const n = items[(i + d + items.length) % items.length]; onChange(n.key); (e.currentTarget.parentElement?.children[(i + d + items.length) % items.length] as HTMLElement | undefined)?.focus(); };
-  return <div role="tablist" aria-label={label} className={cx('no-print -mx-1 mb-4 flex gap-1.5 overflow-x-auto px-1 pb-1', className)} data-no-pull>
+  return <div role="tablist" aria-label={label} className={cx('no-print -mx-1 mb-4 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:flex-wrap lg:overflow-visible', className)} data-no-pull>
     {items.map(({ key: k, label: l, icon: I }, i) => <button key={k} type="button" role="tab" aria-selected={active === k} tabIndex={active === k ? 0 : -1} onKeyDown={e => key(e, i)} onClick={() => onChange(k)} className={pill(active === k)}>{I && <I size={15} />}{l}</button>)}
   </div>;
 }

@@ -5,7 +5,7 @@ import { weekSummary } from '../../lib/weekly';
 import { InfoTip } from '../../components/InfoTip';
 import type { GlossaryKey } from '../../lib/glossary';
 import { useMemo, useState } from 'react';
-import { BookOpen, RotateCcw, Repeat, Plus, Pencil, Award, Sparkles, CheckCircle2, Clock3, ChevronDown } from 'lucide-react';
+import { BookOpen, RotateCcw, Repeat, Plus, Pencil, Award, Sparkles, CheckCircle2, Clock3, ChevronDown, LogOut } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { useStudentData } from '../../app/useStudentData';
@@ -15,6 +15,7 @@ import { groupPages } from '../../lib/revision';
 import { niceDate, hijriDate, addDays } from '../../lib/dates';
 import { formatRange, pageRange } from '../../quran';
 import { RecallTestButton } from '../../components/RecallTest';
+import { MushafLink, rangeMarks, type Mark } from '../../components/Mushaf';
 import { streakDetail } from '../../lib/progress';
 import { studentPlan, classLabel, goalPct } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
@@ -54,7 +55,7 @@ import { CheckInCard, StandingCard, RevisionFormCard, RulesCard, missedLastWeek 
 import { NotifyToggle } from '../../components/Notifications';
 
 export function StudentApp({ tab }: { tab: string }) {
-  const { org, today, user, api, refreshSession } = useOrg();
+  const { org, today, user, api, refreshSession, backend } = useOrg();
   const { data, error, reload } = useOrgData();
   const me = data?.students.find(s => s.userId === user?.id) ?? null;
   const sd = useStudentData(me?.id ?? null);
@@ -89,7 +90,8 @@ export function StudentApp({ tab }: { tab: string }) {
   const events = data.events.filter(e => (!e.classId || myClassIds.includes(e.classId)) && e.startsOn <= week && (e.endsOn ?? e.startsOn) >= today);
   const tests = data.exams.filter(x => x.studentId === me.id && x.status === 'scheduled' && x.scheduledOn >= today);
   const certs = certificatesFor(me, sd.milestones);
-  const weakCount = weakAyahs(sd.sessions, me.id, today).length;
+  const weakList = weakAyahs(sd.sessions, me.id, today); const weakCount = weakList.length;
+  const weakMarks = weakList.map(w => [w.ayahId, 'weak'] as [number, Mark]);
   return <>
     {tab === 'home' && <>
       <PageTitle title={`Assalamu alaikum, ${me.name.split(' ')[0]}`} sub={<>{niceDate(today)} · {hijriDate(today)}</>} />
@@ -107,16 +109,16 @@ export function StudentApp({ tab }: { tab: string }) {
         { key: 'new', tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
           state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ring[0].due ? 'todo' : 'none',
           note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : !ring[0].due && ins.nextNew ? `Not a lesson day.${ins.revision.nextRevisionDay ? ` Next lesson day: ${niceDate(ins.revision.nextRevisionDay)}.` : ''} You can still get ahead.` : 'Listen, learn it, test yourself, then tap “I memorised it”.',
-          action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /></div><AyahPlayer range={ins.nextNew} /></div>
+          action: ins.nextNew && !pendingNew ? <div className="flex flex-col gap-2"><div className="flex flex-wrap gap-2"><Button onClick={() => setSubmitNew(true)}><Plus size={16} />I memorised it</Button><RecallTestButton studentId={me.id} range={ins.nextNew} /><MushafLink range={ins.nextNew} title="New lesson" marks={[...rangeMarks(ins.nextNew, 'lesson'), ...weakMarks]} /></div><AyahPlayer range={ins.nextNew} /></div>
             : pendingNew ? <RecallTestButton studentId={me.id} range={pendingNew.range} label="Test yourself before class" /> : null },
         { key: 'recent', tip: 'recent', icon: <Repeat size={18} />, title: 'Recent revision', body: recent.length ? recent.map(formatRange).join(' · ') : 'No new lessons in the last week',
           state: !recent.length ? 'none' : ring[1].done ? 'done' : 'todo',
           note: `Every new lesson from the last ${org.settings.revision.recentDays} days, read once today.`,
-          action: recent.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /></div> : null },
+          action: recent.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /><MushafLink range={recent[0]} title="Recent revision" marks={[...recent.flatMap(r => rangeMarks(r, 'revision')), ...weakMarks]} /></div> : null },
         { key: 'old', tip: 'old', icon: <RotateCcw size={18} />, title: 'Old revision', body: !ins.revision.isRevisionDay ? 'Rest day' : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today',
           state: !ins.revision.isRevisionDay || !ins.revision.today.length ? 'none' : ring[2].done ? 'done' : 'todo',
           note: !ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first. Read to your partner, then log it.' : `${ins.revision.perDay} pages each revision day, in turn. Read to your partner, then log it.`,
-          action: ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={firstRun(ins.revision.today.map(r => r.page))} /></div> : null },
+          action: ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={firstRun(ins.revision.today.map(r => r.page))} /><MushafLink range={firstRun(ins.revision.today.map(r => r.page))} title="Old revision" marks={[...ins.revision.today.flatMap(r => rangeMarks(pageRange(r.page), 'revision')), ...weakMarks]} /></div> : null },
       ]} /></div>
       <div className="mt-5 empty:hidden" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
       <div className="mt-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={2} fresh /></div>
@@ -206,6 +208,7 @@ export function StudentApp({ tab }: { tab: string }) {
         <Row title="Notifications" value=""><NotifyToggle /></Row>
         <Row title="Display" value={`${{ auto: 'Auto', light: 'Light', dark: 'Dark' }[getTheme()]} · ${{ normal: 'Normal text', large: 'Large text', xl: 'Extra large text' }[getTextSize()]}`}><DisplaySettings /></Row>
         <LinkRow title="Take the app tour" icon={Sparkles} onClick={startTour} />
+        <LinkRow title="Sign out" icon={LogOut} onClick={() => backend.signOut()} />
       </Group>
       <p className="px-1 text-sm text-ink-faint">Only you and your teachers{org.settings.parentsEnabled ? ' (and a linked parent)' : ''} can see your records.</p>
       {memOpen && <MemorisedModal student={me} onClose={() => setMemOpen(false)} onSaved={refresh} />}

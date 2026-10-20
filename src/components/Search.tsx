@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Search as SearchIcon, User, Play, ClipboardCheck, CalendarCheck, School, CalendarDays, ClipboardList, FileText, BookOpenCheck,
-  BarChart3, Inbox, Wallet, Settings, KeyRound, UserPlus, Clock, CornerDownLeft, X, Compass, type LucideIcon,
+  BarChart3, Inbox, Wallet, Settings, KeyRound, UserPlus, Clock, CornerDownLeft, X, Compass, BookOpen, type LucideIcon,
 } from 'lucide-react';
 import { useOrgData } from '../app/useOrgData';
 import { useOrg } from '../app/context';
 import { href } from '../app/router';
 import { startTour } from './Tour';
+import { openMushaf } from './Mushaf';
+import { surahNameEn, surahFirstId as surahFirst } from '../quran';
 import { cx } from './ui';
 
 type Item = { id: string; label: string; hint?: string; icon: LucideIcon; to?: string; run?: () => void; keys?: string; kind: 'student' | 'go' };
@@ -28,6 +30,7 @@ const PAGES: Omit<Item, 'kind'>[] = [
   { id: 'fees', label: 'Fees', icon: Wallet, to: href('more', 'fees'), keys: 'fees payment money' },
   { id: 'settings', label: 'Settings', hint: 'Revision days, reminders, expectations', icon: Settings, to: href('more', 'settings'), keys: 'settings rules expectations revision days reminders dark mode text size theme' },
   { id: 'codes', label: 'Join codes', icon: KeyRound, to: href('more', 'codes'), keys: 'join code invite' },
+  { id: 'mushaf', label: 'Open the muṣḥaf', hint: 'Type a page, e.g. “page 582”', icon: BookOpen, run: () => openMushaf(), keys: 'mushaf mushaf quran page read surah juz' },
   { id: 'tour', label: 'Take the app tour', icon: Compass, run: () => startTour(), keys: 'help tour guide how' },
 ];
 const norm = (t: string) => t.normalize('NFD').replace(/\p{M}/gu, '').replace(/[ʿʾ'’`]/g, '').toLowerCase();
@@ -78,8 +81,12 @@ function Palette({ onClose }: { onClose: () => void }) {
       const l = norm(it.label); const words = l.split(/\s+/); const k = norm(it.keys ?? '');
       if (l.startsWith(n)) return 4; if (words.some(w => w.startsWith(n))) return 3; if (l.includes(n)) return 2; if (k.split(/\s+/).some(w => w.startsWith(n)) || k.includes(n)) return 1; return 0;
     };
+    const pm = n.match(/^(?:p|page|pg)\s*(\d{1,3})$/) ?? n.match(/^(\d{1,3})$/);
+    const quran: Item[] = [];
+    if (pm && +pm[1] >= 1 && +pm[1] <= 604) quran.push({ id: `p:${pm[1]}`, kind: 'go', label: `Muṣḥaf page ${pm[1]}`, icon: BookOpen, run: () => openMushaf({ page: +pm[1] }) });
+    for (let k = 1; k <= 114 && quran.length < 3; k++) if (n.length >= 3 && norm(surahNameEn(k)).replace(/^(al|an|ar|as|at|ad|adh|az|ash)-/, '').startsWith(n.replace(/^(al|an|ar|as|at|ad|adh|az|ash)-?/, ''))) quran.push({ id: `q:${k}`, kind: 'go', label: `${surahNameEn(k)} in the muṣḥaf`, hint: `Surah ${k}`, icon: BookOpen, run: () => openMushaf({ ayah: surahFirst(k) }) });
     const hits = all.map(it => ({ it, s: score(it) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s || a.it.label.localeCompare(b.it.label)).map(x => x.it);
-    return [{ head: 'Students', items: hits.filter(h => h.kind === 'student').slice(0, 8) }, { head: 'Pages and actions', items: hits.filter(h => h.kind === 'go').slice(0, 6) }].filter(g => g.items.length);
+    return [{ head: 'Students', items: hits.filter(h => h.kind === 'student').slice(0, 8) }, { head: 'Qurʾān', items: quran }, { head: 'Pages and actions', items: hits.filter(h => h.kind === 'go').slice(0, 6) }].filter(g => g.items.length);
   }, [q, all, students, pages, data, today]);
   const flat = results.flatMap(g => g.items);
   useEffect(() => { setSel(0); }, [q]);
