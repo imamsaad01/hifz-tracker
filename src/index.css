@@ -40,3 +40,5 @@ html.text-xl body { zoom: 1.22; }
 .done-burst { position: absolute; right: 18px; top: 50%; width: 120px; height: 120px; margin-top: -60px; border-radius: 9999px;
   background: radial-gradient(circle, rgba(255,215,140,.75) 0 12%, transparent 13% 30%, rgba(255,255,255,.5) 31% 34%, transparent 35%); animation: done-burst 1.1s ease-out .15s both; pointer-events: none }
 @media (prefers-reduced-motion: reduce) { .done-pop, .done-burst { animation: none } .done-burst { display: none } }
+@keyframes intro-in { from { opacity: 0; transform: translateX(16px) } to { opacity: 1; transform: none } }
+@media (prefers-reduced-motion: reduce) { [class*="intro-in"] { animation: none !important } }
