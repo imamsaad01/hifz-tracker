@@ -89,12 +89,13 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
   const [page, setPage] = useState(Math.min(TOTAL_PAGES, Math.max(1, start)));
   const [hidden, setHidden] = useState(false); const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [listen, setListen] = useState(false);
+  const [drag, setDrag] = useState(0); const [turn, setTurn] = useState<'l' | 'r' | null>(null);
   const marks = useMemo(() => new Map(opts.marks ?? []), [opts.marks]);
   const go = useCallback((p: number) => { const n = Math.min(TOTAL_PAGES, Math.max(1, p)); setPage(n); setRevealed(new Set()); setListen(false); try { localStorage.setItem(LAST, String(n)); } catch { /* */ } }, []);
   const x0 = useRef<{ x: number; y: number } | null>(null); const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowLeft') go(page + 1); if (e.key === 'ArrowRight') go(page - 1); };
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowLeft') { setTurn('r'); go(page + 1); } if (e.key === 'ArrowRight') { setTurn('l'); go(page - 1); } };
     window.addEventListener('keydown', k); return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', k); };
   }, [page, go, onClose]);
   useEffect(() => {
@@ -114,8 +115,11 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
     </header>
     <div ref={box} className="flex-1 overflow-y-auto overscroll-contain" data-no-pull
       onPointerDown={e => { x0.current = { x: e.clientX, y: e.clientY }; }}
-      onPointerUp={e => { const s = x0.current; x0.current = null; if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 70 && Math.abs(e.clientY - s.y) < 50) go(dx > 0 ? page + 1 : page - 1); }}>
-      <div className="mx-auto max-w-2xl px-4 py-4">
+      onPointerMove={e => { const s = x0.current; if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(e.clientY - s.y)) setDrag(dx); }}
+      onPointerCancel={() => { x0.current = null; setDrag(0); }}
+      onPointerUp={e => { const s = x0.current; x0.current = null; setDrag(0); if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 70 && Math.abs(e.clientY - s.y) < 60) { const to = dx > 0 ? page + 1 : page - 1; if (to >= 1 && to <= TOTAL_PAGES) { setTurn(dx > 0 ? 'r' : 'l'); go(to); } } }}>
+      <div key={page} className={cx('mx-auto max-w-2xl px-4 py-4', turn === 'r' ? 'page-turn-r' : turn === 'l' ? 'page-turn-l' : '')}
+        style={drag ? { transform: `translateX(${drag * 0.6}px) rotate(${drag * 0.006}deg)`, opacity: 1 - Math.min(0.35, Math.abs(drag) / 900), transition: 'none' } : undefined}>
         {hidden && <p className="mb-3 rounded-xl bg-pine-50 px-3 py-2 text-center text-sm text-pine-800">Recite from memory. Tap an ayah to check it.</p>}
         <div className="rounded-2xl bg-white px-4 py-3 shadow-card ring-1 ring-brass-500/25 sm:px-8">
           <MushafPage page={page} marks={marks} hidden={hidden} revealed={revealed} onReveal={id => setRevealed(s => new Set(s).add(id))} />

@@ -14,7 +14,7 @@ export function Button({ kind = 'primary', busy, className, children, ...rest }:
     quiet: 'text-ink-soft hover:bg-black/5',
     danger: 'bg-white text-bad border border-red-200 hover:bg-red-50',
   };
-  return <button type="button" {...rest} disabled={rest.disabled || busy} className={cx('inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-bold transition disabled:cursor-not-allowed disabled:opacity-50', k[kind], className)}>
+  return <button type="button" {...rest} disabled={rest.disabled || busy} className={cx('inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-bold transition active:scale-[.97] disabled:active:scale-100 disabled:cursor-not-allowed disabled:opacity-50', k[kind], className)}>
     {busy && <Loader2 size={16} className="animate-spin" aria-hidden />}{children}
   </button>;
 }
@@ -92,7 +92,12 @@ export function Empty({ icon, title, children, action }: { icon?: React.ReactNod
   return <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">{icon && <div className="text-ink-faint">{icon}</div>}<p className="font-bold text-ink">{title}</p>{children && <p className="max-w-sm text-sm text-ink-faint">{children}</p>}{action && <div className="mt-2">{action}</div>}</div>;
 }
 export function Spinner({ label = 'Loading' }: { label?: string }) {
-  return <div className="grid min-h-[40vh] place-items-center" role="status"><div className="flex items-center gap-2 text-ink-soft"><Loader2 className="animate-spin" size={20} aria-hidden />{label}…</div></div>;
+  // a shimmering outline of the page instead of a bare spinner, so it feels like it is already arriving
+  return <div className="flex flex-col gap-4 py-2" role="status" aria-label={`${label}…`}>
+    <div className="shimmer h-8 w-2/3 max-w-xs rounded-lg" /><div className="shimmer h-4 w-1/2 max-w-[220px] rounded" />
+    <div className="grid gap-3 sm:grid-cols-2">{[0, 1, 2, 3].map(i => <div key={i} className="shimmer h-24 rounded-2xl" style={{ animationDelay: `${i * 0.08}s` }} />)}</div>
+    <div className="shimmer h-40 rounded-2xl" /><span className="sr-only">{label}…</span>
+  </div>;
 }
 export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-bad"><AlertTriangle size={18} aria-hidden /><span className="min-w-0 flex-1">{message}</span>{onRetry && <Button kind="danger" className="min-h-[44px] px-3" onClick={onRetry}>Try again</Button>}</div>;
@@ -138,7 +143,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
   return <ToastCtx.Provider value={push}>{children}
     <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 lg:bottom-6" aria-live="polite">
-      {items.map(t => <div key={t.id} className={cx('pointer-events-auto flex max-w-md items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white shadow-xl', t.tone === 'err' ? 'bg-bad' : 'bg-pine-900')}>{t.tone === 'err' ? <AlertTriangle size={16} /> : <Check size={16} />}{t.text}</div>)}
+      {items.map(t => <div key={t.id} className={cx('toast-in pointer-events-auto flex max-w-md items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white shadow-xl', t.tone === 'err' ? 'bg-bad' : 'bg-pine-900')}>{t.tone === 'err' ? <AlertTriangle size={16} /> : <Check size={16} />}{t.text}</div>)}
     </div>
   </ToastCtx.Provider>;
 }

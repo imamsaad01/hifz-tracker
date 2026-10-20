@@ -81,3 +81,24 @@ html.text-xl body { zoom: 1.22; }
 .ring-draw { stroke-dashoffset: 0; animation: ring-draw 1.1s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes ring-draw { from { stroke-dashoffset: var(--len) } to { stroke-dashoffset: 0 } }
 @media (prefers-reduced-motion: reduce) { .brand-go .brand-name { color: inherit } .brand-spark { display: none } }
+
+/* ---- motion pack 3: muṣḥaf page turn, streak flame, juz celebration, shimmer, toasts ---- */
+.page-turn-r { animation: turn-r .38s cubic-bezier(.2,.8,.2,1) backwards; }
+.page-turn-l { animation: turn-l .38s cubic-bezier(.2,.8,.2,1) backwards; }
+@keyframes turn-r { from { opacity: 0; transform: translateX(-48px) rotate(-1.2deg) } }
+@keyframes turn-l { from { opacity: 0; transform: translateX(48px) rotate(1.2deg) } }
+.flame svg { transform-origin: 50% 90%; animation: flicker 1.6s ease-in-out infinite; filter: drop-shadow(0 0 3px var(--glow)); }
+@keyframes flicker { 0%,100% { transform: scale(1) rotate(0) } 25% { transform: scale(1.06,.96) rotate(-2deg) } 50% { transform: scale(.97,1.05) rotate(1.5deg) } 75% { transform: scale(1.04,.98) rotate(-1deg) } }
+.celebrate-in { animation: fade-in .3s ease-out; }
+@keyframes fade-in { from { opacity: 0 } }
+.celebrate-card { animation: card-pop .55s cubic-bezier(.34,1.56,.64,1) .1s backwards; }
+@keyframes card-pop { from { opacity: 0; transform: scale(.6) translateY(30px) } }
+.celebrate-badge { animation: badge-spin 1s cubic-bezier(.34,1.56,.64,1) .35s backwards; box-shadow: 0 0 0 6px rgb(199 154 69 / .35); }
+@keyframes badge-spin { from { transform: rotate(-200deg) scale(0) } }
+.confetti { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; animation: confetti-fall 2.8s cubic-bezier(.3,.6,.5,1) forwards; }
+@keyframes confetti-fall { 0% { transform: translate(0,0) rotate(0); opacity: 1 } 100% { transform: translate(var(--drift), 105vh) rotate(var(--spin)); opacity: .9 } }
+.shimmer { background: linear-gradient(90deg, rgb(var(--ink) / .06) 25%, rgb(var(--ink) / .11) 50%, rgb(var(--ink) / .06) 75%) 0 0 / 300% 100%; animation: shimmer 1.3s linear infinite; }
+@keyframes shimmer { from { background-position: 100% 0 } to { background-position: 0 0 } }
+.toast-in { animation: toast-in .35s cubic-bezier(.34,1.56,.64,1); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(.95) } }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none } .flame svg { animation: none } }

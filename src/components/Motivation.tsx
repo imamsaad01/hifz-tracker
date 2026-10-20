@@ -1,5 +1,6 @@
 // Daily ring, level bar and badge grid.
 import { Flame, BookOpen, Star, CheckCircle2, Heart, Medal, Lock, Snowflake } from 'lucide-react';
+import { StreakFlame } from './Motion';
 import type { Badge } from '../lib/motivation';
 import { Card, CardHead, cx } from './ui';
 
@@ -27,7 +28,7 @@ export function LevelBar({ total, lvl, streak, freezes, frozenDays }: { total: n
     <div className="flex items-baseline gap-2"><span className="rounded-lg bg-pine-700 px-2 py-0.5 text-sm font-bold text-white">Level {lvl.n}</span><b className="text-lg">{lvl.name}</b><span className="ml-auto text-sm tabular-nums text-ink-faint">{total} points</span></div>
     <div className="h-2.5 overflow-hidden rounded-full bg-black/[.06]" role="progressbar" aria-valuenow={Math.round(lvl.progress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Progress to next level"><div className="h-full rounded-full bg-gradient-to-r from-pine-600 to-brass-500" style={{ width: `${Math.round(lvl.progress * 100)}%` }} /></div>
     <p className="text-sm text-ink-faint">{lvl.to ? `${lvl.to - total} points to ${lvl.nextName}` : 'Top level reached'}</p>
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><span className="inline-flex items-center gap-1 font-bold"><Flame size={16} className="text-brass-500" />{streak}-day streak</span>
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm"><span className="inline-flex items-center gap-1 font-bold"><StreakFlame days={streak} />{streak}-day streak</span>
       {freezes > 0 && <span className="inline-flex items-center gap-1 text-ink-soft"><Snowflake size={15} className="text-sky-600" />{freezes} streak freeze{freezes > 1 ? 's' : ''} a week{frozenDays ? ` · ${frozenDays} used recently` : ''}</span>}</p>
   </div>;
 }

@@ -30,6 +30,8 @@ import { WhatIf } from '../../components/WhatIf';
 import { Row, LinkRow, Group } from '../../components/Rows';
 import { getTheme, getTextSize } from '../../lib/display';
 import { JuzMap } from '../../components/quran';
+import { StreakFlame, JuzCelebration } from '../../components/Motion';
+import { juzProgress } from '../../lib/progress';
 import { AssignmentList } from '../../components/AssignmentList';
 import { RecordSheet } from '../../components/RecordSheet';
 import { Leaderboard } from '../../components/Leaderboard';
@@ -82,6 +84,7 @@ export function StudentApp({ tab }: { tab: string }) {
   const beh = data.behaviour.filter(b => b.studentId === me.id);
   const pts = points(sd.sessions, beh); const lvl = level(pts.total);
   const sk = streakDetail(sd.sessions.map(s => s.date), today, org.settings.motivation.freezePerWeek);
+  const juzDone = juzProgress(me.memorized).flatMap((v, i) => (v >= 1 ? [i + 1] : []));
   const todays = sd.sessions.filter(s => s.date === today);
   const pendingNew = sd.sessions.find(s => s.type === 'new' && (s.selfLogged || s.recordedBy === 'student') && !s.checkStatus) ?? null;
   // New lessons are heard in class: due on the halaqah's own day(s). Old revision follows the program's rule (fixed days, or N times a week at their own time).
@@ -114,6 +117,7 @@ export function StudentApp({ tab }: { tab: string }) {
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
       {ring.some(r => r.due) ? ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />
         : <div role="status" className="mb-5 rounded-2xl bg-pine-50 px-5 py-4 text-pine-900 ring-1 ring-pine-600/20 dark:text-pine-100"><p className="flex items-center gap-2 font-bold"><CheckCircle2 size={20} />Nothing is due today</p><p className="text-sm opacity-85">A free day. You can get ahead with Old revision or practise your last lesson below.</p></div>}
+      <JuzCelebration who={me.id} completed={juzDone} />
       {/* 2. today's reading */}
       <div data-tour="today-plan"><TodayPath steps={[
         { key: 'new', practice: pendingNew?.range ?? (ring[0].done ? todays.find(x => x.type === 'new')?.range : ins.nextNew) ?? null, tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
@@ -178,7 +182,7 @@ export function StudentApp({ tab }: { tab: string }) {
           { label: 'This week', value: weekRev.target ? weekRev.oldPages / weekRev.target : 0, detail: weekRev.target ? `${weekRev.oldPages} of ${weekRev.target} Old pages` : `${weekRev.oldPages} pages`, color: '#C08A2E' },
           { label: 'Today', value: due.length ? doneN / due.length : 1, detail: due.length ? `${doneN} of ${due.length} done` : 'Rest day', color: '#3B82C4' },
         ]} /></Card>
-        <Card className="p-5"><div className="mb-3 flex items-baseline justify-between gap-2"><h2 className="font-bold">Streak</h2><p className="text-sm"><b className="text-2xl text-pine-700">{sk.days}</b> day{sk.days === 1 ? '' : 's'} <span className="text-ink-faint">· best {ins.longest}</span></p></div>
+        <Card className="p-5"><div className="mb-3 flex items-baseline justify-between gap-2"><h2 className="font-bold">Streak</h2><p className="flex items-center gap-1.5 text-sm"><StreakFlame days={sk.days} size={20} /><b className="text-2xl text-pine-700">{sk.days}</b> day{sk.days === 1 ? '' : 's'} <span className="text-ink-faint">· best {ins.longest}</span></p></div>
           <StreakCalendar dates={sd.sessions.filter(x => x.studentId === me.id).map(x => x.date)} frozen={sk.frozen} today={today} /></Card>
       </div>
       <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
