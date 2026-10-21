@@ -17,7 +17,7 @@ export function Recite({ text, onNext }: { text: string | null; onNext?: () => v
   const rec = useRef<SR | null>(null); const done = useRef<string[]>([]); const want = useRef(false);
   const { states, next } = follow(words, heard);
   const complete = words.length > 0 && next >= words.length;
-  const missed = states.filter(s => s === 'missed').length;
+  const missed = states.filter(s => s === 'missed').length; const fixed = states.filter(s => s === 'fixed').length; const wrongNow = states.includes('wrong');
   const stop = () => { want.current = false; rec.current?.stop(); setOn(false); };
   useEffect(() => () => { want.current = false; rec.current?.abort(); }, []);
   useEffect(() => { if (complete) { stop(); try { navigator.vibrate?.([15, 40, 15]); } catch { /* */ } } }, [complete]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -36,13 +36,13 @@ export function Recite({ text, onNext }: { text: string | null; onNext?: () => v
   if (text === null) return <p className="py-6 text-center text-sm text-ink-faint">Loading…</p>;
   if (!words.length) return <p className="py-6 text-center text-sm text-ink-faint">This needs a connection the first time.</p>;
   return <div className="flex flex-col items-center gap-4">
-    <p className="text-center text-sm text-ink-soft">{complete ? '' : on ? 'Listening… recite the ayah from memory.' : 'Tap the microphone and recite from memory. Words appear as you say them.'}</p>
+    <p className={cx('text-center text-sm', wrongNow ? 'font-bold text-bad' : 'text-ink-soft')}>{complete ? '' : wrongNow ? 'Not quite. The red word is what comes next; say it again.' : on ? 'Listening… recite the ayah from memory.' : 'Tap the microphone and recite from memory. Words appear as you say them.'}</p>
     <p lang="ar" dir="rtl" className="w-full rounded-xl bg-paper p-3 text-center font-quran text-[26px] leading-[2.2] ring-1 ring-line">
       {words.map((w, k) => { const st = states[k]; const peek = hints.has(k) && st === 'hidden';
-        return <span key={k} className={cx('mx-[0.12em] inline-block rounded px-0.5 transition-all duration-300', st === 'ok' && 'fly-in text-good', st === 'missed' && 'bg-amber-200/70 text-warn dark:bg-amber-400/25', st === 'hidden' && !peek && 'select-none text-transparent [text-shadow:0_0_0.4em_rgb(var(--ink)/0.45)]', peek && 'text-ink-faint', k === next && on && 'ring-2 ring-pine-600/40')}>{w}</span>; })}
+        return <span key={k} className={cx('mx-[0.12em] inline-block rounded px-0.5 transition-all duration-300', st === 'ok' && 'fly-in text-good', st === 'missed' && 'bg-amber-200/70 text-warn dark:bg-amber-400/25', st === 'wrong' && 'shake bg-red-100 text-bad ring-2 ring-bad/50 dark:bg-red-500/20', st === 'fixed' && 'text-good underline decoration-bad decoration-wavy decoration-1 underline-offset-[10px]', st === 'hidden' && !peek && 'select-none text-transparent [text-shadow:0_0_0.4em_rgb(var(--ink)/0.45)]', peek && 'text-ink-faint', k === next && on && 'ring-2 ring-pine-600/40')}>{w}</span>; })}
     </p>
     {complete ? <div className="flex flex-col items-center gap-3">
-      <p className="pop text-lg font-bold text-good">{missed === 0 && hints.size === 0 ? 'Perfect, from memory!' : `Done · ${missed} skipped${hints.size ? ` · ${hints.size} hint${hints.size > 1 ? 's' : ''}` : ''}`}</p>
+      <p className="pop text-lg font-bold text-good">{missed === 0 && fixed === 0 && hints.size === 0 ? 'Perfect, from memory!' : `Done${fixed ? ` · ${fixed} corrected` : ''}${missed ? ` · ${missed} skipped` : ''}${hints.size ? ` · ${hints.size} hint${hints.size > 1 ? 's' : ''}` : ''}`}</p>
       <div className="flex gap-2"><Button kind="secondary" onClick={reset}><RotateCcw size={16} />Again</Button>{onNext && <Button onClick={onNext}>Next ayah</Button>}</div>
     </div> : <div className="flex items-center gap-3">
       <button type="button" onClick={on ? stop : start} aria-label={on ? 'Stop listening' : 'Start reciting'} aria-pressed={on}

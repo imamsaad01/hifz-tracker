@@ -14,16 +14,20 @@ function lev(a: string, b: string): number {
 }
 export const similar = (heard: string, want: string) => { const a = bare(heard), b = bare(want); if (!a || !b) return false; if (a === b) return true; const m = Math.max(a.length, b.length); return 1 - lev(a, b) / m >= (m <= 3 ? 0.66 : 0.6); };
 
-export type WordState = 'hidden' | 'ok' | 'missed';
-/** Walk the heard words through the expected words. A heard word may match up to `look` words ahead; words jumped over are "missed". */
+export type WordState = 'hidden' | 'ok' | 'missed' | 'wrong' | 'fixed';
+/** Walk the heard words through the expected words. A heard word may match up to `look` words ahead; words jumped over
+ *  are "missed". Two heard words in a row that fit nothing mean the reciter said something else here: that word is
+ *  shown in red ("wrong") so they can correct it; once they then say it right it becomes "fixed". */
 export function follow(expected: string[], heard: string[], look = 3): { states: WordState[]; next: number } {
-  const states: WordState[] = expected.map(() => 'hidden'); let i = 0;
+  const states: WordState[] = expected.map(() => 'hidden'); let i = 0; let off = 0;
   for (const h of heard) {
     if (i >= expected.length) break;
     if (!bare(h)) continue;
+    let hit = false;
     for (let k = 0; k <= look && i + k < expected.length; k++) {
-      if (similar(h, expected[i + k])) { for (let m = i; m < i + k; m++) states[m] = 'missed'; states[i + k] = 'ok'; i = i + k + 1; break; }
+      if (similar(h, expected[i + k])) { for (let m = i; m < i + k; m++) states[m] = 'missed'; states[i + k] = states[i + k] === 'wrong' && k === 0 ? 'fixed' : 'ok'; i = i + k + 1; hit = true; break; }
     }
+    if (hit) off = 0; else if (++off >= 2) states[i] = 'wrong';
   }
   return { states, next: i };
 }
