@@ -20,7 +20,48 @@ export const similar = (heard: string, want: string) => {
   const x = skel(a), y = skel(b); const n = Math.max(x.length, y.length); return n >= 2 && 1 - lev(x, y) / n >= 0.75;
 };
 
-export type WordState = 'hidden' | 'ok' | 'missed' | 'wrong' | 'fixed';
+export type WordState = 'hidden' | 'ok' | 'missed' | 'wrong' | 'fixed' | 'vowel';
+
+// ---- vowel-length check (madd) ----
+// The phone's recogniser writes no harakaat, but long vowels are letters (ا و ي), so a madd cut short ("قل" for قَالَ)
+// or a long vowel added where there is none shows up. We only flag a word when the ONLY difference is such a long
+// vowel, so ordinary recognition noise is not blamed on the reciter.
+type Ch = { c: string; madd: boolean };
+const VOWEL = /[\u064B-\u0650]/;
+/** The letters actually pronounced, marking which are long vowels. Silent letters (۟ ۠) are dropped; small waaw/yaa (ۥ ۦ) count as long vowels. */
+export function spoken(w: string): Ch[] {
+  const out: Ch[] = []; const t = w.normalize('NFC'); let prevVowel = '';
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i]; if (!/[\u0621-\u064A\u0671]/.test(c)) continue;
+    let j = i + 1; let marks = ''; while (j < t.length && /[\u064B-\u065F\u0670\u06D6-\u06ED]/.test(t[j])) marks += t[j++];
+    if (/[\u06DF\u06E0]/.test(marks)) { continue; }                       // written but not read
+    const base = c.replace(/[ٱأإآ]/, 'ا').replace('ى', 'ي').replace('ة', 'ه').replace(/[ؤئ]/, 'ء');
+    const bare = !VOWEL.test(marks) && !/[\u0651\u0652\u06E1]/.test(marks);
+    const madd = bare && ((base === 'ا' && c === 'ا' && prevVowel === '\u064E') || (base === 'و' && prevVowel === '\u064F') || (base === 'ي' && prevVowel === '\u0650'));
+    if (base !== 'ء' || /[\u064B-\u0650]/.test(marks)) out.push({ c: base === 'ء' ? 'ء' : base, madd });
+    if (/\u06E5/.test(marks)) out.push({ c: 'و', madd: true });
+    if (/\u06E6/.test(marks)) out.push({ c: 'ي', madd: true });
+    const v = marks.match(/[\u064E\u064F\u0650]/); prevVowel = v ? v[0] : (madd ? prevVowel : '');
+  }
+  return out;
+}
+const heardLetters = (h: string) => bare(h).replace(/ء/g, '').split('');
+/** 'short' = a long vowel was cut, 'long' = a long vowel was added, null = fine (or not sure) */
+export function maddSlip(heard: string, want: string): 'short' | 'long' | null {
+  const e = spoken(want).filter(x => x.c !== 'ء'); const h = heardLetters(heard);
+  if (e.length < 2 || h.length < 2) return null;
+  // edit-distance alignment with a back-trace
+  const n = e.length, m = h.length; const D = Array.from({ length: n + 1 }, (_, i) => Array.from({ length: m + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) D[i][j] = Math.min(D[i - 1][j] + 1, D[i][j - 1] + 1, D[i - 1][j - 1] + (e[i - 1].c === h[j - 1] ? 0 : 1));
+  let i = n, j = m; let short = 0, long = 0, other = 0;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && D[i][j] === D[i - 1][j - 1] + (e[i - 1].c === h[j - 1] ? 0 : 1)) { if (e[i - 1].c !== h[j - 1]) other++; i--; j--; }
+    else if (i > 0 && D[i][j] === D[i - 1][j] + 1) { if (e[i - 1].madd) short++; else if (e[i - 1].c === 'ا') { /* an alif the recogniser often leaves out */ } else other++; i--; }
+    else { if (h[j - 1] === 'و' || h[j - 1] === 'ي') long++; else if (h[j - 1] !== 'ا') other++; j--; }   // an extra ا is usually just spelling (ٰ)
+  }
+  if (other) return null;
+  return short ? 'short' : long ? 'long' : null;
+}
 /** Walk the heard words through the expected words. A heard word may match up to `look` words ahead; words jumped over
  *  are "missed". Two heard words in a row that fit nothing mean the reciter said something else here: that word is
  *  shown in red ("wrong") so they can correct it; once they then say it right it becomes "fixed". */
@@ -31,7 +72,7 @@ export function follow(expected: string[], heard: string[], look = 3): { states:
     if (!bare(h)) continue;
     let hit = false;
     for (let k = 0; k <= look && i + k < expected.length; k++) {
-      if (similar(h, expected[i + k])) { for (let m = i; m < i + k; m++) states[m] = 'missed'; states[i + k] = states[i + k] === 'wrong' && k === 0 ? 'fixed' : 'ok'; i = i + k + 1; hit = true; used = hi + 1; break; }
+      if (similar(h, expected[i + k])) { for (let m = i; m < i + k; m++) states[m] = 'missed'; states[i + k] = states[i + k] === 'wrong' && k === 0 ? 'fixed' : maddSlip(h, expected[i + k]) ? 'vowel' : 'ok'; i = i + k + 1; hit = true; used = hi + 1; break; }
     }
     if (hit) off = 0; else if (++off >= 2) states[i] = 'wrong';
   }

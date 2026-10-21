@@ -22,7 +22,7 @@ const name = (id: number) => { const a = fromAyahId(id); return `${surahNameEn(a
 async function ayahText(id: number) { const p = pageOf(id); const t = await loadPage(p); return t[id - pageRange(p).start]; }
 
 // ---- records (kept on this device; a student's results are also sent to their teacher as a self-test) ----
-export interface ReciteRecord { at: string; start: number; end: number; words: number; right: number; demo: boolean; marks: Array<{ w: string; id: number; kind: 'wrong' | 'skipped' | 'hint' }> }
+export interface ReciteRecord { at: string; start: number; end: number; words: number; right: number; demo: boolean; marks: Array<{ w: string; id: number; kind: 'wrong' | 'skipped' | 'hint' | 'vowel' }> }
 const LOG = 'hifz-recite-log';
 const readLog = (): ReciteRecord[] => { try { return JSON.parse(localStorage.getItem(LOG) ?? '[]'); } catch { return []; } };
 export const writeLog = (r: ReciteRecord) => { try { localStorage.setItem(LOG, JSON.stringify([r, ...readLog()].slice(0, 40))); } catch { /* private mode */ } };
@@ -64,7 +64,7 @@ export function Recite({ ids, onAt, studentId }: { ids: number[]; onAt?: (k: num
     if (!complete) return;
     stop(); try { navigator.vibrate?.([15, 40, 15]); } catch { /* */ }
     const marks: ReciteRecord['marks'] = [];
-    states.forEach((s, k) => { const id = ids[flat[k].ai]; if (s === 'missed') marks.push({ w: words[k], id, kind: 'skipped' }); else if (s === 'fixed' || sawWrong.current.has(k)) marks.push({ w: words[k], id, kind: 'wrong' }); else if (hints.has(k)) marks.push({ w: words[k], id, kind: 'hint' }); });
+    states.forEach((s, k) => { const id = ids[flat[k].ai]; if (s === 'missed') marks.push({ w: words[k], id, kind: 'skipped' }); else if (s === 'vowel') marks.push({ w: words[k], id, kind: 'vowel' }); else if (s === 'fixed' || sawWrong.current.has(k)) marks.push({ w: words[k], id, kind: 'wrong' }); else if (hints.has(k)) marks.push({ w: words[k], id, kind: 'hint' }); });
     const r: ReciteRecord = { at: new Date().toISOString(), start: ids[0], end: ids[ids.length - 1], words: words.length, right: words.length - marks.length, demo: demo.current, marks };
     writeLog(r); setLog(readLog());
     if (studentId && !demo.current) api.saveRecall({ studentId, start: r.start, end: r.end, total: ids.length, peeked: [...new Set(marks.map(m => m.id))] }).catch(() => undefined);
@@ -118,7 +118,7 @@ export function Recite({ ids, onAt, studentId }: { ids: number[]; onAt?: (k: num
           return <p key={ai} data-ai={ai} className={cx('rounded-xl px-1 transition-all duration-500', ai < at && !complete && 'opacity-55', ai === at && on && 'bg-pine-50/70 dark:bg-pine-400/10')}>
             {mine.map((x, j) => { const k = from + j; const st: WordState = states[k]; const peek = hints.has(k) && st === 'hidden';
               return <span key={k} className={cx('mx-[0.1em] inline-block rounded-md px-0.5 transition-all duration-300',
-                st === 'ok' && 'fly-in text-pine-800 dark:text-pine-100', st === 'missed' && 'bg-amber-200/70 text-warn dark:bg-amber-400/25',
+                st === 'ok' && 'fly-in text-pine-800 dark:text-pine-100', st === 'missed' && 'bg-amber-200/70 text-warn dark:bg-amber-400/25', st === 'vowel' && 'fly-in bg-violet-200/80 text-violet-900 dark:bg-violet-400/30 dark:text-violet-100',
                 st === 'wrong' && 'shake bg-red-100 text-bad ring-2 ring-bad/50 dark:bg-red-500/20', st === 'fixed' && 'text-pine-800 underline decoration-bad decoration-wavy decoration-1 underline-offset-[10px] dark:text-pine-100',
                 st === 'hidden' && !peek && 'select-none text-transparent [text-shadow:0_0_0.42em_rgb(var(--ink)/0.42)]', peek && 'text-ink-faint', k === next && on && 'ring-2 ring-brass-500/60')}>{x.w}</span>; })}
             <span className="relative mx-1 inline-grid h-[1.15em] w-[1.15em] place-items-center align-middle text-[0.62em] text-brass-700 dark:text-brass-100" aria-label={`end of ayah ${fromAyahId(ids[ai]).ayah}`}>
@@ -167,7 +167,7 @@ function ScoreRing({ pct }: { pct: number }) {
   return <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden className="shrink-0 -rotate-90"><circle cx="38" cy="38" r={r} fill="none" stroke="currentColor" strokeOpacity=".1" strokeWidth="7" />
     <circle cx="38" cy="38" r={r} fill="none" stroke={tone} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(c * pct) / 100} ${c}`} style={{ ['--len' as string]: (c * pct) / 100 }} className="ring-draw" /></svg>;
 }
-const KIND = { wrong: ['Corrected', 'bg-red-50 text-bad ring-bad/30 dark:bg-red-500/10'], skipped: ['Skipped', 'bg-amber-50 text-warn ring-warn/30 dark:bg-amber-400/10'], hint: ['Hint', 'bg-sky-50 text-sky-800 ring-sky-300 dark:bg-sky-400/10 dark:text-sky-100'] } as const;
+const KIND = { wrong: ['Corrected', 'bg-red-50 text-bad ring-bad/30 dark:bg-red-500/10'], skipped: ['Skipped', 'bg-amber-50 text-warn ring-warn/30 dark:bg-amber-400/10'], hint: ['Hint', 'bg-sky-50 text-sky-800 ring-sky-300 dark:bg-sky-400/10 dark:text-sky-100'], vowel: ['Long vowel', 'bg-violet-50 text-violet-800 ring-violet-300 dark:bg-violet-400/10 dark:text-violet-100'] } as const;
 function Marks({ r }: { r: ReciteRecord }) {
   if (!r.marks.length) return null;
   return <div className="flex flex-wrap gap-1.5">{r.marks.slice(0, 12).map((m, i) => <button key={i} type="button" title={`${KIND[m.kind][0]} · ${name(m.id)}`} onClick={() => openMushaf({ ayah: m.id, marks: [[m.id, m.kind === 'wrong' ? 'small' : 'weak']], title: `${KIND[m.kind][0]}: ${name(m.id)}` })}

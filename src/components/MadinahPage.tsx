@@ -46,12 +46,12 @@ const MARK: Record<MarkKind, string> = {
 };
 
 export type ReciteWord = { key: string; text: string };
-export type ReciteView = { states: Map<string, 'hidden' | 'ok' | 'missed' | 'wrong' | 'fixed' | 'peek'>; next: string | null };
+export type ReciteView = { states: Map<string, 'hidden' | 'ok' | 'missed' | 'wrong' | 'fixed' | 'vowel' | 'peek'>; next: string | null };
 /** how each word looks while reciting on the page (Tarteel-style memorisation mode) */
 export const RS: Record<string, string> = {
   hidden: 'cursor-pointer text-transparent [text-shadow:0_0_0.38em_rgb(var(--ink)/0.42)]', peek: 'text-ink-faint',
   ok: 'rc-in text-ink', fixed: 'rc-in text-ink underline decoration-bad decoration-wavy decoration-1 underline-offset-[0.35em]',
-  missed: 'bg-amber-200/80 text-ink dark:bg-amber-400/30', wrong: 'shake bg-red-200/80 text-bad dark:bg-red-500/30',
+  missed: 'bg-amber-200/80 text-ink dark:bg-amber-400/30', vowel: 'rc-in bg-violet-200/80 text-ink dark:bg-violet-400/30', wrong: 'shake bg-red-200/80 text-bad dark:bg-red-500/30',
 };
 
 /** Renders a page, or calls onFail so the caller can fall back to plain text (e.g. offline the first time). */
