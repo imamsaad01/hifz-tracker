@@ -6,8 +6,8 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X, EyeOff, Eye, BookOpen, Mic } from 'lucide-react';
 import { fromAyahId, pageOf, pageRange, juzOf, surahNameAr, surahNameEn, surahFirstId, ayahId, TOTAL_PAGES, type Range } from '../quran';
 import { AyahPlayer } from './AyahPlayer';
-import { Practice } from './Practice';
-import { MadinahPage } from './MadinahPage';
+import { useRecite, ReciteBar } from './ReciteOnPage';
+import { MadinahPage, RS, type ReciteView, type ReciteWord } from './MadinahPage';
 import { cx } from './ui';
 
 const cache = new Map<number, Promise<string[]>>();
@@ -28,16 +28,17 @@ const MARK_CLS: Record<Mark, string> = {
 export const MARK_LABEL: Record<Mark, string> = { lesson: 'Lesson', revision: 'Revision', weak: 'Weak ayah', small: 'Small mistake', big: 'Big mistake' };
 
 /** One page of the muṣḥaf. Tap an ayah to call onTap (when given). */
-type PageProps = { page: number; marks?: Map<number, Mark>; onTap?: (id: number) => void; hidden?: boolean; revealed?: Set<number>; onReveal?: (id: number) => void; size?: 'sm' | 'md' };
+type PageProps = { page: number; marks?: Map<number, Mark>; onTap?: (id: number) => void; hidden?: boolean; revealed?: Set<number>; onReveal?: (id: number) => void; size?: 'sm' | 'md'; recite?: ReciteView; onWords?: (w: ReciteWord[]) => void; onWordTap?: (key: string) => void };
+const isMarkWord = (w: string) => /^[\u06D6-\u06ED\u0660-\u0669]+$/.test(w);
 /** One page: the real Madinah page (KFGQPC font and 15-line layout) when it can be loaded, otherwise flowing Uthmani text. */
 export function MushafPage(props: PageProps) {
   const [failed, setFailed] = useState(false);
   useEffect(() => { setFailed(false); }, [props.page]);
   return failed ? <TextPage {...props} /> : <MadinahPage {...props} onFail={() => setFailed(true)} />;
 }
-function TextPage({ page, marks, onTap, hidden, revealed, onReveal, size = 'md' }: PageProps) {
+function TextPage({ page, marks, onTap, hidden, revealed, onReveal, size = 'md', recite, onWords, onWordTap }: PageProps) {
   const [text, setText] = useState<string[] | null>(null); const [err, setErr] = useState(false);
-  useEffect(() => { let live = true; setText(null); setErr(false); loadPage(page).then(t => { if (live) setText(t); }).catch(() => live && setErr(true));
+  useEffect(() => { let live = true; setText(null); setErr(false); loadPage(page).then(t => { if (live) { setText(t); const f = pageRange(page).start; onWords?.(t.flatMap((a, i) => a.split(/\s+/).filter(w => w && !isMarkWord(w)).map((w, k) => ({ key: `${f + i}:${k}`, text: w })))); } }).catch(() => live && setErr(true));
     if (page < TOTAL_PAGES) loadPage(page + 1).catch(() => undefined); if (page > 1) loadPage(page - 1).catch(() => undefined); return () => { live = false; }; }, [page]);
   const first = pageRange(page).start;
   const [ok, setOk] = useState(fontOk);
@@ -59,7 +60,8 @@ function TextPage({ page, marks, onTap, hidden, revealed, onReveal, size = 'md' 
           aria-label={onTap || hidden ? `${surahNameEn(surah)} ayah ${ayah}${m ? `, ${MARK_LABEL[m]}` : ''}` : undefined}
           onClick={() => { if (hide) onReveal?.(id); else onTap?.(id); }} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (hide) onReveal?.(id); else onTap?.(id); } }}
           className={cx('rounded-md px-0.5 [box-decoration-break:clone] [-webkit-box-decoration-break:clone]', m && MARK_CLS[m], (onTap || hidden) && 'cursor-pointer hover:bg-pine-100/60', hide && 'select-none text-transparent [text-shadow:0_0_14px_rgb(var(--ink)/0.45)]')}>
-          {words}
+          {recite ? (() => { let k = 0; return words.split(/\s+/).filter(Boolean).map((w, j) => { if (isMarkWord(w)) return <span key={j}>{w} </span>; const key = `${id}:${k++}`; const rs = recite.states.get(key) ?? 'hidden';
+            return <span key={j}><span data-w={key} onClick={e => { e.stopPropagation(); onWordTap?.(key); }} className={cx('rounded transition-colors duration-300', RS[rs], recite.next === key && 'rc-next')}>{w}</span> </span>; }); })() : words}
         </span>
         <span className="mx-1 inline-block text-[0.7em] text-brass-500" aria-hidden>﴿{arNum(ayah)}﴾</span>{' '}
       </span>;
@@ -90,12 +92,15 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
   const [page, setPage] = useState(Math.min(TOTAL_PAGES, Math.max(1, start)));
   const [hidden, setHidden] = useState(false); const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [listen, setListen] = useState(false);
-  const [recite, setRecite] = useState(false);
+  const rc = useRecite(page);
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [drag, setDrag] = useState(0); const [turn, setTurn] = useState<'l' | 'r' | null>(null);
   const marks = useMemo(() => { const m = new Map(opts.marks ?? []); if (playingAyah) m.set(playingAyah, 'lesson'); return m; }, [opts.marks, playingAyah]);
-  const go = useCallback((p: number) => { const n = Math.min(TOTAL_PAGES, Math.max(1, p)); setPage(n); setRecite(false); setRevealed(new Set()); setListen(false); try { localStorage.setItem(LAST, String(n)); } catch { /* */ } }, []);
+  const go = useCallback((p: number) => { const n = Math.min(TOTAL_PAGES, Math.max(1, p)); setPage(n); setRevealed(new Set()); setListen(false); try { localStorage.setItem(LAST, String(n)); } catch { /* */ } }, []);
   const x0 = useRef<{ x: number; y: number } | null>(null); const box = useRef<HTMLDivElement>(null);
+  useEffect(() => { rc.onPageDone.current = () => { if (page < TOTAL_PAGES) { setTurn('r'); go(page + 1); } }; });
+  // keep the word being recited in view
+  useEffect(() => { if (!rc.view?.next) return; const el = box.current?.querySelector<HTMLElement>(`[data-w="${rc.view.next}"]`); const b = box.current; if (el && b) { const r = el.getBoundingClientRect(), br = b.getBoundingClientRect(); if (r.bottom > br.bottom - 140 || r.top < br.top + 40) b.scrollBy({ top: r.top - br.top - br.height / 3, behavior: 'smooth' }); } }, [rc.view?.next]);
   useEffect(() => {
     const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowLeft') { setTurn('r'); go(page + 1); } if (e.key === 'ArrowRight') { setTurn('l'); go(page - 1); } };
@@ -123,22 +128,21 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
       onPointerUp={e => { const s = x0.current; x0.current = null; setDrag(0); if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 70 && Math.abs(e.clientY - s.y) < 60) { const to = dx > 0 ? page + 1 : page - 1; if (to >= 1 && to <= TOTAL_PAGES) { setTurn(dx > 0 ? 'r' : 'l'); go(to); } } }}>
       <div key={page} className={cx('mx-auto max-w-2xl px-4 py-4', turn === 'r' ? 'page-turn-r' : turn === 'l' ? 'page-turn-l' : '')}
         style={drag ? { transform: `translateX(${drag * 0.6}px) rotate(${drag * 0.006}deg)`, opacity: 1 - Math.min(0.35, Math.abs(drag) / 900), transition: 'none' } : undefined}>
-        {hidden && <p className="mb-3 rounded-xl bg-pine-50 px-3 py-2 text-center text-sm text-pine-800">Recite from memory. Tap an ayah to check it.</p>}
+        {hidden && !rc.active && <p className="mb-3 rounded-xl bg-pine-50 px-3 py-2 text-center text-sm text-pine-800">Recite from memory. Tap an ayah to check it.</p>}
         <div className="rounded-2xl bg-white px-4 py-3 shadow-card ring-1 ring-brass-500/25 sm:px-8">
-          <MushafPage page={page} marks={marks} hidden={hidden} revealed={revealed} onReveal={id => setRevealed(s => new Set(s).add(id))} />
+          <MushafPage page={page} marks={marks} hidden={hidden && !rc.active} revealed={revealed} onReveal={id => setRevealed(s => new Set(s).add(id))} recite={rc.view ?? undefined} onWords={rc.setWords} onWordTap={rc.peek} />
           <p className="mt-2 text-center text-sm text-ink-faint">{page}</p>
         </div>
         {kinds.length > 0 && <p className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-ink-soft">{kinds.map(k => <span key={k} className="inline-flex items-center gap-1.5"><i className={cx('h-3 w-5 rounded', MARK_CLS[k])} />{MARK_LABEL[k]}</span>)}
           {onPageMarks.length === 0 && <span className="text-ink-faint">· none on this page</span>}</p>}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{listen ? <AyahPlayer range={r} compact onAyah={setPlayingAyah} /> : <button type="button" onClick={() => setListen(true)} className="flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold text-pine-700 hover:bg-pine-50"><BookOpen size={16} />Listen to this page</button>}<button type="button" onClick={() => setRecite(true)} className="flex min-h-[44px] items-center gap-2 rounded-xl bg-pine-700 px-4 text-sm font-bold text-white"><Mic size={16} />Recite this page</button></div>
-        {recite && <Practice range={r} initialTab="recite" onClose={() => setRecite(false)} />}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{listen ? <AyahPlayer range={r} compact onAyah={setPlayingAyah} /> : <button type="button" onClick={() => setListen(true)} className="flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold text-pine-700 hover:bg-pine-50"><BookOpen size={16} />Listen to this page</button>}{!rc.active && <button type="button" onClick={rc.begin} className="flex min-h-[44px] items-center gap-2 rounded-xl bg-pine-700 px-4 text-sm font-bold text-white"><Mic size={16} />Recite from memory</button>}</div>
       </div>
     </div>
-    <footer className="flex items-center gap-2 border-t border-line bg-white px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))]">
+    {rc.active ? <ReciteBar rc={rc} page={page} /> : <footer className="flex items-center gap-2 border-t border-line bg-white px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))]">
       <button type="button" onClick={() => go(page + 1)} disabled={page >= TOTAL_PAGES} aria-label="Next page" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5 disabled:opacity-30"><ChevronLeft size={22} /></button>
       <JumpTo page={page} go={go} />
       <button type="button" onClick={() => go(page - 1)} disabled={page <= 1} aria-label="Previous page" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5 disabled:opacity-30"><ChevronRight size={22} /></button>
-    </footer>
+    </footer>}
   </div>, document.body);
 }
 

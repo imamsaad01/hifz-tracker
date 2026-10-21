@@ -10,6 +10,7 @@ import { fromAyahId, surahNameEn, pageOf, pageRange } from '../quran';
 import { loadPage, openMushaf } from './Mushaf';
 import { RECITERS, KEY as RECITER_KEY, ayahAudio } from './AyahPlayer';
 import { useApp } from '../app/context';
+import { useSpeech } from '../lib/useSpeech';
 import { Button, Select, cx } from './ui';
 
 type SR = { lang: string; continuous: boolean; interimResults: boolean; start(): void; stop(): void; abort(): void; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null };
@@ -24,7 +25,7 @@ async function ayahText(id: number) { const p = pageOf(id); const t = await load
 export interface ReciteRecord { at: string; start: number; end: number; words: number; right: number; demo: boolean; marks: Array<{ w: string; id: number; kind: 'wrong' | 'skipped' | 'hint' }> }
 const LOG = 'hifz-recite-log';
 const readLog = (): ReciteRecord[] => { try { return JSON.parse(localStorage.getItem(LOG) ?? '[]'); } catch { return []; } };
-const writeLog = (r: ReciteRecord) => { try { localStorage.setItem(LOG, JSON.stringify([r, ...readLog()].slice(0, 40))); } catch { /* private mode */ } };
+export const writeLog = (r: ReciteRecord) => { try { localStorage.setItem(LOG, JSON.stringify([r, ...readLog()].slice(0, 40))); } catch { /* private mode */ } };
 const score = (r: ReciteRecord) => Math.round((r.right / Math.max(1, r.words)) * 100);
 
 export function Recite({ ids, onAt, studentId }: { ids: number[]; onAt?: (k: number) => void; studentId?: string }) {
@@ -35,14 +36,16 @@ export function Recite({ ids, onAt, studentId }: { ids: number[]; onAt?: (k: num
   const flat = useMemo(() => ready ? texts.flatMap((t, ai) => (t ?? '').split(/\s+/).filter(w => w && !isMark(w)).map(w => ({ w, ai }))) : [], [ready, texts]);
   const words = useMemo(() => flat.map(x => x.w), [flat]);
 
-  const [heard, setHeard] = useState<string[]>([]); const [mode, setMode] = useState<'off' | 'mic' | 'sheikh'>('off'); const [err, setErr] = useState('');
+  const sp = useSpeech();
+  const [demoHeard, setHeard] = useState<string[]>([]); const [mode, setMode] = useState<'off' | 'mic' | 'sheikh'>('off'); const [err, setErr] = useState('');
   const [hints, setHints] = useState<Set<number>>(new Set()); const [log, setLog] = useState<ReciteRecord[]>(readLog);
   const [slip, setSlip] = useState(true);
   const [reciter, setReciter] = useState(() => { try { return localStorage.getItem(RECITER_KEY) || RECITERS[0][0]; } catch { return RECITERS[0][0]; } });
-  const rec = useRef<SR | null>(null); const done = useRef<string[]>([]); const want = useRef(false);
+  const done = useRef<string[]>([]); const want = useRef(false);
   const audio = useRef<HTMLAudioElement | null>(null); const timers = useRef<number[]>([]); const demo = useRef(false); const sawWrong = useRef<Set<number>>(new Set());
   const box = useRef<HTMLDivElement>(null);
 
+  const heard = mode === 'mic' || (mode === 'off' && sp.heard.length) ? sp.heard : demoHeard;
   const { states, next } = follow(words, heard);
   states.forEach((s, k) => { if (s === 'wrong') sawWrong.current.add(k); });
   const complete = words.length > 0 && next >= words.length;
@@ -51,8 +54,9 @@ export function Recite({ ids, onAt, studentId }: { ids: number[]; onAt?: (k: num
   const on = mode !== 'off';
 
   const clearDemo = () => { timers.current.forEach(t => clearTimeout(t)); timers.current = []; audio.current?.pause(); };
-  const stop = () => { want.current = false; rec.current?.stop(); clearDemo(); setMode('off'); };
-  useEffect(() => () => { want.current = false; rec.current?.abort(); clearDemo(); }, []);
+  const stop = () => { want.current = false; sp.stop(); clearDemo(); setMode('off'); };
+  useEffect(() => { if (mode === 'mic' && !sp.on) setMode('off'); }, [sp.on]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { want.current = false; clearDemo(); }, []);
   useEffect(() => { onAt?.(at); const b = box.current; const el = b?.querySelector<HTMLElement>(`[data-ai="${at}"]`); if (b && el) b.scrollTo({ top: Math.max(0, el.offsetTop - b.offsetTop - 12), behavior: 'smooth' }); }, [at]);   // scroll only the page box, never the dialog // eslint-disable-line react-hooks/exhaustive-deps
 
   // when the passage is finished: stop, buzz, and keep a record
@@ -67,17 +71,8 @@ export function Recite({ ids, onAt, studentId }: { ids: number[]; onAt?: (k: num
   }, [complete]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showPage = () => box.current?.parentElement?.scrollIntoView({ block: 'start', behavior: 'smooth' });   // bring the page into view when it starts
-  const reset = () => { stop(); done.current = []; setHeard([]); setHints(new Set()); sawWrong.current = new Set(); demo.current = false; };
-  const startMic = () => {
-    const C = SRClass(); if (!C) return; reset(); setErr('');
-    const r = new C(); r.lang = 'ar-SA'; r.continuous = true; r.interimResults = true;
-    let sess: string[] = [];   // final words of this listening run (browsers stop every so often; we restart and keep them)
-    r.onresult = e => { const fin: string[] = []; let live = ''; for (let k = 0; k < e.results.length; k++) { const t = e.results[k][0].transcript; if (e.results[k].isFinal) fin.push(t); else live += ` ${t}`; }
-      sess = fin.join(' ').split(/\s+/).filter(Boolean); setHeard([...done.current, ...sess, ...live.split(/\s+/)].filter(Boolean)); };
-    r.onend = () => { done.current = [...done.current, ...sess]; sess = []; if (want.current) { try { r.start(); } catch { setMode('off'); } } else setMode('off'); };
-    r.onerror = e => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { want.current = false; setErr('Allow the microphone for this site to use Recite.'); } else if (e.error === 'network') { want.current = false; setErr('Recite needs an internet connection.'); } };
-    rec.current = r; want.current = true; showPage(); try { r.start(); setMode('mic'); } catch { setErr('Could not start the microphone.'); }
-  };
+  const reset = () => { stop(); done.current = []; setHeard([]); sp.reset(); setHints(new Set()); sawWrong.current = new Set(); demo.current = false; };
+  const startMic = () => { reset(); setErr(''); showPage(); setMode('mic'); sp.start(); };
   // "Hear a sheikh": play each ayah and feed its words in time with the audio, through the same follow-along.
   const startSheikh = () => {
     reset(); demo.current = true; setErr(''); setMode('sheikh'); showPage();
@@ -161,7 +156,7 @@ export function Recite({ ids, onAt, studentId }: { ids: number[]; onAt?: (k: num
         <p className="mt-1.5 text-xs text-ink-faint">See how it marks a recitation: the words light up with the sheikh, and the practice slip shows a red correction.</p>
       </div>
     </div>}
-    {err && <p className="text-center text-sm text-warn">{err}</p>}
+    {(err || sp.err) && <p className="text-center text-sm text-warn">{sp.err || err}</p>}
     <p className="text-center text-xs text-ink-faint">Ayah {at + 1} of {texts.length} · {next}/{words.length} words{mode !== 'sheikh' ? ' · uses your browser’s speech recognition, so it may miss some words' : ''}.</p>
     {!on && <RecordList log={complete ? log.slice(1) : log} />}
   </div>;

@@ -7,6 +7,7 @@ describe('recite follow-along', () => {
   it('rejects different words', () => expect(similar('رب', 'أَحَدٌ')).toBe(false));
   it('follows in order', () => expect(follow(ayah, ['قل', 'هو', 'الله', 'احد']).states).toEqual(['ok', 'ok', 'ok', 'ok']));
   it('marks a skipped word as missed', () => expect(follow(ayah, ['قل', 'الله', 'احد']).states).toEqual(['ok', 'missed', 'ok', 'ok']));
-  it('stops where the reciter is', () => expect(follow(ayah, ['قل', 'هو'])).toEqual({ states: ['ok', 'ok', 'hidden', 'hidden'], next: 2 }));
+  it('stops where the reciter is', () => expect(follow(ayah, ['قل', 'هو'])).toEqual({ states: ['ok', 'ok', 'hidden', 'hidden'], next: 2, used: 2 }));
   it('flags a wrong word, then accepts the correction', () => { expect(follow(ayah, ['قل', 'هو', 'رب', 'العالمين']).states[2]).toBe('wrong'); expect(follow(ayah, ['قل', 'هو', 'رب', 'العالمين', 'الله']).states[2]).toBe('fixed'); });
+  it('accepts everyday spelling of muṣḥaf words', () => expect(follow(['ٱلصَّلَوٰةَ', 'وَءَاتُواْ'], ['الصلاة', 'واتوا']).next).toBe(2));
 });

@@ -12,22 +12,28 @@ function lev(a: string, b: string): number {
   for (let i = 1; i <= a.length; i++) { let prev = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; } }
   return d[b.length];
 }
-export const similar = (heard: string, want: string) => { const a = bare(heard), b = bare(want); if (!a || !b) return false; if (a === b) return true; const m = Math.max(a.length, b.length); return 1 - lev(a, b) / m >= (m <= 3 ? 0.66 : 0.6); };
+// the skeleton also drops long alifs: the muṣḥaf spells some words differently from everyday Arabic (ٱلصَّلَوٰةَ / الصلاة)
+const skel = (w: string) => w.replace(/ا/g, '').replace(/^ال/, '');
+export const similar = (heard: string, want: string) => {
+  const a = bare(heard), b = bare(want); if (!a || !b) return false; if (a === b) return true;
+  const m = Math.max(a.length, b.length); if (1 - lev(a, b) / m >= (m <= 3 ? 0.66 : 0.6)) return true;
+  const x = skel(a), y = skel(b); const n = Math.max(x.length, y.length); return n >= 2 && 1 - lev(x, y) / n >= 0.75;
+};
 
 export type WordState = 'hidden' | 'ok' | 'missed' | 'wrong' | 'fixed';
 /** Walk the heard words through the expected words. A heard word may match up to `look` words ahead; words jumped over
  *  are "missed". Two heard words in a row that fit nothing mean the reciter said something else here: that word is
  *  shown in red ("wrong") so they can correct it; once they then say it right it becomes "fixed". */
-export function follow(expected: string[], heard: string[], look = 3): { states: WordState[]; next: number } {
-  const states: WordState[] = expected.map(() => 'hidden'); let i = 0; let off = 0;
-  for (const h of heard) {
+export function follow(expected: string[], heard: string[], look = 3): { states: WordState[]; next: number; used: number } {
+  const states: WordState[] = expected.map(() => 'hidden'); let i = 0; let off = 0; let used = 0;
+  for (let hi = 0; hi < heard.length; hi++) { const h = heard[hi];
     if (i >= expected.length) break;
     if (!bare(h)) continue;
     let hit = false;
     for (let k = 0; k <= look && i + k < expected.length; k++) {
-      if (similar(h, expected[i + k])) { for (let m = i; m < i + k; m++) states[m] = 'missed'; states[i + k] = states[i + k] === 'wrong' && k === 0 ? 'fixed' : 'ok'; i = i + k + 1; hit = true; break; }
+      if (similar(h, expected[i + k])) { for (let m = i; m < i + k; m++) states[m] = 'missed'; states[i + k] = states[i + k] === 'wrong' && k === 0 ? 'fixed' : 'ok'; i = i + k + 1; hit = true; used = hi + 1; break; }
     }
     if (hit) off = 0; else if (++off >= 2) states[i] = 'wrong';
   }
-  return { states, next: i };
+  return { states, next: i, used };
 }

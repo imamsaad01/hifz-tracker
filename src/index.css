@@ -104,3 +104,6 @@ html.text-xl body { zoom: 1.22; }
 @media (prefers-reduced-motion: reduce) { .confetti { display: none } .flame svg { animation: none } }
 .wave-bar { height: 30%; animation: wave .7s ease-in-out infinite alternate; }
 @keyframes wave { from { height: 25% } to { height: 100% } }
+.rc-next { box-shadow: 0 2px 0 0 rgb(199 154 69 / .85); }
+.rc-in { animation: rc-in .35s ease-out; }
+@keyframes rc-in { from { opacity: .2; filter: blur(3px) } to { opacity: 1; filter: none } }
