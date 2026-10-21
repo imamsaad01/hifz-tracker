@@ -102,3 +102,5 @@ html.text-xl body { zoom: 1.22; }
 .toast-in { animation: toast-in .35s cubic-bezier(.34,1.56,.64,1); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(.95) } }
 @media (prefers-reduced-motion: reduce) { .confetti { display: none } .flame svg { animation: none } }
+.wave-bar { height: 30%; animation: wave .7s ease-in-out infinite alternate; }
+@keyframes wave { from { height: 25% } to { height: 100% } }

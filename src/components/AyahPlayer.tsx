@@ -4,8 +4,9 @@ import { Play, Pause, Square, Headphones } from 'lucide-react';
 import { fromAyahId, surahNameEn, type Range } from '../quran';
 import { Select } from './ui';
 
-const RECITERS: Array<[string, string]> = [['Husary_64kbps', 'Al-Husary'], ['Minshawy_Murattal_128kbps', 'Al-Minshawi'], ['Alafasy_64kbps', 'Mishary Alafasy'], ['Abdul_Basit_Murattal_64kbps', 'Abdul Basit'], ['Maher_AlMuaiqly_64kbps', 'Maher Al-Muaiqly']];
-const KEY = 'hifz-reciter';
+export const RECITERS: Array<[string, string]> = [['Husary_64kbps', 'Al-Husary'], ['Minshawy_Murattal_128kbps', 'Al-Minshawi'], ['Alafasy_64kbps', 'Mishary Alafasy'], ['Abdul_Basit_Murattal_64kbps', 'Abdul Basit'], ['Maher_AlMuaiqly_64kbps', 'Maher Al-Muaiqly']];
+export const KEY = 'hifz-reciter';
+export const ayahAudio = (reciter: string, id: number) => { const a = fromAyahId(id); return `https://everyayah.com/data/${reciter}/${pad(a.surah)}${pad(a.ayah)}.mp3`; };
 const pad = (n: number) => String(n).padStart(3, '0');
 /** Memorisation loop (as in Tarteel): play each ayah N times, then the whole range M times, at a chosen speed.
  *  onAyah tells the page which ayah is playing, so it can follow along. */

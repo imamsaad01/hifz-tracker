@@ -119,7 +119,7 @@ export function StudentApp({ tab }: { tab: string }) {
         : <div role="status" className="mb-5 rounded-2xl bg-pine-50 px-5 py-4 text-pine-900 ring-1 ring-pine-600/20 dark:text-pine-100"><p className="flex items-center gap-2 font-bold"><CheckCircle2 size={20} />Nothing is due today</p><p className="text-sm opacity-85">A free day. You can get ahead with Old revision or practise your last lesson below.</p></div>}
       <JuzCelebration who={me.id} completed={juzDone} />
       {/* 2. today's reading */}
-      <div data-tour="today-plan"><TodayPath steps={[
+      <div data-tour="today-plan"><TodayPath studentId={me.id} steps={[
         { key: 'new', practice: pendingNew?.range ?? (ring[0].done ? todays.find(x => x.type === 'new')?.range : ins.nextNew) ?? null, tip: 'new', icon: <BookOpen size={18} />, title: 'New lesson', body: pendingNew ? formatRange(pendingNew.range) : ring[0].done ? formatRange(todays.find(x => x.type === 'new')!.range) : ins.nextNew ? formatRange(ins.nextNew) : 'All memorised',
           state: pendingNew ? 'waiting' : ring[0].done ? 'done' : ring[0].due ? 'todo' : 'none',
           note: pendingNew ? 'Submitted. Your teacher signs it off in class.' : !ring[0].due && ins.nextNew ? `New lessons are heard in your halaqah${nextLesson ? `, next on ${niceDate(nextLesson)}` : ''}. Learn it before then and submit it when it’s ready.` : 'Listen, learn it, test yourself, then tap “I memorised it”.',
@@ -261,7 +261,7 @@ function Notebook({ tabs, initial }: { tabs: Array<{ key: string; label: string;
 
 type Step = { practice?: Range | null; key: string; tip?: GlossaryKey; icon: React.ReactNode; title: string; body: string; note: string; action: React.ReactNode; state: 'todo' | 'done' | 'waiting' | 'none' };
 /** Today as one short path: the next thing to do is open with its buttons; finished and later steps stay folded. */
-function TodayPath({ steps }: { steps: Step[] }) {
+function TodayPath({ steps, studentId }: { steps: Step[]; studentId?: string }) {
   const due = steps.filter(s => s.state !== 'none'); const doneN = due.filter(s => s.state !== 'todo').length;
   const current = steps.find(s => s.state === 'todo')?.key ?? null;
   const [open, setOpen] = useState<string | null>(null);
@@ -286,7 +286,7 @@ function TodayPath({ steps }: { steps: Step[] }) {
           {st.note && <p className="flex items-start gap-1 text-sm text-ink-soft">{st.note}{st.tip && <InfoTip k={st.tip} />}</p>}
           {st.state !== 'done' && st.action}
           {st.state === 'done' && <p className="text-sm font-bold text-good">Logged today. Mā shāʾ Allāh.</p>}
-          {st.practice && <div><PracticeButton range={st.practice} label="Practise: recite, repeat and word order" /></div>}
+          {st.practice && <div><PracticeButton range={st.practice} studentId={studentId} label="Practise: recite, repeat and word order" /></div>}
         </div>}
       </li>; })}</ol>
   </Card>;

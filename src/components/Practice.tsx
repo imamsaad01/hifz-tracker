@@ -7,15 +7,15 @@ import { loadPage } from './Mushaf';
 import { Recite } from './Recite';
 import { Button, Modal, SubTabs, cx } from './ui';
 
-export function PracticeButton({ range, label = 'Practise' }: { range: Range; label?: string }) {
+export function PracticeButton({ range, label = 'Practise', studentId }: { range: Range; label?: string; studentId?: string }) {
   const [open, setOpen] = useState(false);
   return <>
     <Button kind="secondary" onClick={() => setOpen(true)}><Gamepad2 size={16} />{label}</Button>
-    {open && <Practice range={range} onClose={() => setOpen(false)} />}
+    {open && <Practice range={range} studentId={studentId} onClose={() => setOpen(false)} />}
   </>;
 }
 
-export function Practice({ range, onClose, initialTab = 'repeat' }: { range: Range; onClose: () => void; initialTab?: 'repeat' | 'order' | 'recite' }) {
+export function Practice({ range, onClose, initialTab = 'repeat', studentId }: { range: Range; onClose: () => void; initialTab?: 'repeat' | 'order' | 'recite'; studentId?: string }) {
   const [tab, setTab] = useState<'repeat' | 'order' | 'recite'>(initialTab);
   const ids = useMemo(() => Array.from({ length: Math.min(range.end - range.start + 1, 60) }, (_, i) => range.start + i), [range]);
   const [i, setIRaw] = useState(0); const [jump, setJump] = useState(0); const [follow, setFollow] = useState(0);
@@ -31,7 +31,7 @@ export function Practice({ range, onClose, initialTab = 'repeat' }: { range: Ran
         <b>{surahNameEn(a.surah)} {a.ayah}</b>
         <button type="button" disabled={shown >= ids.length - 1} onClick={() => setI(shown + 1)} className="h-11 min-w-[44px] rounded-lg px-2 text-sm font-bold text-pine-700 disabled:opacity-30">Next ›</button>
       </div>
-      {tab === 'repeat' ? <Beads key={`r${id}`} id={id} /> : tab === 'recite' ? <ReciteRange key={`c${jump}`} ids={ids.slice(i)} onAt={k => setFollow(k)} /> : <WordOrder key={`o${id}`} id={id} onNext={i < ids.length - 1 ? () => setI(i + 1) : undefined} />}
+      {tab === 'repeat' ? <Beads key={`r${id}`} id={id} /> : tab === 'recite' ? <Recite key={`c${jump}`} ids={ids.slice(i)} onAt={k => setFollow(k)} studentId={studentId} /> : <WordOrder key={`o${id}`} id={id} onNext={i < ids.length - 1 ? () => setI(i + 1) : undefined} />}
     </div>
   </Modal>;
 }
@@ -39,11 +39,6 @@ export function Practice({ range, onClose, initialTab = 'repeat' }: { range: Ran
 async function ayahText(id: number) { const p = pageOf(id); const t = await loadPage(p); return t[id - pageRange(p).start]; }
 function useAyah(id: number) { const [t, setT] = useState<string | null>(null); useEffect(() => { let live = true; ayahText(id).then(x => live && setT(x)).catch(() => live && setT('')); return () => { live = false; }; }, [id]); return t; }
 
-function ReciteRange({ ids, onAt }: { ids: number[]; onAt: (k: number) => void }) {
-  const [texts, setTexts] = useState<Array<string | null>>(() => ids.map(() => null));
-  useEffect(() => { let live = true; Promise.all(ids.map(x => ayahText(x).catch(() => ''))).then(t => live && setTexts(t)); return () => { live = false; }; }, [ids.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <Recite texts={texts} onAt={onAt} />;
-}
 
 /** Tap once per recitation. 10 beads; each tap slides one bead across with a spring and a ripple. */
 function Beads({ id }: { id: number }) {
