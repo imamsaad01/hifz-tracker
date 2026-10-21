@@ -15,8 +15,8 @@ export function PracticeButton({ range, label = 'Practise' }: { range: Range; la
   </>;
 }
 
-function Practice({ range, onClose }: { range: Range; onClose: () => void }) {
-  const [tab, setTab] = useState<'repeat' | 'order' | 'recite'>('repeat');
+export function Practice({ range, onClose, initialTab = 'repeat' }: { range: Range; onClose: () => void; initialTab?: 'repeat' | 'order' | 'recite' }) {
+  const [tab, setTab] = useState<'repeat' | 'order' | 'recite'>(initialTab);
   const ids = useMemo(() => Array.from({ length: Math.min(range.end - range.start + 1, 60) }, (_, i) => range.start + i), [range]);
   const [i, setI] = useState(0); const id = ids[i]; const a = fromAyahId(id);
   return <Modal open onClose={onClose} title="Practise">

@@ -3,9 +3,10 @@
 // "Hide the words" turns it into a recall test, and MushafPage can also be used inline (e.g. to tap mistakes on the page).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, X, EyeOff, Eye, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, EyeOff, Eye, BookOpen, Mic } from 'lucide-react';
 import { fromAyahId, pageOf, pageRange, juzOf, surahNameAr, surahNameEn, surahFirstId, ayahId, TOTAL_PAGES, type Range } from '../quran';
 import { AyahPlayer } from './AyahPlayer';
+import { Practice } from './Practice';
 import { MadinahPage } from './MadinahPage';
 import { cx } from './ui';
 
@@ -89,10 +90,11 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
   const [page, setPage] = useState(Math.min(TOTAL_PAGES, Math.max(1, start)));
   const [hidden, setHidden] = useState(false); const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [listen, setListen] = useState(false);
+  const [recite, setRecite] = useState(false);
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [drag, setDrag] = useState(0); const [turn, setTurn] = useState<'l' | 'r' | null>(null);
   const marks = useMemo(() => { const m = new Map(opts.marks ?? []); if (playingAyah) m.set(playingAyah, 'lesson'); return m; }, [opts.marks, playingAyah]);
-  const go = useCallback((p: number) => { const n = Math.min(TOTAL_PAGES, Math.max(1, p)); setPage(n); setRevealed(new Set()); setListen(false); try { localStorage.setItem(LAST, String(n)); } catch { /* */ } }, []);
+  const go = useCallback((p: number) => { const n = Math.min(TOTAL_PAGES, Math.max(1, p)); setPage(n); setRecite(false); setRevealed(new Set()); setListen(false); try { localStorage.setItem(LAST, String(n)); } catch { /* */ } }, []);
   const x0 = useRef<{ x: number; y: number } | null>(null); const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
@@ -128,7 +130,8 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
         </div>
         {kinds.length > 0 && <p className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-ink-soft">{kinds.map(k => <span key={k} className="inline-flex items-center gap-1.5"><i className={cx('h-3 w-5 rounded', MARK_CLS[k])} />{MARK_LABEL[k]}</span>)}
           {onPageMarks.length === 0 && <span className="text-ink-faint">· none on this page</span>}</p>}
-        <div className="mt-4">{listen ? <AyahPlayer range={r} compact onAyah={setPlayingAyah} /> : <button type="button" onClick={() => setListen(true)} className="mx-auto flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold text-pine-700 hover:bg-pine-50"><BookOpen size={16} />Listen to this page</button>}</div>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{listen ? <AyahPlayer range={r} compact onAyah={setPlayingAyah} /> : <button type="button" onClick={() => setListen(true)} className="flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold text-pine-700 hover:bg-pine-50"><BookOpen size={16} />Listen to this page</button>}<button type="button" onClick={() => setRecite(true)} className="flex min-h-[44px] items-center gap-2 rounded-xl bg-pine-700 px-4 text-sm font-bold text-white"><Mic size={16} />Recite this page</button></div>
+        {recite && <Practice range={r} initialTab="recite" onClose={() => setRecite(false)} />}
       </div>
     </div>
     <footer className="flex items-center gap-2 border-t border-line bg-white px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))]">
