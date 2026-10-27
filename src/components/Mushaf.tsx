@@ -95,9 +95,10 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
   const rc = useRecite(page);
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [drag, setDrag] = useState(0); const [turn, setTurn] = useState<'l' | 'r' | null>(null);
+  const [chrome, setChrome] = useState(true); const [goto, setGoto] = useState(false); const [scrub, setScrub] = useState<number | null>(null);
   const marks = useMemo(() => { const m = new Map(opts.marks ?? []); if (playingAyah) m.set(playingAyah, 'lesson'); return m; }, [opts.marks, playingAyah]);
   const go = useCallback((p: number) => { const n = Math.min(TOTAL_PAGES, Math.max(1, p)); setPage(n); setRevealed(new Set()); setListen(false); try { localStorage.setItem(LAST, String(n)); } catch { /* */ } }, []);
-  const x0 = useRef<{ x: number; y: number } | null>(null); const box = useRef<HTMLDivElement>(null);
+  const x0 = useRef<{ x: number; y: number; t: number } | null>(null); const box = useRef<HTMLDivElement>(null);
   useEffect(() => { rc.onPageDone.current = () => { if (page < TOTAL_PAGES) { setTurn('r'); go(page + 1); } }; });
   // keep the word being recited in view
   useEffect(() => { if (!rc.view?.next) return; const el = box.current?.querySelector<HTMLElement>(`[data-w="${rc.view.next}"]`); const b = box.current; if (el && b) { const r = el.getBoundingClientRect(), br = b.getBoundingClientRect(); if (r.bottom > br.bottom - 140 || r.top < br.top + 40) b.scrollBy({ top: r.top - br.top - br.height / 3, behavior: 'smooth' }); } }, [rc.view?.next]);
@@ -114,47 +115,67 @@ function Reader({ opts, onClose }: { opts: Opts; onClose: () => void }) {
   const surahs = a.surah === b.surah ? surahNameEn(a.surah) : `${surahNameEn(a.surah)} – ${surahNameEn(b.surah)}`;
   const onPageMarks = [...marks.entries()].filter(([id]) => id >= r.start && id <= r.end);
   const kinds = [...new Set([...marks.values()])];
+  const tapToggle = (e: React.PointerEvent) => { const t = e.target as HTMLElement; if (hidden || rc.active || t.closest('button,a,select,input')) return; setChrome(c => !c); };
   return createPortal(<div className="fixed inset-0 z-50 flex flex-col bg-paper" role="dialog" aria-modal="true" aria-label={`Muṣḥaf page ${page}`}>
-    <header className="flex items-center gap-2 border-b border-line bg-white px-3 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
+    {chrome && <header className="flex items-center gap-1 border-b border-line bg-white/95 px-2 pb-1.5 pt-[max(6px,env(safe-area-inset-top))] backdrop-blur">
       <button type="button" onClick={onClose} aria-label="Close the muṣḥaf" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5"><X size={20} /></button>
-      <div className="min-w-0 flex-1 text-center"><p className="truncate font-bold">{opts.title ?? surahs}</p><p className="text-xs text-ink-faint">Page {page} · Juz {juzOf(r.start)}{opts.title ? ` · ${surahs}` : ''}</p></div>
-      <button type="button" onClick={() => { setHidden(h => !h); setRevealed(new Set()); }} aria-pressed={hidden} aria-label={hidden ? "Show words" : "Hide words"} className={cx('flex h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-bold', hidden ? 'bg-pine-700 text-white' : 'text-ink-soft hover:bg-black/5')}>
+      <button type="button" onClick={() => setGoto(true)} className="min-w-0 flex-1 rounded-xl py-1 text-center hover:bg-black/5" aria-label="Go to a surah, juz or page"><p className="truncate font-bold">{opts.title ?? surahs}</p><p className="text-xs text-ink-faint">Page {page} · Juz {juzOf(r.start)}{opts.title ? ` · ${surahs}` : ''} <span className="font-bold text-pine-700">· Go to ▾</span></p></button>
+      <button type="button" onClick={() => { setHidden(h => !h); setRevealed(new Set()); }} aria-pressed={hidden} aria-label={hidden ? 'Show words' : 'Hide words'} className={cx('flex h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-bold', hidden ? 'bg-pine-700 text-white' : 'text-ink-soft hover:bg-black/5')}>
         {hidden ? <Eye size={17} /> : <EyeOff size={17} />}<span className="hidden sm:inline">{hidden ? 'Show words' : 'Hide words'}</span></button>
-    </header>
-    <div ref={box} className="flex-1 overflow-y-auto overscroll-contain" data-no-pull
-      onPointerDown={e => { x0.current = { x: e.clientX, y: e.clientY }; }}
-      onPointerMove={e => { const s = x0.current; if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(e.clientY - s.y)) setDrag(dx); }}
+    </header>}
+    <div ref={box} className="relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain" data-no-pull style={{ touchAction: 'pan-y pinch-zoom' }}
+      onPointerDown={e => { x0.current = { x: e.clientX, y: e.clientY, t: Date.now() }; }}
+      onPointerMove={e => { const s = x0.current; if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(e.clientY - s.y) * 1.2) setDrag(dx); }}
       onPointerCancel={() => { x0.current = null; setDrag(0); }}
-      onPointerUp={e => { const s = x0.current; x0.current = null; setDrag(0); if (!s) return; const dx = e.clientX - s.x; if (Math.abs(dx) > 70 && Math.abs(e.clientY - s.y) < 60) { const to = dx > 0 ? page + 1 : page - 1; if (to >= 1 && to <= TOTAL_PAGES) { setTurn(dx > 0 ? 'r' : 'l'); go(to); } } }}>
-      <div key={page} className={cx('mx-auto max-w-2xl px-4 py-4', turn === 'r' ? 'page-turn-r' : turn === 'l' ? 'page-turn-l' : '')}
-        style={drag ? { transform: `translateX(${drag * 0.6}px) rotate(${drag * 0.006}deg)`, opacity: 1 - Math.min(0.35, Math.abs(drag) / 900), transition: 'none' } : undefined}>
-        {hidden && !rc.active && <p className="mb-3 rounded-xl bg-pine-50 px-3 py-2 text-center text-sm text-pine-800">Recite from memory. Tap an ayah to check it.</p>}
-        <div className="rounded-2xl bg-white px-4 py-3 shadow-card ring-1 ring-brass-500/25 sm:px-8">
+      onPointerUp={e => { const s = x0.current; x0.current = null; setDrag(0); if (!s) return; const dx = e.clientX - s.x, dy = e.clientY - s.y; const fast = Math.abs(dx) > 35 && Date.now() - s.t < 300;
+        if ((Math.abs(dx) > 60 || fast) && Math.abs(dx) > Math.abs(dy) * 1.2) { const to = dx > 0 ? page + 1 : page - 1; if (to >= 1 && to <= TOTAL_PAGES) { setTurn(dx > 0 ? 'r' : 'l'); go(to); } return; }
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) tapToggle(e); }}>
+      <div key={page} className={cx('mx-auto w-full max-w-2xl px-1.5 pb-6 pt-2 sm:px-4 sm:pt-4', turn === 'r' ? 'page-turn-r' : turn === 'l' ? 'page-turn-l' : '')}
+        style={drag ? { transform: `translateX(${drag * 0.85}px)`, opacity: 1 - Math.min(0.3, Math.abs(drag) / 1000), transition: 'none' } : undefined}>
+        {hidden && !rc.active && <p className="mb-2 rounded-xl bg-pine-50 px-3 py-2 text-center text-sm text-pine-800">Recite from memory. Tap an ayah to check it.</p>}
+        <div className="px-1 py-1 sm:rounded-2xl sm:bg-white sm:px-8 sm:py-3 sm:shadow-card sm:ring-1 sm:ring-brass-500/25">
           <MushafPage page={page} marks={marks} hidden={hidden && !rc.active} revealed={revealed} onReveal={id => setRevealed(s => new Set(s).add(id))} recite={rc.view ?? undefined} onWords={rc.setWords} onWordTap={rc.peek} />
-          <p className="mt-2 text-center text-sm text-ink-faint">{page}</p>
+          <p className="mt-1 text-center text-sm text-ink-faint">{page}</p>
         </div>
-        {kinds.length > 0 && <p className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-ink-soft">{kinds.map(k => <span key={k} className="inline-flex items-center gap-1.5"><i className={cx('h-3 w-5 rounded', MARK_CLS[k])} />{MARK_LABEL[k]}</span>)}
+        {kinds.length > 0 && <p className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-ink-soft">{kinds.map(k => <span key={k} className="inline-flex items-center gap-1.5"><i className={cx('h-3 w-5 rounded', MARK_CLS[k])} />{MARK_LABEL[k]}</span>)}
           {onPageMarks.length === 0 && <span className="text-ink-faint">· none on this page</span>}</p>}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">{listen ? <AyahPlayer range={r} compact onAyah={setPlayingAyah} /> : <button type="button" onClick={() => setListen(true)} className="flex min-h-[44px] items-center gap-2 rounded-xl px-4 text-sm font-bold text-pine-700 hover:bg-pine-50"><BookOpen size={16} />Listen to this page</button>}{!rc.active && <button type="button" onClick={rc.begin} className="flex min-h-[44px] items-center gap-2 rounded-xl bg-pine-700 px-4 text-sm font-bold text-white"><Mic size={16} />Recite from memory</button>}</div>
+        {!chrome && <p className="mt-3 text-center text-xs text-ink-faint">Swipe to turn · tap the page for the menu</p>}
       </div>
     </div>
-    {rc.active ? <ReciteBar rc={rc} page={page} /> : <footer className="flex items-center gap-2 border-t border-line bg-white px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))]">
-      <button type="button" onClick={() => go(page + 1)} disabled={page >= TOTAL_PAGES} aria-label="Next page" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5 disabled:opacity-30"><ChevronLeft size={22} /></button>
-      <JumpTo page={page} go={go} />
-      <button type="button" onClick={() => go(page - 1)} disabled={page <= 1} aria-label="Previous page" className="grid h-11 w-11 place-items-center rounded-xl text-ink-soft hover:bg-black/5 disabled:opacity-30"><ChevronRight size={22} /></button>
+    {rc.active ? <ReciteBar rc={rc} page={page} /> : chrome && <footer className="flex flex-col gap-1.5 border-t border-line bg-white/95 px-2 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur">
+      {listen && <div className="flex justify-center"><AyahPlayer range={r} compact onAyah={setPlayingAyah} /></div>}
+      <div className="flex items-center gap-2 px-1" dir="rtl">
+        <span className="w-8 text-center text-xs font-bold tabular-nums text-ink-faint">1</span>
+        <input type="range" min={1} max={TOTAL_PAGES} value={scrub ?? page} aria-label="Scrub to a page" className="h-8 flex-1 accent-pine-700"
+          onChange={e => setScrub(Number(e.target.value))} onPointerUp={() => { if (scrub) { go(scrub); setScrub(null); } }} onKeyUp={() => { if (scrub) { go(scrub); setScrub(null); } }} onTouchEnd={() => { if (scrub) { go(scrub); setScrub(null); } }} />
+        <span className="w-8 text-center text-xs font-bold tabular-nums text-ink-faint">{TOTAL_PAGES}</span>
+      </div>
+      {scrub && <p className="text-center text-sm font-bold text-pine-700">Page {scrub} · {surahNameEn(fromAyahId(pageRange(scrub).start).surah)}</p>}
+      <div className="flex items-center gap-1">
+        <button type="button" onClick={() => { setTurn('r'); go(page + 1); }} disabled={page >= TOTAL_PAGES} aria-label="Next page" className="grid h-12 w-12 place-items-center rounded-xl text-ink-soft hover:bg-black/5 disabled:opacity-30"><ChevronLeft size={24} /></button>
+        <button type="button" onClick={() => setListen(l => !l)} aria-pressed={listen} className={cx('flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-bold', listen ? 'bg-pine-50 text-pine-800' : 'text-pine-700 hover:bg-pine-50')}><BookOpen size={17} />Listen</button>
+        <button type="button" onClick={rc.begin} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-pine-700 text-sm font-bold text-white"><Mic size={17} />Recite</button>
+        <button type="button" onClick={() => { setTurn('l'); go(page - 1); }} disabled={page <= 1} aria-label="Previous page" className="grid h-12 w-12 place-items-center rounded-xl text-ink-soft hover:bg-black/5 disabled:opacity-30"><ChevronRight size={24} /></button>
+      </div>
     </footer>}
+    {goto && <div className="fixed inset-0 z-[60] flex items-end bg-black/40 sm:items-center sm:justify-center" onClick={() => setGoto(false)}>
+      <div className="w-full rounded-t-3xl bg-white p-5 pb-[max(20px,env(safe-area-inset-bottom))] shadow-xl sm:max-w-md sm:rounded-3xl" onClick={e => e.stopPropagation()} role="dialog" aria-label="Go to">
+        <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">Go to</h2><button type="button" onClick={() => setGoto(false)} aria-label="Close" className="grid h-11 w-11 place-items-center rounded-xl hover:bg-black/5"><X size={20} /></button></div>
+        <JumpTo page={page} go={p => { go(p); setGoto(false); }} />
+      </div>
+    </div>}
   </div>, document.body);
 }
 
 function JumpTo({ page, go }: { page: number; go: (p: number) => void }) {
   const s = fromAyahId(pageRange(page).start).surah;
-  const sel = 'h-11 min-w-0 flex-1 rounded-xl bg-paper px-2 text-sm font-bold text-ink ring-1 ring-line';
-  return <div className="flex min-w-0 flex-1 gap-2">
+  const sel = 'h-12 w-full rounded-xl bg-paper px-3 text-base font-bold text-ink ring-1 ring-line';
+  return <div className="flex flex-col gap-3">
     <select aria-label="Go to surah" className={sel} value={s} onChange={e => go(pageOf(surahFirstId(Number(e.target.value))))}>
       {Array.from({ length: 114 }, (_, i) => <option key={i} value={i + 1}>{i + 1}. {surahNameEn(i + 1)}</option>)}</select>
-    <select aria-label="Go to juz" className={cx(sel, 'max-w-[92px]')} value={juzOf(pageRange(page).start)} onChange={e => { const j = Number(e.target.value); for (let p = 1; p <= TOTAL_PAGES; p++) if (juzOf(pageRange(p).start) === j) { go(p); break; } }}>
+    <select aria-label="Go to juz" className={sel} value={juzOf(pageRange(page).start)} onChange={e => { const j = Number(e.target.value); for (let p = 1; p <= TOTAL_PAGES; p++) if (juzOf(pageRange(p).start) === j) { go(p); break; } }}>
       {Array.from({ length: 30 }, (_, i) => <option key={i} value={i + 1}>Juz {i + 1}</option>)}</select>
-    <select aria-label="Go to page" className={cx(sel, 'max-w-[86px]')} value={page} onChange={e => go(Number(e.target.value))}>
+    <select aria-label="Go to page" className={sel} value={page} onChange={e => go(Number(e.target.value))}>
       {Array.from({ length: TOTAL_PAGES }, (_, i) => <option key={i} value={i + 1}>p. {i + 1}</option>)}</select>
   </div>;
 }

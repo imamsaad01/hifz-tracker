@@ -12,6 +12,8 @@ import { useApp } from '../app/context';
 import { friendly } from '../api/backend';
 import { outbox, isNetworkError } from '../app/outbox';
 import { formatRange } from '../quran';
+import type { RevisionCheckin } from '../api/data';
+import { weekStart } from '../lib/schedule';
 
 export function defaultRange(type: SessionType, st: Student, ins: StudentInsight, sessions: Session[], today: string): Range {
   if (type === 'new' && ins.nextNew) return ins.nextNew;
@@ -29,8 +31,8 @@ const TEACHER_TYPES: Array<[SessionType, string]> = [['new', 'New lesson'], ['re
 const OTHER_TYPES: Array<[SessionType, string]> = (['juz_revision', 'assessment', 'catch_up', 'review', 'other'] as SessionType[]).map(t => [t, SESSION_LABEL[t]]);
 const CATS = Object.entries(ERROR_LABEL) as Array<[ErrorCategory, string]>;
 
-export function RecordSheet({ open, onClose, student, insight, sessions, asStudent, initialType = 'new', initialDate, onSaved }: {
-  open: boolean; onClose: () => void; student: Student; insight: StudentInsight; sessions: Session[]; asStudent?: boolean; initialType?: SessionType; initialDate?: string; onSaved: () => void;
+export function RecordSheet({ open, onClose, student, insight, sessions, asStudent, initialType = 'new', initialDate, revisionForms, onSaved }: {
+  open: boolean; onClose: () => void; student: Student; insight: StudentInsight; sessions: Session[]; asStudent?: boolean; initialType?: SessionType; initialDate?: string; revisionForms?: RevisionCheckin[]; onSaved: () => void;
 }) {
   const { api, org, today } = useApp();
   const toast = useToast();
@@ -62,6 +64,12 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
     try {
       const sid = await api.recordSession(payload);
       if (asStudent && partner && sid) { try { await api.requestPartner(sid, partner); } catch (e) { toast(friendly(e), 'err'); } }
+      // One log fills both records: an Old revision also ticks this week's next partner-revision slot.
+      if (asStudent && type === 'old' && org && revisionForms) {
+        const wk = weekStart(date); const doneSlots = new Set(revisionForms.filter(f => f.studentId === student.id && f.weekStart === wk && f.done).map(f => f.slot));
+        const slot = org.settings.revisionForm.slots.find(x => !doneSlots.has(x.key));
+        if (slot) { try { await api.saveRevisionCheckin(org.id, { studentId: student.id, weekStart: wk, slot: slot.key, done: true, partner: mates.find(m => m.student_id === partner)?.name ?? 'On my own', pages: formatRange(range), recorded: false, recordingLink: '' }); } catch { /* the session itself is saved */ } }
+      }
       if (!asStudent && org?.settings.email.enabled && org.settings.email.onSession) api.notify({ type: 'session', student_id: student.id, date }).catch(() => {});
       toast(asStudent && partner ? `Saved. ${mates.find(m => m.student_id === partner)?.name.split(' ')[0] ?? 'Your partner'} will be asked to confirm it.` : `Saved: ${student.name}, ${formatRange(range)}`); onSaved(); onClose();
     } catch (e) {
@@ -70,15 +78,15 @@ export function RecordSheet({ open, onClose, student, insight, sessions, asStude
     } finally { setBusy(false); }
   };
 
-  return <Modal open={open} onClose={onClose} title={asStudent ? 'Record my revision' : `Record · ${student.name}`} wide
+  return <Modal open={open} onClose={onClose} title={asStudent ? (type === 'old' ? 'Log my Old revision' : type === 'recent' ? 'Log my Recent revision' : 'Record my revision') : `Record · ${student.name}`} wide
     footer={<div className="flex items-center gap-2"><span className="hidden text-sm text-ink-faint sm:block">{formatRange(range)} · {major + minor} errors</span><Button kind="secondary" className="ml-auto" onClick={onClose}>Cancel</Button><Button busy={busy} onClick={save}>Save session</Button></div>}>
     <div className="flex flex-col gap-5">
       {err && <ErrorBox message={err} />}
-      <div className="flex flex-col gap-2">
+      {!(asStudent && ['old', 'recent'].includes(initialType)) && <div className="flex flex-col gap-2">
         <Segmented label="Session type" value={(asStudent ? [['old', ''], ['recent', ''], ['review', '']] : TEACHER_TYPES).some(([t]) => t === type) ? type : ('more' as SessionType)} onChange={v => (v as string) === 'more' ? pickType('juz_revision') : pickType(v)}
           options={asStudent ? [['old', 'Old revision'], ['recent', 'Recent revision'], ['review', 'Other review']] : [...TEACHER_TYPES, ['more' as SessionType, 'More…']]} />
         {!asStudent && !['new', 'recent', 'old'].includes(type) && <Select value={type} onChange={pickType} options={OTHER_TYPES} aria-label="Other session type" />}
-      </div>
+      </div>}
       {!absent && <RangePicker value={range} onChange={setRange} />}
       {!absent && <div className="grid gap-4 sm:grid-cols-2">
         <div><p className="mb-1 text-[13px] font-bold text-ink-soft">Major errors</p><Stepper label="major errors" value={major} onChange={setMajor} /></div>

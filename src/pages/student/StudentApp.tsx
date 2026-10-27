@@ -57,7 +57,7 @@ import { KIND } from '../teacher/Calendar';
 import { certificatesFor } from '../Certificate';
 import { EditStudent } from '../teacher/StudentDetail';
 import { friendly } from '../../api/backend';
-import { CheckInCard, StandingCard, RevisionFormCard, RulesCard, missedLastWeek } from '../../components/StudentAttendance';
+import { CheckInCard, StandingCard, RulesCard, missedLastWeek } from '../../components/StudentAttendance';
 import { NotifyToggle } from '../../components/Notifications';
 
 export function StudentApp({ tab }: { tab: string }) {
@@ -116,7 +116,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5 empty:hidden" data-tour="partner"><PartnerRequestsCard /></div>
       {(justJoined || sd.sessions.length < 3) && <div className="mb-5"><p className="mb-2 flex items-center gap-2 font-bold text-pine-800"><Sparkles size={18} />{justJoined ? 'Welcome! Here is the plan made for you from what you already know.' : 'Your plan'}</p><PlanCard plan={plan} /></div>}
       {ring.some(r => r.due) ? ring.every(r => !r.due || r.done) && <DoneToday name={me.name.split(' ')[0]} streak={sk.days} />
-        : <div role="status" className="mb-5 rounded-2xl bg-pine-50 px-5 py-4 text-pine-900 ring-1 ring-pine-600/20 dark:text-pine-100"><p className="flex items-center gap-2 font-bold"><CheckCircle2 size={20} />Nothing is due today</p><p className="text-sm opacity-85">A free day. You can get ahead with Old revision or practise your last lesson below.</p></div>}
+        : <div role="status" className="mb-5 rounded-2xl bg-pine-50 px-5 py-4 text-pine-900 ring-1 ring-pine-600/20 dark:text-pine-100"><p className="flex items-center gap-2 font-bold"><CheckCircle2 size={20} />Nothing is due today</p><p className="text-sm opacity-85">A free day. Rest, or practise your last lesson.</p></div>}
       <JuzCelebration who={me.id} completed={juzDone} />
       {/* 2. today's reading */}
       <div data-tour="today-plan"><TodayPath studentId={me.id} steps={[
@@ -129,15 +129,15 @@ export function StudentApp({ tab }: { tab: string }) {
           state: !recent.length ? 'none' : ring[1].done ? 'done' : 'todo',
           note: `Every new lesson from the last ${org.settings.revision.recentDays} days, read once today.`,
           action: recent.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('recent')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={{ start: Math.min(...recent.map(r => r.start)), end: Math.max(...recent.map(r => r.end)) }} /><MushafLink range={recent[0]} title="Recent revision" marks={[...recent.flatMap(r => rangeMarks(r, 'revision')), ...weakMarks]} /></div> : null },
-        { key: 'old', tip: 'old', icon: <RotateCcw size={18} />, title: 'Old revision', body: !ins.revision.isRevisionDay ? (perWeek ? `All ${perWeek} done this week` : 'Rest day') : ins.revision.today.length ? pages(ins.revision.today.map(r => r.page)) : 'Nothing due today',
-          state: !ins.revision.isRevisionDay || !ins.revision.today.length ? 'none' : ring[2].done ? 'done' : 'todo',
-          note: perWeek ? (ins.revision.isRevisionDay ? `Revision ${Math.min(weekRev.oldDays, perWeek)} of ${perWeek} this week, on any day you like. ${ins.revision.weak.length ? 'Weak pages come first. ' : ''}Read to your partner, then log it.` : `Mā shāʾ Allāh. The next week starts on Monday.${ins.revision.soon.length ? ` Next pages: ${pages(ins.revision.soon.map(r => r.page))}.` : ''}`) : !ins.revision.isRevisionDay ? (ins.revision.nextRevisionDay ? `Next Old revision: ${niceDate(ins.revision.nextRevisionDay)}${ins.revision.soon.length ? ` (${pages(ins.revision.soon.map(r => r.page))})` : ''}` : '') : ins.revision.weak.length ? 'Weak pages come first. Read to your partner, then log it.' : `${ins.revision.perDay} pages each revision day, in turn. Read to your partner, then log it.`,
-          action: ins.revision.isRevisionDay && ins.revision.today.length ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />I revised this</Button><RecallTestButton studentId={me.id} range={firstRun(ins.revision.today.map(r => r.page))} /><MushafLink range={firstRun(ins.revision.today.map(r => r.page))} title="Old revision" marks={[...ins.revision.today.flatMap(r => rangeMarks(pageRange(r.page), 'revision')), ...weakMarks]} /></div> : null },
+        (() => { const doneWk = Math.min(weekRev.oldDays, perWeek ?? 0); const weekDone = !!perWeek && doneWk >= perWeek && !ring[2].done; const due = ins.revision.isRevisionDay && ins.revision.today.length > 0;
+          return { key: 'old', tip: 'old' as GlossaryKey, icon: <RotateCcw size={18} />, title: perWeek ? `Old revision · ${doneWk} of ${perWeek}` : 'Old revision',
+          body: weekDone ? `All ${perWeek} done this week` : due ? pages(ins.revision.today.map(r => r.page)) : ins.revision.nextRevisionDay ? `Next: ${niceDate(ins.revision.nextRevisionDay)}` : 'Nothing due',
+          state: (weekDone ? 'done' : !due ? 'none' : ring[2].done ? 'done' : 'todo') as Step['state'],
+          note: <span className="flex flex-col gap-2">{perWeek && <WeekDots done={doneWk} of={perWeek} />}<span>{weekDone ? `Mā shāʾ Allāh. Your next ${perWeek} start on Monday.` : `Read these pages to your partner, then tap the button. ${perWeek ? `${perWeek} times a week, on any days you like.` : ''}`}</span></span>,
+          action: due ? <div className="flex flex-wrap gap-2"><Button onClick={() => setRec('old')}><Plus size={16} />{perWeek ? `I did revision ${Math.min(doneWk + 1, perWeek)} of ${perWeek}` : 'I revised this'}</Button><MushafLink range={firstRun(ins.revision.today.map(r => r.page))} title="Old revision" marks={[...ins.revision.today.flatMap(r => rangeMarks(pageRange(r.page), 'revision')), ...weakMarks]} /></div> : null }; })(),
       ]} /></div>
       <div className="mt-5 empty:hidden" data-tour="checkin"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
       <div className="mt-5 empty:hidden" data-tour="announcements"><AnnouncementBoard items={data.announcements} classes={data.classes} studentClassIds={myClassIds} onChanged={reload} limit={2} fresh /></div>
-      {/* 3. this week */}
-      <div className="mt-5" data-tour="week"><WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} /></div>
       </div>
       {/* side column on wide screens; below on phones */}
       <aside className="mt-5 lg:mt-0">
@@ -145,9 +145,7 @@ export function StudentApp({ tab }: { tab: string }) {
       <div className="mb-5 empty:hidden" data-tour="qiraat"><QiraatStudentCard student={me} data={data} onChanged={reload} /></div>
       {startOpen && <RevisionStartModal student={me} onClose={() => setStartOpen(false)} onSaved={refresh} />}
       {/* 4. one notebook with tabs instead of a long scroll */}
-      <div data-tour="revision-log"><Notebook initial={ins.openAssignments.length ? 'work' : 'log'} tabs={[
-        { key: 'log', label: 'My log', node: <MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /> },
-        { key: 'weak', label: `Weak ayahs${weakCount ? ` · ${weakCount}` : ''}`, node: weakCount ? <WeakAyahsCard sessions={sd.sessions} studentId={me.id} /> : <Card className="p-5 text-sm text-ink-faint">No mistakes marked in the last 60 days. Mā shāʾ Allāh.</Card> },
+      <div data-tour="revision-log"><Notebook initial={ins.openAssignments.length ? 'work' : 'soon'} tabs={[
         { key: 'soon', label: `Coming up${events.length + tests.length ? ` · ${events.length + tests.length}` : ''}`, node: <Card>{events.length + tests.length ? <ul className="divide-y divide-line">{tests.map(x => <li key={x.id} className="px-5 py-3"><b>{x.title}</b> <span className="text-ink-faint">· {niceDate(x.scheduledOn)}{x.examiner ? ` · with ${x.examiner}` : ''}</span></li>)}
           {events.map(e => <li key={e.id} className="flex items-center gap-2 px-5 py-3"><i className={`h-2.5 w-2.5 rounded-full ${KIND[e.kind][1]}`} /><b>{e.title}</b><span className="text-ink-faint">· {niceDate(e.startsOn)}{e.endsOn ? ` – ${niceDate(e.endsOn)}` : ''}</span></li>)}</ul>
           : <p className="p-5 text-sm text-ink-faint">Nothing in the next two weeks.</p>}</Card> },
@@ -157,13 +155,12 @@ export function StudentApp({ tab }: { tab: string }) {
       </div>
       {/* 5. everything else, folded away */}
       <details className="group mt-5 rounded-2xl border border-line bg-white shadow-card">
-        <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: streak, standing, partner form, leaderboard</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More: streak, standing, leaderboard</span><span className="text-ink-faint transition group-open:rotate-180">▾</span></summary>
         <div className="flex flex-col gap-5 border-t border-line p-4">
           <div>
             <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
           </div>
           <StandingCard studentId={me.id} revisionMissed={missedLastWeek(me.id, data.revisionForms, org.settings.revisionForm.slots, today)} />
-          <RevisionFormCard student={me} forms={data.revisionForms} onChanged={reload} />
           {data.assignments.some(a => a.studentId === me.id && a.status === 'completed') && <Card><CardHead title="Finished assignments" /><AssignmentList items={data.assignments.filter(a => a.studentId === me.id && a.status === 'completed')} asStudent onChanged={reload} /></Card>}
           <Leaderboard limit={5} compact />
           {ins.lastSession && <Card className="p-5"><p className="text-xs font-bold uppercase text-ink-faint">Last session · {niceDate(ins.lastSession.date)}</p><p className="mt-1">{formatRange(ins.lastSession.range)} · {ins.lastSession.errorsMajor + ins.lastSession.errorsMinor} errors</p>{ins.lastSession.teacherNote && <p className="mt-1 text-pine-800"><b>Teacher:</b> {ins.lastSession.teacherNote}</p>}</Card>}
@@ -186,11 +183,14 @@ export function StudentApp({ tab }: { tab: string }) {
           <StreakCalendar dates={sd.sessions.filter(x => x.studentId === me.id).map(x => x.date)} frozen={sk.frozen} today={today} /></Card>
       </div>
       <Card className="p-5"><LevelBar total={pts.total} lvl={lvl} streak={sk.days} freezes={org.settings.motivation.freezePerWeek} frozenDays={sk.frozen.length} /></Card>
+      <WeeklyRevisionCard w={weekRev} onLog={(t, d) => { setRecDate(d); setRec(t); }} />
       <Card><CardHead title="Your Qurʾān" sub={`${ins.progress.juz} juz · ${ins.progress.pages} pages memorised`} /><div className="px-5 pb-5 pt-3"><JuzMap ranges={me.memorized} /></div></Card>
       <BadgeGrid items={badges(sd.sessions, beh, sd.milestones, me.memorized)} />
       <Card className="divide-y divide-line overflow-hidden">
         {certs.length > 0 && <Row title="My certificates" value={`${certs.length}`}><div className="flex flex-wrap gap-2">{certs.map(c => <a key={c.code} href={href('certificate', me.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700"><Award size={16} />{c.title}</a>)}</div></Row>}
         {plan.goal && !plan.goal.done && <Row title="When will I finish?" value={plan.goal.eta ? new Date(plan.goal.eta).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : ''}><WhatIf student={me} remaining={plan.goal.remaining} baseWeeks={plan.goal.weeks} lessonsPerWeek={Math.max(1, lessonDays.length)} today={today} /></Row>}
+        <Row title="My revision log" value=""><MyRevisionLog studentId={me.id} sessions={sd.sessions} start={startLabel(me)} onStart={() => setStartOpen(true)} /></Row>
+        <Row title="Weak ayahs" value={weakCount ? String(weakCount) : ''}>{weakCount ? <WeakAyahsCard sessions={sd.sessions} studentId={me.id} /> : <p className="text-sm text-ink-faint">No mistakes marked in the last 60 days. Mā shāʾ Allāh.</p>}</Row>
         <Row title="My weekly and monthly report" value=""><StudentPeriodReport you student={me} ins={ins} sessions={sd.sessions} attendance={data.attendance} today={today} settings={org.settings} orgName={org.name} /></Row>
         <Row title="Leaderboard" value=""><Leaderboard /></Row>
         {myTests > 0 && <Row title="My juz tests" value={`${myTests}`}><ExamList exams={data.exams} students={data.students} fixedStudent={me.id} onChanged={reload} /></Row>}
@@ -231,8 +231,12 @@ export function StudentApp({ tab }: { tab: string }) {
       {edit && <EditStudent st={me} asStudent onClose={() => setEdit(false)} onSaved={refresh} />}
     </div>}
     {submitNew && ins?.nextNew && me && <SubmitLessonModal student={me} suggested={ins.nextNew} onClose={() => setSubmitNew(false)} onSaved={refresh} />}
-    {rec && <RecordSheet open onClose={() => { setRec(null); setRecDate(undefined); }} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} initialDate={recDate} onSaved={refresh} />}
+    {rec && <RecordSheet open onClose={() => { setRec(null); setRecDate(undefined); }} student={me} insight={ins} sessions={sd.sessions} asStudent initialType={rec} initialDate={recDate} revisionForms={data.revisionForms} onSaved={refresh} />}
   </>;
+}
+/** Old revision this week: one circle per time, filled when done */
+function WeekDots({ done, of }: { done: number; of: number }) {
+  return <span className="flex items-center gap-1.5" aria-label={`${done} of ${of} revisions this week`}>{Array.from({ length: of }, (_, i) => <span key={i} className={cx('grid h-8 w-8 place-items-center rounded-full text-sm font-bold', i < done ? 'bg-pine-700 text-white' : 'border-2 border-dashed border-pine-600/40 text-pine-700')}>{i < done ? <CheckCircle2 size={15} /> : i + 1}</span>)}</span>;
 }
 /** The first run of back-to-back pages, as a range (today's Old revision may jump around) */
 const firstRun = (pages: number[]) => { const p = [...new Set(pages)].sort((a, b) => a - b); let e = 0; while (e + 1 < p.length && p[e + 1] === p[e] + 1) e++; return { start: pageRange(p[0]).start, end: pageRange(p[e]).end }; };
@@ -259,7 +263,7 @@ function Notebook({ tabs, initial }: { tabs: Array<{ key: string; label: string;
   </div>;
 }
 
-type Step = { practice?: Range | null; key: string; tip?: GlossaryKey; icon: React.ReactNode; title: string; body: string; note: string; action: React.ReactNode; state: 'todo' | 'done' | 'waiting' | 'none' };
+type Step = { practice?: Range | null; key: string; tip?: GlossaryKey; icon: React.ReactNode; title: string; body: string; note: React.ReactNode; action: React.ReactNode; state: 'todo' | 'done' | 'waiting' | 'none' };
 /** Today as one short path: the next thing to do is open with its buttons; finished and later steps stay folded. */
 function TodayPath({ steps, studentId }: { steps: Step[]; studentId?: string }) {
   const due = steps.filter(s => s.state !== 'none'); const doneN = due.filter(s => s.state !== 'todo').length;
