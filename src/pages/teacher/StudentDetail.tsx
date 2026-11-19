@@ -17,13 +17,15 @@ import { useStudentData } from '../../app/useStudentData';
 import { href, go } from '../../app/router';
 import { insight } from '../../lib/insights';
 import { METRIC_LABEL } from '../../lib/goals';
-import { Button, Card, CardHead, Spinner, ErrorBox, Segmented, SubTabs, Modal, Field, Select, inputCls, Toggle, Confirm, useToast } from '../../components/ui';
+import { Button, Card, CardHead, Spinner, ErrorBox, Segmented, SubTabs, Modal, Field, Select, inputCls, Toggle, Confirm, useToast, cx } from '../../components/ui';
 import { Overview, History, TermReport } from '../../components/StudentReport';
 import { PlanCard, ClassBadge } from '../../components/PlanCard';
 import { AdabTaps, AdabSummary } from '../../components/Adab';
 import { LevelBar, BadgeGrid } from '../../components/Motivation';
 import { MessageThread } from '../../components/MessageThread';
 import { ExamList } from './Exams';
+import { stars, STARS_PER_LEVEL, partsByDay, garden2, starLevel, garden } from '../../lib/stars';
+import { addDays } from '../../lib/dates';
 import { certificatesFor } from '../Certificate';
 import { classLabel, studentPlan, goalPct } from '../../lib/studentPlan';
 import { points, level, badges } from '../../lib/motivation';
@@ -59,15 +61,20 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
   const cl = classLabel(st.id, data.classes, data.members, org.name);
   const plan = studentPlan(st, org.settings, today, [...new Set(data.classes.filter(c => c.studentIds.includes(st.id)).flatMap(c => c.slots.map(x => x.day)))]);
   const pts = points(sd.sessions, beh); const lvl = level(pts.total);
-  const certs = certificatesFor(st, sd.milestones);
+  const certs = certificatesFor(st, sd.milestones, Math.floor(stars(sd.sessions ?? [], st.id) / STARS_PER_LEVEL));
   return <>
     <a href={href('students')} className="no-print mb-2 inline-flex items-center gap-1 text-sm font-bold text-ink-faint hover:text-ink"><ArrowLeft size={16} />Students</a>
     <PageTitle title={st.name} sub={[st.ageGroup, st.goal && `Goal: ${st.goal}`, st.direction === 'back' ? 'from An-Nās backwards' : 'from Al-Fātiḥah forwards'].filter(Boolean).join(' · ')}
-      action={<div className="no-print grid w-full grid-cols-[1.3fr_1fr_1fr_44px] gap-2 sm:flex sm:w-auto"><Button className="px-2 sm:px-4" onClick={() => setRec(true)}><Plus size={18} />Record</Button><Button kind="secondary" className="px-2 text-sm sm:px-4" onClick={() => setAssign(true)}><ClipboardList size={16} className="hidden sm:block" />Assign</Button><Button kind="secondary" className="px-2 text-sm sm:px-4" onClick={() => setGoal(true)}><Target size={16} className="hidden sm:block" />Goal</Button><Button kind="secondary" className="w-11 shrink-0 px-0" aria-label="Edit student" title="Edit student" onClick={() => setEdit(true)}><Pencil size={16} /></Button></div>} />
+      action={<div className="no-print flex w-full gap-2 sm:w-auto"><Button className="min-h-[52px] flex-1 text-[17px] sm:flex-none sm:px-6" onClick={() => setRec(true)}><Plus size={20} />Record</Button><Button kind="secondary" className="min-h-[52px] w-[52px] shrink-0 px-0" aria-label="Edit student" title="Edit student" onClick={() => setEdit(true)}><Pencil size={18} /></Button></div>} />
     <div className="no-print mb-3"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>
-    <SubTabs label="Student sections" className="mb-5" active={tab} onChange={setTab} items={[{ key: 'overview', label: 'Overview' }, { key: 'history', label: 'History' }, { key: 'work', label: 'Tasks & tests' }, { key: 'messages', label: 'Messages' }, { key: 'report', label: 'Reports' }]} />
+    <SubTabs label="Student sections" className="mb-5" active={tab} onChange={setTab} items={[{ key: 'overview', label: 'Overview' }, { key: 'history', label: 'History' }, { key: 'messages', label: 'Messages' }, ...(tab === 'work' ? [{ key: 'work' as Tab, label: 'Tasks & tests' }] : []), ...(tab === 'report' ? [{ key: 'report' as Tab, label: 'Reports' }] : [])]} />
     {tab === 'overview' && <div className="flex flex-col gap-5">
-      {/* 1. the summary, like a health app: four numbers and the goal */}
+      <AtAGlance st={st} sessions={sd.sessions} today={today} nextNew={ins.nextNew} streak={ins.streak} />
+      <div className="empty:hidden"><RevisionCheckCard data={data} onChanged={reload} studentId={st.id} /></div>
+      <details className="group rounded-2xl border border-line bg-white dark:bg-paper">
+      <summary className="flex min-h-[56px] cursor-pointer list-none items-center gap-2 px-5 font-bold text-ink-soft"><span className="flex-1">More about {st.name.split(' ')[0]}</span><span className="transition group-open:rotate-180">▾</span></summary>
+      <div className="flex flex-col gap-5 border-t border-line p-3 sm:p-4">
+      <div className="flex flex-wrap gap-2"><Button kind="secondary" onClick={() => setAssign(true)}><ClipboardList size={16} />Set a task</Button><Button kind="secondary" onClick={() => setGoal(true)}><Target size={16} />Set a goal</Button><Button kind="secondary" onClick={() => setTab('work')}>Tasks & juz tests</Button><Button kind="secondary" onClick={() => setTab('report')}>Reports</Button></div>
       <Card className="p-5">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Tile label="Memorised" value={`${(ins.progress.percent * 100).toFixed(1)}%`} sub={`${ins.progress.juz} juz · ${ins.progress.pages} pages`} />
@@ -84,8 +91,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
       <Card className="flex flex-wrap items-center gap-3 px-5 py-4"><span className="min-w-0 flex-1 text-[15px]"><b>Old revision starts from:</b> {startLabel(st) ?? 'default order'}</span><Button kind="secondary" className="min-h-[44px] px-3 text-sm" onClick={() => setStartOpen(true)}>Change</Button></Card>
       {startOpen && <RevisionStartModal student={st} onClose={() => setStartOpen(false)} onSaved={reload} />}
       {memOpen && <MemorisedModal student={st} byTeacher onClose={() => setMemOpen(false)} onSaved={reload} />}
-      <div className="empty:hidden"><RevisionCheckCard data={data} onChanged={reload} studentId={st.id} /></div>
-      {/* 3. everything else, one tap away */}
+      {/* everything else */}
       <Card className="divide-y divide-line overflow-hidden">
         {(() => { const w = weekSummary(sd.sessions.filter(s => s.studentId === st.id), today, revSchedule(org.settings.revision), ins.revision.perDay, false);
           return <Row title="Revision this week" value={w.target ? `${w.oldPages}/${w.target} Old pages` : `${w.oldPages} pages`} tone={w.target && w.percent >= 1 ? 'good' : w.missedDays ? 'warn' : undefined}>
@@ -102,6 +108,7 @@ export function StudentDetail({ id, initialTab }: { id: string; initialTab?: str
       {certs.length > 0 && <Card><CardHead title="Certificates" sub="Open one to print or save as PDF" /><div className="flex flex-wrap gap-2 px-5 py-4">{certs.map(c => <a key={c.code} href={href('certificate', st.id, c.code)} className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brass-100 px-3 text-sm font-bold text-brass-700 hover:bg-brass-100/70"><Award size={16} />{c.title}</a>)}</div></Card>}
         </Row>
       </Card>
+      </div></details>
     </div>}
     {tab === 'history' && <History student={st} sessions={sd.sessions} today={today} settings={org.settings} onDelete={setDel} />}
     {tab === 'work' && <div className="flex flex-col gap-5"><Card><CardHead title="Assignments" /><AssignmentList items={assignments} onChanged={reload} /></Card><div><h2 className="mb-2 font-bold">Juz tests</h2><ExamList exams={data.exams} students={data.students} fixedStudent={st.id} onChanged={reload} /></div></div>}
@@ -173,4 +180,25 @@ export function EditStudent({ st, onClose, onSaved, asStudent, classes = [] }: {
       </>}
     </div>
   </Modal>;
+}
+
+/** The teacher's one-look summary: today's three parts, this week's heard stars, next lesson. */
+function AtAGlance({ st, sessions, today, nextNew, streak }: { st: import('../../lib/types').Student; sessions: Session[]; today: string; nextNew: import('../../quran').Range | null; streak: number }) {
+  const day = partsByDay(sessions, st.id).get(today);
+  const wkStart = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const week = garden2(sessions.filter(x => x.date >= wkStart), st.id); const all = garden2(sessions, st.id);
+  const lv = starLevel(all.stars); const g = garden(lv.level);
+  const P: Array<['new' | 'recent' | 'old', string, string]> = [['new', 'New', 'bg-[#047857]'], ['recent', 'Recent', 'bg-[#9A6B1F]'], ['old', 'Old', 'bg-[#0369A1]']];
+  return <Card className="p-5">
+    <p className="mb-2 text-sm font-bold uppercase tracking-wide text-ink-faint">Today</p>
+    <div className="grid grid-cols-3 gap-2">{P.map(([k, l, c]) => { const v = day?.get(k); const done = !!v && v !== 'wilted';
+      return <div key={k} className={cx('rounded-2xl px-3 py-3 text-center font-bold', v === 'seed' ? 'bg-[#E9DFF7] text-[#3B1D5C]' : done ? `${c} text-white` : 'bg-black/[.04] text-ink-faint dark:bg-white/5')}>{l}<span className="block text-sm font-normal">{!v ? 'not yet' : v === 'seed' ? 'logged, not heard' : v === 'wilted' ? 'redo' : v === 'gold' ? 'heard, no mistakes' : 'heard'}</span></div>; })}</div>
+    <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+      <div><b className="block text-2xl tabular-nums">⭐ {week.stars}</b><span className="text-xs text-ink-faint">heard this week</span></div>
+      <div><b className="block text-2xl tabular-nums">🌰 {all.seeds}</b><span className="text-xs text-ink-faint">waiting to be heard</span></div>
+      <div><b className="block text-2xl tabular-nums">🔥 {streak}</b><span className="text-xs text-ink-faint">days in a row</span></div>
+    </div>
+    <p className="mt-4 rounded-xl bg-[#FFF4D6] px-3 py-2 text-sm text-[#1B2433]">{g.plant} <b>{g.name} garden</b>, {lv.into} of {lv.need} · ⭐ {all.stars} stars in all</p>
+    <p className="mt-3 text-[15px]"><b>Next lesson:</b> {nextNew ? formatRange(nextNew) : 'all memorised'}</p>
+  </Card>;
 }

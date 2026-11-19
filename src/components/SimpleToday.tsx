@@ -13,7 +13,7 @@ import { MushafLink, rangeMarks } from './Mushaf';
 import { AyahPlayer } from './AyahPlayer';
 import type { RevisionCheckin } from '../api/data';
 import type { Student } from '../lib/types';
-import { garden, cheer, STARS_PER_LEVEL } from '../lib/stars';
+import { garden, cheer } from '../lib/stars';
 
 export type PartState = 'todo' | 'done' | 'waiting' | 'rest';
 export interface PartCard { key: 'new' | 'recent' | 'old'; what: string; range: Range | null; state: PartState; restText?: string; doneText?: string }
@@ -25,8 +25,8 @@ const LOOK = {
 } as const;
 const DAY = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-export function SimpleToday({ student, name, cards, stars, streak, level, week, today, revisionForms, onSaved }: {
-  student: Student; name: string; cards: PartCard[]; stars: number; streak: number; level: { level: number; into: number; need: number };
+export function SimpleToday({ student, name, cards, stars, seeds, streak, level, week, today, revisionForms, onSaved }: {
+  student: Student; name: string; cards: PartCard[]; stars: number; seeds: number; streak: number; level: { level: number; into: number; need: number };
   week: Array<{ date: string; count: number }>; today: string; revisionForms: RevisionCheckin[]; onSaved: () => void;
 }) {
   const [open, setOpen] = useState<PartCard | null>(null);
@@ -37,7 +37,7 @@ export function SimpleToday({ student, name, cards, stars, streak, level, week, 
     <div className="flex items-center gap-3">
       <h1 className="min-w-0 flex-1 truncate text-2xl font-bold">Salaam, {name}!</h1>
       <span className="flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-lg font-bold tabular-nums ring-2 ring-line dark:bg-paper" title="Days in a row" aria-label={`${streak} days in a row`}>🔥 {streak}</span>
-      <span className="flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-lg font-bold tabular-nums ring-2 ring-line dark:bg-paper" title="Stars" aria-label={`${stars} stars`}>⭐ {stars}</span>
+      <a href="#/progress" className="flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-lg font-bold tabular-nums ring-2 ring-line dark:bg-paper" title="Stars and seeds" aria-label={`${stars} stars${seeds ? `, ${seeds} seeds waiting` : ''}`}>⭐ {stars}{seeds > 0 && <span className="ml-1 text-base font-bold text-ink-soft">· 🌰 {seeds}</span>}</a>
     </div>
 
     <ol className="flex justify-between" aria-label="This week">
@@ -63,17 +63,17 @@ export function SimpleToday({ student, name, cards, stars, streak, level, week, 
       <div className="h-3 overflow-hidden rounded-full bg-black/[.08] dark:bg-white/10"><div className="h-full rounded-full bg-[#E8A317] transition-all duration-700" style={{ width: `${(level.into / level.need) * 100}%` }} /></div>
     </div>
 
-    {open && <PartSheet card={open} stars={stars} student={student} today={today} revisionForms={revisionForms} onClose={() => setOpen(null)} onSaved={onSaved} />}
+    {open && <PartSheet card={open} student={student} today={today} revisionForms={revisionForms} onClose={() => setOpen(null)} onSaved={onSaved} />}
   </div>;
 }
 
 type Step = 'read' | 'friend' | 'yay';
-function PartSheet({ card, stars, student, today, revisionForms, onClose, onSaved }: { card: PartCard; stars: number; student: Student; today: string; revisionForms: RevisionCheckin[]; onClose: () => void; onSaved: () => void }) {
+function PartSheet({ card, student, today, revisionForms, onClose, onSaved }: { card: PartCard; student: Student; today: string; revisionForms: RevisionCheckin[]; onClose: () => void; onSaved: () => void }) {
   const { api, org } = useOrg(); const toast = useToast();
   const L = LOOK[card.key];
   const [step, setStep] = useState<Step>('read'); const [hard, setHard] = useState(false); const [busy, setBusy] = useState(false);
   const [mates, setMates] = useState<Array<{ student_id: string; name: string; same_class: boolean }>>([]);
-  const [gain, setGain] = useState(1);
+  const [partnerName, setPartnerName] = useState<string | null>(null);
   useEffect(() => { if (card.key === 'old') api.revisionPartners().then(setMates).catch(() => setMates([])); }, [card.key, api]);
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); }, [onClose]);
   const range = card.range;
@@ -97,7 +97,7 @@ function PartSheet({ card, stars, student, today, revisionForms, onClose, onSave
           if (slot) { try { await api.saveRevisionCheckin(org.id, { studentId: student.id, weekStart: wk, slot: slot.key, done: true, partner: partner?.name ?? 'On my own', pages: formatRange(range), recorded: false, recordingLink: '' }); } catch { /* */ } }
         }
       }
-      setGain(partner ? 2 : 1); setStep('yay'); onSaved();
+      setPartnerName(partner?.name ?? null); setStep('yay'); onSaved();
     } catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); }
   };
   const did = (h: boolean) => { setHard(h); if (card.key === 'old') setStep('friend'); else void save(h, null); };
@@ -118,17 +118,17 @@ function PartSheet({ card, stars, student, today, revisionForms, onClose, onSave
       {step === 'friend' && <>
         <span className="text-7xl" aria-hidden>👂</span>
         <p className="text-3xl font-bold">Did a friend listen?</p>
-        <p className="text-lg text-ink-soft">Tap their name for a bonus star.</p>
+        <p className="text-lg text-ink-soft">Tap their name. When they say they heard you, your seed grows into a ⭐.</p>
         <div className="grid w-full grid-cols-2 gap-3">
           {mates.filter(m => m.same_class !== false).slice(0, 12).map(m => <button key={m.student_id} type="button" disabled={busy} onClick={() => save(hard, { id: m.student_id, name: m.name })} className={cx(big, 'min-h-[56px] truncate bg-[#0369A1] text-xl text-white')}>{m.name.split(' ')[0]}</button>)}
         </div>
         <button type="button" disabled={busy} onClick={() => save(hard, null)} className={cx(big, 'bg-black/[.06] text-ink shadow-none dark:bg-white/10')}>No, on my own</button>
       </>}
       {step === 'yay' && <>
-        <span className="done-pop text-8xl" aria-hidden>{gain > 1 ? '⭐⭐' : '⭐'}</span>
-        <p className="text-4xl font-bold">+{gain} star{gain > 1 ? 's' : ''}!</p>
-        <p className="text-lg text-ink-soft">{card.key === 'new' ? 'Your teacher will check it in class.' : hard ? 'Hard is good. Your teacher will help with it.' : cheer(Date.now() >> 10)}</p>
-        <p className="text-base font-bold text-[#9A5B00]">{garden(Math.floor(stars / STARS_PER_LEVEL) + 1).plant} A new plant in your garden</p>
+        <span className="done-pop text-8xl" aria-hidden>🌰</span>
+        <p className="text-4xl font-bold">Seed planted!</p>
+        <p className="text-lg text-ink-soft">{hard ? 'Hard is good. Your teacher will help with it.' : cheer(Date.now() >> 10)}</p>
+        <p className="rounded-2xl bg-[#FFF4D6] px-4 py-3 text-base font-bold text-[#5C4A1E]">{card.key === 'new' ? 'It grows into a ⭐ when your teacher hears it in class.' : partnerName ? `It grows into a ⭐ when ${partnerName.split(' ')[0]} says they heard you.` : 'It grows into a ⭐ when your teacher or a friend hears you.'}</p>
         <button type="button" autoFocus onClick={onClose} className={cx(big, 'bg-[#FFD23F] text-[#1B2433]')}>Yay!</button>
       </>}
     </div>

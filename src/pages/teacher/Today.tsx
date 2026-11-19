@@ -7,11 +7,12 @@ import { Radio, UserPlus, Users, Check } from 'lucide-react';
 import { useOrg } from '../../app/context';
 import { useOrgData } from '../../app/useOrgData';
 import { insight } from '../../lib/insights';
-import { niceDate } from '../../lib/dates';
-import { partOf, type Part } from '../../lib/stars';
+import { niceDate, addDays } from '../../lib/dates';
+import { partOf, garden2, garden, steadfast, STARS_PER_LEVEL, PRIZE_BOX, type Part } from '../../lib/stars';
 import { formatRange } from '../../quran';
 import { Button, Card, Spinner, ErrorBox, Empty, useToast, cx } from '../../components/ui';
 import { RecordSheet } from '../../components/RecordSheet';
+import { ClassGoal } from '../../components/Garden';
 import { SubTabs } from '../../components/ui';
 import { href, go } from '../../app/router';
 import { friendly } from '../../api/backend';
@@ -53,6 +54,7 @@ export function Today() {
     <div className="flex flex-col gap-4 empty:hidden" data-tour="revision-check">
       <RevisionCheckCard data={data} onChanged={reload} />
       <JoinRequestsCard data={data} onChanged={reload} />
+      <Celebrate data={data} studentIds={ins.map(i => i.student.id)} streaks={new Map(ins.map(i => [i.student.id, i.streak]))} today={today} />
     </div>
 
     {!data.students.length ? <Card><Empty icon={<Users size={32} />} title="No students yet" action={<Button onClick={() => go('students', 'new')}><UserPlus size={18} />Add your first student</Button>}>Add students yourself, or share the class code <b className="font-mono">{org.joinCode}</b> so they can join and set themselves up.</Empty></Card> : <section data-tour="today-students">
@@ -74,6 +76,32 @@ export function Today() {
           {!absent && parts.size === 0 && <button type="button" onClick={() => markAbsent(i.student.id)} className="hidden min-h-[48px] shrink-0 rounded-xl px-2 text-sm font-bold text-ink-faint hover:bg-black/5 sm:block">Absent</button>}
         </li>; })}</ul>
     </section>}
+    {activeCls !== 'all' && <ClassGoal classId={activeCls} title="Halaqah goal this month" />}
     {recIns && <RecordSheet open={!!rec} onClose={() => setRec(null)} student={recIns.student} insight={recIns} sessions={data.sessions} onSaved={reload} />}
   </div>;
+}
+
+/** Rewards earned in the last two weeks, for the teacher to give out in class. */
+function Celebrate({ data, studentIds, streaks, today }: { data: import('../../app/useOrgData').OrgData; studentIds: string[]; streaks: Map<string, number>; today: string }) {
+  const since = addDays(today, -13);
+  const out: Array<{ id: string; name: string; what: string; give: string; cert?: string }> = [];
+  for (const sid of studentIds) {
+    const name = data.students.find(x => x.id === sid)?.name ?? '';
+    const now = Math.floor(garden2(data.sessions, sid).stars / STARS_PER_LEVEL);
+    const before = Math.floor(garden2(data.sessions.filter(x => x.date < since), sid).stars / STARS_PER_LEVEL);
+    for (let g = before + 1; g <= now; g++) {
+      out.push({ id: `${sid}g${g}`, name, what: `filled the ${garden(g).name} garden ${garden(g).plant}`, give: 'Read their name out, give the certificate', cert: href('certificate', sid, `garden-${g}`) });
+      if (g % 3 === 0) out.push({ id: `${sid}p${g}`, name, what: `filled ${g} gardens 🎁`, give: `Prize box: ${PRIZE_BOX.slice(0, 4).join(', ').toLowerCase()}…` });
+    }
+    if (steadfast(data.sessions, sid, today, streaks.get(sid) ?? 0).earned) out.push({ id: `${sid}s`, name, what: 'is Steadfast 💪 (30 days, partner revision every week)', give: 'Praise them in front of the class' });
+    for (const x of data.exams.filter(e => e.studentId === sid && e.status === 'passed' && e.scheduledOn >= since)) out.push({ id: x.id, name, what: `passed ${x.title} 🏅`, give: 'Juz certificate, and they lead the class recitation' });
+  }
+  if (!out.length) return null;
+  return <Card className="p-5">
+    <h2 className="mb-1 flex items-center gap-2 text-lg font-bold"><span aria-hidden>🎉</span>To celebrate in class</h2>
+    <p className="mb-3 text-sm text-ink-soft">Earned in the last two weeks. Only heard recitation counts.</p>
+    <ul className="flex flex-col gap-3">{out.map(o => <li key={o.id} className="rounded-2xl bg-[#FFF4D6] px-4 py-3 text-[#1B2433]">
+      <p><b>{o.name}</b> {o.what}</p><p className="text-sm">{o.give}{o.cert && <> · <a className="font-bold underline" href={o.cert}>Certificate</a></>}</p>
+    </li>)}</ul>
+  </Card>;
 }

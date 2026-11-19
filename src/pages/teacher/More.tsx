@@ -28,7 +28,7 @@ import { PageTitle } from '../../components/Shell';
 import { friendly } from '../../api/backend';
 import { Group, LinkRow } from '../../components/Rows';
 import { ClassPeriodReport } from '../../components/Reports';
-import { ChevronRight, ArrowLeft, Sparkles, LogOut, ClipboardList } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Sparkles, LogOut, ClipboardList, CalendarDays } from 'lucide-react';
 
 // More: a short list grouped like a phone's settings; each item opens its own page with a way back.
 const SECTIONS = [
@@ -47,10 +47,13 @@ export function More() {
   if (!cur) return <>
     <PageTitle title="More" sub={org.name} />
     <div className="flex max-w-2xl flex-col gap-6">
-      <Group title="Class work"><a href={href('assignments')} className="flex min-h-[60px] items-center gap-3 px-5 py-2 hover:bg-pine-50/50"><ClipboardList size={18} className="shrink-0 text-pine-700" /><span className="min-w-0 flex-1"><b className="block">Tasks and tests</b><span className="block truncate text-sm text-ink-faint">Set work, juz tests, revision forms</span></span><ChevronRight size={18} className="shrink-0 text-ink-faint" /></a></Group>
-      {GROUPS.map(([g, t]) => { const items = visible.filter(s => s[5] === g); return items.length ? <Group key={g} title={t}>{items.map(([k, l, I, , hint]) =>
+      <Group title="Class work"><a href={href('assignments')} className="flex min-h-[60px] items-center gap-3 px-5 py-2 hover:bg-pine-50/50"><ClipboardList size={18} className="shrink-0 text-pine-700" /><span className="min-w-0 flex-1"><b className="block">Tasks and tests</b><span className="block truncate text-sm text-ink-faint">Set work, juz tests, revision forms</span></span><ChevronRight size={18} className="shrink-0 text-ink-faint" /></a>
+        <a href={href('classes', 'calendar')} className="flex min-h-[60px] items-center gap-3 px-5 py-2 hover:bg-pine-50/50"><CalendarDays size={18} className="shrink-0 text-pine-700" /><span className="min-w-0 flex-1"><b className="block">Calendar</b><span className="block truncate text-sm text-ink-faint">Holidays, tests and events</span></span><ChevronRight size={18} className="shrink-0 text-ink-faint" /></a></Group>
+      {GROUPS.map(([g, t]) => { const items = visible.filter(s => s[5] === g); const grp = items.length ? <Group key={g} title={t}>{items.map(([k, l, I, , hint]) =>
         <a key={k} href={href('more', k)} className="flex min-h-[60px] items-center gap-3 px-5 py-2 hover:bg-pine-50/50"><I size={18} className="shrink-0 text-pine-700" /><span className="min-w-0 flex-1"><b className="block">{l}</b><span className="block truncate text-sm text-ink-faint">{hint}</span></span><ChevronRight size={18} className="shrink-0 text-ink-faint" /></a>)}
-        {g === 'help' && <><LinkRow title="Take the app tour" icon={Sparkles} onClick={startTour} /><LinkRow title="Sign out" icon={LogOut} onClick={() => backend.signOut()} /></>}</Group> : null; })}
+        </Group> : null;
+        return g === 'help' ? <details key={g} className="group"><summary className="flex min-h-[48px] cursor-pointer list-none items-center px-1 text-sm font-bold text-ink-faint"><span className="flex-1">Records and help</span><span className="transition group-open:rotate-180">▾</span></summary>{grp}</details> : grp; })}
+      <Group title="You"><LinkRow title="Take the app tour" icon={Sparkles} onClick={startTour} /><LinkRow title="Sign out" icon={LogOut} onClick={() => backend.signOut()} /></Group>
     </div>
   </>;
   const sec = cur[0];

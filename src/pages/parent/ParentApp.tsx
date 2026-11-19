@@ -29,6 +29,7 @@ import { startTour } from '../../components/Tour';
 import { MessageThread } from '../../components/MessageThread';
 import { AdabSummary } from '../../components/Adab';
 import { ExamList } from '../teacher/Exams';
+import { stars, STARS_PER_LEVEL } from '../../lib/stars';
 import { certificatesFor } from '../Certificate';
 import { StandingCard, RevisionFormCard, RulesCard, AbsenceForm, missedLastWeek } from '../../components/StudentAttendance';
 import { NotifyToggle } from '../../components/Notifications';
@@ -53,7 +54,7 @@ export function ParentApp() {
   const classIds = data.classes.filter(c => c.studentIds.includes(child.id)).map(c => c.id);
   const beh = data.behaviour.filter(b => b.studentId === child.id);
   const pts = points(sd.sessions, beh); const sk = streakDetail(sd.sessions.map(s => s.date), today, org.settings.motivation.freezePerWeek);
-  const certs = certificatesFor(child, sd.milestones);
+  const certs = certificatesFor(child, sd.milestones, Math.floor(stars(sd.sessions ?? [], child.id) / STARS_PER_LEVEL));
   return <>
     <PageTitle title={child.name} sub="Read-only" />
     <div className="mb-4"><ClassBadge title={cl.title} teacher={cl.teacher} /></div>

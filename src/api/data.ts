@@ -197,6 +197,7 @@ export function api(be: Backend) {
     setRevisionStart: (studentId: string, page: number | null) => be.rpc<null>('set_revision_start', { p_student: studentId, p_page: page }),
     myNotifications: () => be.rpc<Array<{ id: number; title: string; body: string | null; url: string | null; created_at: string }>>('my_notifications', { p_limit: 80 }),
     setupStatus: (orgId: string) => be.rpc<Array<{ student_id: string; notifications: boolean; parents: number }>>('setup_status', { org: orgId }),
+    halaqahStars: async (classId: string) => (await be.rpc<Array<{ stars: number; students: number }>>('halaqah_stars', { p_class: classId }))[0] ?? { stars: 0, students: 0 },
     revisionPartners: () => be.rpc<Array<{ student_id: string; name: string; same_class: boolean }>>('revision_partners', {}),
     requestPartner: (sessionId: string, partnerId: string) => be.rpc<null>('request_partner_check', { p_session: sessionId, p_partner: partnerId }),
     partnerRequests: () => be.rpc<Array<{ session_id: string; student_name: string; type: string; start_ayah_id: number; end_ayah_id: number; date: string; student_note: string | null }>>('partner_requests', {}),

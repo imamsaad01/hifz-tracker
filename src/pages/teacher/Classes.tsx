@@ -28,7 +28,7 @@ export function Classes() {
   if (!data) return <Spinner />;
   return <>
     <PageTitle title={tab === 'live' ? 'Live class' : tab === 'calendar' ? 'Calendar' : tab === 'attendance' ? 'Attendance' : 'Halaqahs'} sub={tab === 'live' ? 'See their revision (confirmed by partners), then hear the new lesson.' : tab === 'calendar' ? 'Class days, holidays, tests and events' : tab === 'attendance' ? 'Check-ins, absence requests and semester standing' : 'Groups, teachers and class times'} />
-    <SubNav label="Halaqah sections" active={tab} href={k => href('classes', k)} items={[{ key: 'live', label: 'Live class' }, { key: 'attendance', label: 'Attendance' }, { key: 'halaqahs', label: 'Halaqahs' }, { key: 'calendar', label: 'Calendar' }]} />
+    <SubNav label="Halaqah sections" active={tab} href={k => href('classes', k)} items={[{ key: 'live', label: 'Class now' }, { key: 'attendance', label: 'Attendance' }, { key: 'halaqahs', label: 'Halaqahs' }, ...(tab === 'calendar' ? [{ key: 'calendar' as const, label: 'Calendar' }] : [])]} />
     {tab === 'live' && <LiveClass data={data} reload={reload} />}
     {tab === 'calendar' && <CalendarView events={data.events} exams={data.exams} students={data.students} classes={data.classes} onChanged={reload} />}
     {tab === 'halaqahs' && <Halaqahs data={data} reload={reload} />}

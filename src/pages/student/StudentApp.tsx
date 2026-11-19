@@ -25,8 +25,9 @@ import { JuzCelebration } from '../../components/Motion';
 import { juzProgress } from '../../lib/progress';
 import { RecordSheet, defaultRange } from '../../components/RecordSheet';
 import { SimpleToday, type PartCard } from '../../components/SimpleToday';
-import { stars, starLevel, weekDays } from '../../lib/stars';
-import { GardenCard, StreakCard } from '../../components/Garden';
+import { STARS_PER_LEVEL, garden2, starLevel, stars, steadfast, weekDays } from '../../lib/stars';
+import { GardenCard, StreakCard, RewardsCard } from '../../components/Garden';
+import { MyLessons } from '../../components/MyLessons';
 import { StudentForm, type StudentDraft } from '../../components/StudentForm';
 import { PageTitle } from '../../components/Shell';
 import { PlanCard } from '../../components/PlanCard';
@@ -81,7 +82,7 @@ export function StudentApp({ tab }: { tab: string }) {
     { label: 'Old revision', due: ins.revision.isRevisionDay && ins.revision.today.length > 0, done: todays.some(s => s.type === 'old' || s.type === 'juz_revision'), color: '#0369A1' },
   ];
   ring.forEach(r => { if (r.done) r.due = true; }); // something done today always counts, even on a rest day
-  const certs = certificatesFor(me, sd.milestones);
+  const certs = certificatesFor(me, sd.milestones, Math.floor(stars(sd.sessions ?? [], me.id) / STARS_PER_LEVEL));
   return <>
     {tab === 'home' && (() => {
       const newDone = todays.find(x => x.type === 'new');
@@ -95,22 +96,24 @@ export function StudentApp({ tab }: { tab: string }) {
         { key: 'old', range: oldDue ? defaultRange('old', me, ins, sd.sessions, today) : null, what: oldDue ? pages(ins.revision.today.map(r => r.page)) : '', state: oldWeekDone ? 'done' : ring[2].done ? 'done' : oldDue ? 'todo' : 'rest',
           doneText: oldWeekDone ? `All ${perWeek} done this week!` : perWeek ? `${doneWk} of ${perWeek} this week` : 'Done!', restText: ins.revision.nextRevisionDay ? `Next: ${niceDate(ins.revision.nextRevisionDay)}` : 'Nothing today' },
       ];
-      const st = stars(sd.sessions, me.id);
+      const gd = garden2(sd.sessions, me.id); const st = gd.stars;
       // Before anything is logged today, show the streak they keep by doing one part today (not a scary 0).
       const liveStreak = todays.length ? sk.days : Math.max(0, streakDetail([...sd.sessions.map(s => s.date), today], today, org.settings.motivation.freezePerWeek).days - 1);
       return <>
         {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
         <JuzCelebration who={me.id} completed={juzDone} />
-        <SimpleToday student={me} name={me.name.split(' ')[0]} cards={cards} stars={st} streak={liveStreak} level={starLevel(st)} week={weekDays(sd.sessions, me.id, today)} today={today} revisionForms={data.revisionForms} onSaved={refresh} />
+        <SimpleToday student={me} name={me.name.split(' ')[0]} cards={cards} stars={st} seeds={gd.seeds} streak={liveStreak} level={starLevel(st)} week={weekDays(sd.sessions, me.id, today)} today={today} revisionForms={data.revisionForms} onSaved={refresh} />
+        <div className="mx-auto mt-6 max-w-md"><MyLessons sessions={sd.sessions} studentId={me.id} next={pendingNew ? null : ins.nextNew} /></div>
         {/* below the three buttons: things to answer once in a while */}
         <div className="mx-auto mt-6 max-w-md empty:hidden"><PartnerRequestsCard /></div>
         {!me.rulesAckAt && org.settings.rulesText.trim() && <div className="mx-auto mt-5 max-w-md"><RulesCard compact text={org.settings.rulesText} ackAt={me.rulesAckAt} onAck={async () => { try { await api.ackRules(me.id); reload(); } catch (e) { void e; } }} /></div>}
         <div className="mx-auto mt-5 max-w-md empty:hidden"><CheckInCard student={me} classes={data.classes} attendance={data.attendance} absences={data.absences} onChanged={reload} /></div>
       </>; })()}
-    {tab === 'progress' && (() => { const st = stars(sd.sessions, me.id);
+    {tab === 'progress' && (() => { const gd = garden2(sd.sessions, me.id); const st = gd.stars;
       return <div className="mx-auto flex max-w-md flex-col gap-5">
       <h1 className="text-2xl font-bold">My garden</h1>
-      <GardenCard stars={st} level={starLevel(st)} />
+      <GardenCard stars={st} seeds={gd.seeds} level={starLevel(st)} />
+      <RewardsCard stars={st} juzTests={data.exams.filter(x => x.studentId === me.id && x.status === 'passed').length} steady={steadfast(sd.sessions, me.id, today, sk.days)} streak={sk.days} classId={myClassIds[0] ?? null} />
       <StreakCard days={sk.days} best={ins.longest} />
       <Card className="p-5"><StreakCalendar dates={sd.sessions.filter(x => x.studentId === me.id).map(x => x.date)} frozen={sk.frozen} today={today} /></Card>
       <Card><CardHead title="My Qurʾān" sub={`${ins.progress.juz} juz · ${ins.progress.pages} pages memorised`} /><div className="px-5 pb-5 pt-3"><JuzMap ranges={me.memorized} /></div></Card>

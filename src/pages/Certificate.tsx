@@ -9,22 +9,26 @@ import { niceDate } from '../lib/dates';
 import { Button, Spinner, ErrorBox } from '../components/ui';
 import { MILESTONE_LABEL } from '../components/StudentReport';
 import { friendly } from '../api/backend';
+import { useStudentData } from '../app/useStudentData';
+import { garden, stars, STARS_PER_LEVEL } from '../lib/stars';
 
-export function certificatesFor(st: Student, milestones: Milestone[]): Array<{ code: string; title: string; date: string | null }> {
+export function certificatesFor(st: Student, milestones: Milestone[], gardensDone = 0): Array<{ code: string; title: string; date: string | null }> {
+  const gardens = Array.from({ length: gardensDone }, (_, i) => ({ code: `garden-${i + 1}`, title: `${garden(i + 1).name} garden`, date: null }));
   const juz = juzProgress(st.memorized).map((v, i) => [v, i + 1] as const).filter(([v]) => v >= 1).map(([, j]) => ({ code: `juz-${j}`, title: `Juz ${j}`, date: null }));
   const ms = milestones.filter(m => ['juz_5', 'juz_10', 'juz_15', 'juz_20', 'juz_25', 'quran_complete'].includes(m.code)).map(m => ({ code: m.code, title: MILESTONE_LABEL[m.code], date: m.achievedOn }));
-  return [...juz, ...ms];
+  return [...juz, ...ms, ...gardens];
 }
 export function Certificate({ studentId, code }: { studentId: string; code: string }) {
   const { api, org, today } = useOrg();
+  const sd = useStudentData(studentId);
   const [st, setSt] = useState<Student | null>(null); const [ms, setMs] = useState<Milestone[]>([]); const [members, setMembers] = useState<Member[]>([]); const [err, setErr] = useState<string | null>(null);
   useEffect(() => { Promise.all([api.students(org.id), api.milestones(org.id, studentId), api.members(org.id)]).then(([s, m, mem]) => { setSt(s.find(x => x.id === studentId) ?? null); setMs(m); setMembers(mem); if (!s.find(x => x.id === studentId)) setErr('Student not found.'); }).catch(e => setErr(friendly(e))); }, [api, org.id, studentId]);
   if (err) return <div className="p-6"><ErrorBox message={err} /></div>;
-  if (!st) return <Spinner />;
-  const item = certificatesFor(st, ms).find(c => c.code === code);
+  if (!st || (code.startsWith('garden-') && !sd.sessions)) return <Spinner />;
+  const item = certificatesFor(st, ms, Math.floor(stars(sd.sessions ?? [], st.id) / STARS_PER_LEVEL)).find(c => c.code === code);
   if (!item) return <div className="p-6"><ErrorBox message="This certificate is not earned yet." /></div>;
   const teacher = members.find(m => m.role === 'admin')?.displayName ?? org.name;
-  const what = code === 'quran_complete' ? 'the memorisation of the whole Qurʾān' : code.startsWith('juz-') ? `the memorisation of ${item.title}` : `the memorisation of ${item.title.toLowerCase()}`;
+  const what = code.startsWith('garden-') ? `the ${item.title}: ${STARS_PER_LEVEL} recitations heard by a teacher or revision partner` : code === 'quran_complete' ? 'the memorisation of the whole Qurʾān' : code.startsWith('juz-') ? `the memorisation of ${item.title}` : `the memorisation of ${item.title.toLowerCase()}`;
   return <div className="min-h-full bg-paper px-4 py-6 print:p-0">
     <div className="no-print mx-auto mb-4 flex max-w-4xl gap-2"><Button kind="quiet" onClick={() => history.back()}><ArrowLeft size={16} />Back</Button><Button className="ml-auto" onClick={() => window.print()}><Printer size={16} />Print or save as PDF</Button></div>
     <article className="mx-auto aspect-[1.414] w-full max-w-4xl bg-white p-[3%] shadow-xl print:shadow-none" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
