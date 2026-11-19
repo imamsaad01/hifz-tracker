@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, School, ClipboardList, MoreHorizontal, Home, TrendingUp, User } from 'lucide-react';
+import { LayoutDashboard, Users, School, MoreHorizontal, Home, TrendingUp, User } from 'lucide-react';
 import { useApp } from './app/context';
 import { useRoute, href } from './app/router';
 import { Spinner } from './components/ui';
@@ -37,9 +37,10 @@ function usePreload(role: string | undefined) {
 
 const STAFF_NAV: NavItem[] = [
   { key: 'today', label: 'Today', icon: LayoutDashboard, href: href('today') }, { key: 'students', label: 'Students', icon: Users, href: href('students') },
-  { key: 'classes', label: 'Halaqah', icon: School, href: href('classes') }, { key: 'assignments', label: 'Tasks', icon: ClipboardList, href: href('assignments') },
-  { key: 'more', label: 'More', icon: MoreHorizontal, href: href('more') },
+  { key: 'classes', label: 'Halaqah', icon: School, href: href('classes') }, { key: 'more', label: 'More', icon: MoreHorizontal, href: href('more') },
 ];
+/** Still reachable (from More), just not in the bottom bar */
+const STAFF_EXTRA = ['assignments'];
 const STUDENT_NAV: NavItem[] = [
   { key: 'home', label: 'Today', icon: Home, href: href('home') }, { key: 'progress', label: 'My stars', icon: TrendingUp, href: href('progress') }, { key: 'me', label: 'Me', icon: User, href: href('me') },
 ];
@@ -60,8 +61,8 @@ function Main() {
   if (!org) return <Welcome />;
   if (page === 'certificate' && sub && third) return <Certificate studentId={sub} code={third} />;
   if (org.role === 'admin' || org.role === 'teacher') {
-    const key = STAFF_NAV.some(n => n.key === page) ? page : 'today';
-    return <Shell nav={STAFF_NAV} active={key} key={org.id}>
+    const key = STAFF_NAV.some(n => n.key === page) || STAFF_EXTRA.includes(page) ? page : 'today';
+    return <Shell nav={STAFF_NAV} active={STAFF_EXTRA.includes(key) ? 'more' : key} key={org.id}>
       {key === 'today' && <Today />}
       {key === 'students' && (sub && sub !== 'new' ? <StudentDetail id={sub} key={sub} initialTab={third} /> : <Students />)}
       {key === 'classes' && <Classes />}

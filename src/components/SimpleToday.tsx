@@ -13,6 +13,7 @@ import { MushafLink, rangeMarks } from './Mushaf';
 import { AyahPlayer } from './AyahPlayer';
 import type { RevisionCheckin } from '../api/data';
 import type { Student } from '../lib/types';
+import { garden, cheer, STARS_PER_LEVEL } from '../lib/stars';
 
 export type PartState = 'todo' | 'done' | 'waiting' | 'rest';
 export interface PartCard { key: 'new' | 'recent' | 'old'; what: string; range: Range | null; state: PartState; restText?: string; doneText?: string }
@@ -58,16 +59,16 @@ export function SimpleToday({ student, name, cards, stars, streak, level, week, 
 
     <p role="status" className="text-center text-lg font-bold">{cheer}</p>
     <div className="mx-auto w-full max-w-xs" aria-label={`Level ${level.level}: ${level.into} of ${level.need} stars`}>
-      <p className="mb-1 text-center text-sm font-bold text-ink-soft">Level {level.level} · {level.need - level.into} stars to Level {level.level + 1}</p>
+      <a href="#/progress" className="mb-1 block text-center text-sm font-bold text-ink-soft underline-offset-2 hover:underline">{garden(level.level).plant} {garden(level.level).name} garden · {level.need - level.into} stars to the next one</a>
       <div className="h-3 overflow-hidden rounded-full bg-black/[.08] dark:bg-white/10"><div className="h-full rounded-full bg-[#E8A317] transition-all duration-700" style={{ width: `${(level.into / level.need) * 100}%` }} /></div>
     </div>
 
-    {open && <PartSheet card={open} student={student} today={today} revisionForms={revisionForms} onClose={() => setOpen(null)} onSaved={onSaved} />}
+    {open && <PartSheet card={open} stars={stars} student={student} today={today} revisionForms={revisionForms} onClose={() => setOpen(null)} onSaved={onSaved} />}
   </div>;
 }
 
 type Step = 'read' | 'friend' | 'yay';
-function PartSheet({ card, student, today, revisionForms, onClose, onSaved }: { card: PartCard; student: Student; today: string; revisionForms: RevisionCheckin[]; onClose: () => void; onSaved: () => void }) {
+function PartSheet({ card, stars, student, today, revisionForms, onClose, onSaved }: { card: PartCard; stars: number; student: Student; today: string; revisionForms: RevisionCheckin[]; onClose: () => void; onSaved: () => void }) {
   const { api, org } = useOrg(); const toast = useToast();
   const L = LOOK[card.key];
   const [step, setStep] = useState<Step>('read'); const [hard, setHard] = useState(false); const [busy, setBusy] = useState(false);
@@ -126,7 +127,8 @@ function PartSheet({ card, student, today, revisionForms, onClose, onSaved }: { 
       {step === 'yay' && <>
         <span className="done-pop text-8xl" aria-hidden>{gain > 1 ? '⭐⭐' : '⭐'}</span>
         <p className="text-4xl font-bold">+{gain} star{gain > 1 ? 's' : ''}!</p>
-        <p className="text-lg text-ink-soft">{card.key === 'new' ? 'Your teacher will check it in class.' : hard ? 'Hard is good. Your teacher will help with it.' : 'Mā shāʾ Allāh, well done!'}</p>
+        <p className="text-lg text-ink-soft">{card.key === 'new' ? 'Your teacher will check it in class.' : hard ? 'Hard is good. Your teacher will help with it.' : cheer(Date.now() >> 10)}</p>
+        <p className="text-base font-bold text-[#9A5B00]">{garden(Math.floor(stars / STARS_PER_LEVEL) + 1).plant} A new plant in your garden</p>
         <button type="button" autoFocus onClick={onClose} className={cx(big, 'bg-[#FFD23F] text-[#1B2433]')}>Yay!</button>
       </>}
     </div>

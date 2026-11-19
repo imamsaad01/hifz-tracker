@@ -34,3 +34,18 @@ export function weekDays(sessions: Session[], studentId: string, today: string):
   const mon = addDays(today, -wd); const by = partsByDay(sessions, studentId);
   return Array.from({ length: 7 }, (_, i) => { const d = addDays(mon, i); return { date: d, count: by.get(d)?.size ?? 0 }; });
 }
+
+/** Each level is a garden of 25 plants: every star plants one. Fill the garden, the next one opens. */
+export const GARDENS: Array<{ name: string; plant: string }> = [
+  { name: 'Seed', plant: '🌱' }, { name: 'Sprout', plant: '🌿' }, { name: 'Tulip', plant: '🌷' }, { name: 'Sunflower', plant: '🌻' },
+  { name: 'Rose', plant: '🌹' }, { name: 'Blossom', plant: '🌸' }, { name: 'Palm', plant: '🌴' }, { name: 'Date palm', plant: '🌴' }, { name: 'Olive tree', plant: '🌳' }, { name: 'Great tree', plant: '🌳' },
+];
+export const garden = (level: number) => GARDENS[Math.min(level, GARDENS.length) - 1];
+
+/** Streak goals to aim for next */
+export const STREAK_GOALS = [3, 7, 14, 30, 50, 100, 200, 365];
+export const nextStreakGoal = (days: number) => STREAK_GOALS.find(g => g > days) ?? days + 100;
+
+/** A different cheer each time, so it never feels the same */
+const CHEERS = ['Mā shāʾ Allāh, well done!', 'Bārak Allāhu fīk!', 'Your garden grew! 🌱', 'Another one done. Keep going!', 'A little every day. That is how hifz grows!', 'That was great!'];
+export const cheer = (seed: number) => CHEERS[Math.abs(seed) % CHEERS.length];
