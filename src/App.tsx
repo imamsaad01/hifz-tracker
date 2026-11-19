@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, School, ClipboardList, MoreHorizontal, Home, TrendingUp, History as HistoryIcon, User, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, Users, School, ClipboardList, MoreHorizontal, Home, TrendingUp, User } from 'lucide-react';
 import { useApp } from './app/context';
 import { useRoute, href } from './app/router';
 import { Spinner } from './components/ui';
@@ -41,9 +41,10 @@ const STAFF_NAV: NavItem[] = [
   { key: 'more', label: 'More', icon: MoreHorizontal, href: href('more') },
 ];
 const STUDENT_NAV: NavItem[] = [
-  { key: 'home', label: 'Today', icon: Home, href: href('home') }, { key: 'progress', label: 'Progress', icon: TrendingUp, href: href('progress') },
-  { key: 'history', label: 'History', icon: HistoryIcon, href: href('history') }, { key: 'messages', label: 'Messages', icon: MessageCircle, href: href('messages') }, { key: 'me', label: 'My plan', icon: User, href: href('me') },
+  { key: 'home', label: 'Today', icon: Home, href: href('home') }, { key: 'progress', label: 'My stars', icon: TrendingUp, href: href('progress') }, { key: 'me', label: 'Me', icon: User, href: href('me') },
 ];
+/** Still reachable from the Me tab, just not in the bottom bar */
+const STUDENT_EXTRA = ['history', 'messages'];
 export function App() {
   return <><Suspense fallback={<Spinner />}><Main /></Suspense><NewPassword /></>;
 }
@@ -69,8 +70,8 @@ function Main() {
     </Shell>;
   }
   if (org.role === 'student') {
-    const key = STUDENT_NAV.some(n => n.key === page) ? page : 'home';
-    return <Shell nav={STUDENT_NAV} active={key} key={org.id}><StudentApp tab={key} /></Shell>;
+    const key = STUDENT_NAV.some(n => n.key === page) || STUDENT_EXTRA.includes(page) ? page : 'home';
+    return <Shell nav={STUDENT_NAV} active={STUDENT_EXTRA.includes(key) ? 'me' : key} key={org.id}><StudentApp tab={key} /></Shell>;
   }
   return <Shell nav={[{ key: 'child', label: 'My child', icon: Users, href: href('child') }]} active="child" key={org.id}><ParentApp /></Shell>;
 }
