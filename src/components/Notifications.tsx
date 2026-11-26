@@ -11,7 +11,7 @@ const supported = () => typeof window !== 'undefined' && 'serviceWorker' in navi
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = () => window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
 
-export function NotifyToggle({ compact }: { compact?: boolean }) {
+export function NotifyToggle({ compact, kid }: { compact?: boolean; kid?: boolean }) {
   const { api, backend } = useApp(); const toast = useToast();
   const [on, setOn] = useState<boolean | null>(null); const [busy, setBusy] = useState(false);
   // "On" means this phone is registered for the account that is signed in now (a shared phone can serve several accounts).
@@ -29,7 +29,7 @@ export function NotifyToggle({ compact }: { compact?: boolean }) {
   }, [api, backend.kind]);
   if (backend.kind !== 'live' || !KEY || on === null) return null;
   if (!supported()) {
-    if (isIOS() && !standalone()) return compact ? null : <Card className="flex items-start gap-3 p-4 text-sm"><BellRing size={18} className="mt-0.5 text-pine-700" /><span><b>Want reminders on your iPhone?</b> First add Hifz to your home screen (Share → Add to Home Screen), open it from there, then turn on notifications here.</span></Card>;
+    if (isIOS() && !standalone()) return compact && !kid ? null : <Card className="flex items-start gap-3 p-4 text-sm"><BellRing size={18} className="mt-0.5 text-pine-700" /><span><b>Want reminders on your iPhone?</b> First add Hifz to your home screen (Share → Add to Home Screen), open it from there, then turn on notifications here.</span></Card>;
     return null;
   }
   if (on && compact) return null;
@@ -51,6 +51,11 @@ export function NotifyToggle({ compact }: { compact?: boolean }) {
     try { const reg = await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) await api.removePushSubscription(sub.endpoint); /* keep the phone's registration: other accounts on this phone may use it */ setOn(false); toast('Notifications are off for this device.'); }
     catch (e) { toast(friendly(e), 'err'); } finally { setBusy(false); }
   };
+  if (kid && !on) return <div className="flex flex-col gap-3 rounded-[24px] bg-[#E9DFF7] p-5 text-[#3B1D5C]">
+    <p className="flex items-center gap-3 text-xl font-bold"><span className="text-4xl" aria-hidden>🔔</span>Get a reminder</p>
+    <p className="text-base">Just 3 a week: Monday, Wednesday and Friday at 7 pm. So you never lose your 🔥.</p>
+    <button type="button" disabled={busy} onClick={enable} className="min-h-[56px] rounded-2xl bg-[#5A2380] text-lg font-bold text-white shadow-[inset_0_-5px_0_rgba(0,0,0,.2)] disabled:opacity-60">{busy ? 'One moment…' : 'Turn on reminders'}</button>
+  </div>;
   return <Card className="flex flex-wrap items-center gap-3 p-4">
     {on ? <BellRing size={20} className="text-good" /> : <BellOff size={20} className="text-ink-faint" />}
     <span className="min-w-0 flex-1 text-[15px]"><b>{on ? 'Notifications are on' : 'Get reminders on this phone'}</b><span className="block text-sm text-ink-faint">Class check-in, partner revision nights, messages, new lessons and attendance warnings.</span></span>

@@ -29,4 +29,9 @@ it('keeps students quiet except for the weekly nudge, once a day', async () => {
   const q = await db.query<{ title: string; body: string }>(`select title, body from public.notification_queue order by id`);
   expect(q.rows.map(r => r.title)).toEqual(['Lesson to sign off', 'New week, new stars ⭐']);
   expect(q.rows[1].body).toContain('Salaam Yusuf');
+  // 0026: staff no longer get the daily per-student reminders, but keep the rest
+  await db.exec(fs.readFileSync('supabase/migrations/0026_quiet_staff_daily.sql', 'utf8'));
+  await db.exec(`select public.enqueue('${ADMIN}','Revision follow-up','x','#/'); select public.enqueue('${ADMIN}','Attendance warning','x','#/'); select public.enqueue('${ADMIN}','Last week in class','x','#/');`);
+  const r = await db.query<{ title: string }>(`select title from public.notification_queue where user_id = '${ADMIN}' order by id`);
+  expect(r.rows.map(x => x.title)).toEqual(['Lesson to sign off', 'Last week in class']);
 }, 60000);

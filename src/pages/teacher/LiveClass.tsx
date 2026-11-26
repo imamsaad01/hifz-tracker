@@ -4,7 +4,7 @@ import type { RecallResult } from '../../api/data';
 import { useRefresh } from '../../components/PullToRefresh';
 import { MushafLink, rangeMarks, type Mark } from '../../components/Mushaf';
 import { LookalikeNote } from '../../components/Lookalike';
-import { Play, CheckCircle2, UserX, ChevronRight, ChevronDown, ClipboardCheck, GripVertical, Clock3 } from 'lucide-react';
+import { CheckCircle2, UserX, ChevronRight, ChevronDown, GripVertical, Clock3 } from 'lucide-react';
 import { RevisionReadOnly, weakAyahs } from '../../components/PartnerRevision';
 import { SignOffModal } from '../../components/RevisionSelf';
 import { weekSummary, revSchedule } from '../../lib/weekly';
@@ -15,6 +15,7 @@ import { insight } from '../../lib/insights';
 import { formatRange, fromAyahId, surahNameEn } from '../../quran';
 import { Button, Card, Pill, SubTabs, Empty, useToast, cx } from '../../components/ui';
 import { RecordSheet } from '../../components/RecordSheet';
+import { QuickHear } from '../../components/QuickHear';
 import { AdabTaps } from '../../components/Adab';
 import { friendly } from '../../api/backend';
 import { CheckinCode } from './AttendancePage';
@@ -27,7 +28,7 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
   const { org, today, api, user } = useOrg(); const toast = useToast();
   const mine = data.classes.find(c => c.teacherUserId === user?.id);
   const [cls, setCls] = useState(mine?.id ?? data.classes[0]?.id ?? 'all');
-  const [rec, setRec] = useState<string | null>(null);
+  const [rec, setRec] = useState<string | null>(null); const [recType, setRecType] = useState<SessionType | null>(null);
   const [more, setMore] = useState<'rev' | 'weak' | 'test' | null>(null);
   const [tests, setTests] = useState<RecallResult[]>([]);
   const loadTests = useCallback(() => api.recallTests(org.id, new Date(Date.now() - 7 * 864e5).toISOString()).then(setTests).catch(e => console.error('recall tests', e)), [api, org.id]);
@@ -110,13 +111,13 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
           <div className="mt-4 rounded-xl bg-pine-50 px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wider text-pine-700">Hear now · new lesson</p>
             <p className="mt-0.5 text-lg font-bold text-pine-800">{pend ? formatRange(pend.range) : current.nextNew ? formatRange(current.nextNew) : 'All memorised'}</p>
-            {pend ? <p className="text-sm text-pine-700">Submitted by the student{pend.studentNote ? <> · “{pend.studentNote}”</> : ''}</p> : <p className="text-sm text-pine-700">Not submitted yet: record it as you hear it.</p>}
+            {pend ? <p className="text-sm text-pine-700">Submitted by the student{pend.studentNote ? <> · “{pend.studentNote}”</> : ''}</p> : <p className="text-sm text-pine-700">Not submitted yet. Hear it, then tap ✓ No mistakes below.</p>}
             {(pend?.range ?? current.nextNew) && <LookalikeNote className="mt-2" range={(pend?.range ?? current.nextNew)!} />}
             {(pend?.range ?? current.nextNew) && <MushafLink className="mt-2 bg-white" range={(pend?.range ?? current.nextNew)!} title={`${current.student.name.split(' ')[0]} · new lesson`} marks={[...rangeMarks((pend?.range ?? current.nextNew)!, 'lesson'), ...weak.map(w => [w.ayahId, 'weak'] as [number, Mark])]} />}
           </div>
           {current.reasons.length > 0 && <p className="mt-2 text-sm text-warn">{current.reasons.map(r => r.text).join(' · ')}</p>}
-          <div className="mt-3 grid grid-cols-2 gap-2">{pend ? <Button className="col-span-2 min-h-[52px] text-[17px]" onClick={() => setSignOff(pend)}><ClipboardCheck size={18} />Sign off new lesson</Button> : <Button className="col-span-2 min-h-[52px] text-[17px]" onClick={() => setRec(sid)}><Play size={18} />Record new lesson</Button>}
-            {waiting.length > 1 ? <Button kind="secondary" onClick={() => skip(sid)}><Clock3 size={16} />Later</Button> : <span />}<Button kind="secondary" onClick={() => absentNow(sid)}><UserX size={16} />Absent</Button></div>
+          <QuickHear student={current.student} insight={current} sessions={data.sessions} pend={pend} onSignOff={setSignOff} onMistakes={t => { setRecType(t); setRec(sid); }} onSaved={reload} />
+          <div className="mt-3 grid grid-cols-2 gap-2">{waiting.length > 1 ? <Button kind="secondary" onClick={() => skip(sid)}><Clock3 size={16} />Later</Button> : <span />}<Button kind="secondary" onClick={() => absentNow(sid)}><UserX size={16} />Absent</Button></div>
         </>;
       })()}
       <details className="group mt-3"><summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-sm font-bold text-ink-soft">Note manners (adab)<ChevronDown size={15} className="transition group-open:rotate-180" /></summary>
@@ -134,6 +135,6 @@ export function LiveClass({ data, reload }: { data: OrgData; reload: () => void 
       <Button kind="quiet" className="min-h-[44px] px-2 text-sm" onClick={() => setRec(i.student.id)}>Record<ChevronRight size={14} /></Button></li>)}</ol></Card>}
     {(done.length > 0 || absent.length > 0) && <div className="flex flex-wrap gap-1.5">{done.map(i => { const t = lastTest(i.student.id); return <Pill key={i.student.id} tone="green" className="pop"><CheckCircle2 size={12} />{i.student.name}{t ? ` · self-test ${Math.round(((t.total - t.peeked.length) / t.total) * 100)}%` : ''}</Pill>; })}{absent.map(i => <Pill key={i.student.id} tone="amber">{i.student.name} · absent</Pill>)}</div>}
     {signOff && <SignOffModal s={signOff} who={data.students.find(x => x.id === signOff.studentId)?.name ?? ''} onClose={() => setSignOff(null)} onSaved={reload} />}
-    {recIns && <RecordSheet key={recIns.student.id + firstType(recIns.student.id)} open onClose={() => setRec(null)} student={recIns.student} insight={recIns} sessions={data.sessions} initialType={firstType(recIns.student.id)} onSaved={reload} />}
+    {recIns && <RecordSheet key={recIns.student.id + (recType ?? firstType(recIns.student.id))} open onClose={() => { setRec(null); setRecType(null); }} student={recIns.student} insight={recIns} sessions={data.sessions} initialType={recType ?? firstType(recIns.student.id)} onSaved={reload} />}
   </div>;
 }

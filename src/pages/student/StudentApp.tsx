@@ -103,6 +103,7 @@ export function StudentApp({ tab }: { tab: string }) {
         {!myClassIds.length && <div className="mb-5"><HalaqahChooser student={me} data={data} onChanged={reload} /></div>}
         <JuzCelebration who={me.id} completed={juzDone} />
         <SimpleToday student={me} name={me.name.split(' ')[0]} cards={cards} stars={st} seeds={gd.seeds} streak={liveStreak} level={starLevel(st)} week={weekDays(sd.sessions, me.id, today)} today={today} revisionForms={data.revisionForms} onSaved={refresh} />
+        <div className="mx-auto mt-6 max-w-md empty:hidden"><NotifyToggle compact kid /></div>
         <div className="mx-auto mt-6 max-w-md"><MyLessons sessions={sd.sessions} studentId={me.id} next={pendingNew ? null : ins.nextNew} /></div>
         {/* below the three buttons: things to answer once in a while */}
         <div className="mx-auto mt-6 max-w-md empty:hidden"><PartnerRequestsCard /></div>
